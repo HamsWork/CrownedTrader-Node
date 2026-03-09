@@ -41,7 +41,7 @@ server/
   db.ts                    - Database connection
   routes.ts                - API routes (auth, users, signals, channels, stats)
   storage.ts               - Database storage layer (IStorage interface)
-  seed.ts                  - Seed data (demo users + signal types)
+  seed.ts                  - Seed data (demo users + 5 asset-class templates)
   utils/
     discord.ts             - Discord webhook embed builder + sender
     template.ts            - Template variable replacement utility
@@ -53,9 +53,10 @@ shared/
 
 ## Key Features
 
-- **Authentication**: Login/register with session-based auth, bcryptjs password hashing
+- **Authentication**: Login-only auth (no public registration), bcryptjs password hashing
 - **Role System**: Admin and user roles; admin-only pages for templates and user management
-- **Discord Templates**: Customizable templates with variables, title/description/fields/footer templates, colors (admin-only)
+- **User Creation**: Admin-only via User Management page
+- **Discord Templates**: 5 asset-class templates (Options, Shares, LETF, LETF Options, Crypto) with full create/edit/delete (admin-only)
 - **Signal Submission**: Dynamic form based on signal type, live Discord embed preview
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks
 - **Signal History**: Search and filter past signals
