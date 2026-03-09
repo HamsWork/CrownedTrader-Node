@@ -13,7 +13,7 @@ import SendSignal from "@/pages/send-signal";
 import SignalHistory from "@/pages/signal-history";
 import DiscordTemplatesPage from "@/pages/discord-templates";
 import DiscordChannelsPage from "@/pages/discord-channels";
-import UserManagement from "@/pages/user-management";
+import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
 import LoginPage from "@/pages/login";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SafeUser } from "@shared/schema";
@@ -30,6 +30,8 @@ function Router() {
       <Route path="/discord" component={DiscordChannelsPage} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}
       {isAdmin && <Route path="/users" component={UserManagement} />}
+      {isAdmin && <Route path="/users/create" component={CreateUserPage} />}
+      {isAdmin && <Route path="/users/:id/edit">{(params) => <EditUserPage userId={Number(params.id)} />}</Route>}
       <Route component={NotFound} />
     </Switch>
   );

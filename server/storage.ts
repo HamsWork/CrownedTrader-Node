@@ -21,6 +21,7 @@ export interface IStorage {
   createUser(user: InsertUser & { role?: string }): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  updateUserPassword(id: number, password: string): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
 
   getSignalTypes(): Promise<SignalType[]>;
@@ -65,6 +66,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async updateUserPassword(id: number, password: string): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ password }).where(eq(users.id, id)).returning();
     return updated;
   }
 

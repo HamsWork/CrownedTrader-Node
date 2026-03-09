@@ -152,6 +152,18 @@ export function useUpdateUserRole() {
   });
 }
 
+export function useUpdateUserPassword() {
+  return useMutation({
+    mutationFn: async ({ id, password }: { id: number; password: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${id}/password`, { password });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+  });
+}
+
 export function useUpdateUserChannels() {
   return useMutation({
     mutationFn: async ({ userId, channels }: { userId: number; channels: Array<{ id?: number; name: string; webhookUrl: string }> }) => {

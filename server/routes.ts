@@ -74,11 +74,26 @@ export async function registerRoutes(
   });
 
   app.patch("/api/users/:id/role", requireAdmin, async (req, res) => {
+    const currentUser = (req as any).user;
+    if (currentUser.id === Number(req.params.id)) {
+      return res.status(400).json({ message: "Cannot change your own role" });
+    }
     const { role } = req.body;
     if (!role || !["admin", "user"].includes(role)) {
       return res.status(400).json({ message: "Invalid role. Must be 'admin' or 'user'." });
     }
     const updated = await storage.updateUserRole(Number(req.params.id), role);
+    if (!updated) return res.status(404).json({ message: "User not found" });
+    res.json(toSafeUser(updated));
+  });
+
+  app.patch("/api/users/:id/password", requireAdmin, async (req, res) => {
+    const { password } = req.body;
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+    const hashed = await hashPassword(password);
+    const updated = await storage.updateUserPassword(Number(req.params.id), hashed);
     if (!updated) return res.status(404).json({ message: "User not found" });
     res.json(toSafeUser(updated));
   });
