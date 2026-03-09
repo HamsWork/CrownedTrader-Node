@@ -18,7 +18,10 @@ import {
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser & { role?: string }): Promise<User>;
+  getUsers(): Promise<User[]>;
+  updateUserRole(id: number, role: string): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
 
   getSignalTypes(): Promise<SignalType[]>;
   getSignalType(id: number): Promise<SignalType | undefined>;
@@ -49,9 +52,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
+  async createUser(user: InsertUser & { role?: string }): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created;
+  }
+
+  async getUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(users.username);
+  }
+
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
   }
 
   async getSignalTypes(): Promise<SignalType[]> {

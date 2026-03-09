@@ -8,59 +8,91 @@ Trading signal dashboard that lets you create signal types with customizable tem
 - **Backend**: Express.js + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Routing**: wouter (frontend), Express (backend)
+- **Auth**: Session-based (express-session + connect-pg-simple), bcryptjs password hashing
 
 ## Project Structure
 
 ```
 client/src/
   components/
-    app-sidebar.tsx        - Navigation sidebar
+    app-sidebar.tsx        - Navigation sidebar (role-aware)
     theme-provider.tsx     - Dark/light mode toggle
     signal-card.tsx        - Signal display card component
     stat-card.tsx          - Dashboard stat card
     empty-state.tsx        - Empty state placeholder
   pages/
+    login.tsx              - Login/register page
     dashboard.tsx          - Dashboard with stats overview
     send-signal.tsx        - Signal submission form with Discord preview
     signal-history.tsx     - Browsable signal history with search/filter
-    signal-types.tsx       - CRUD for signal type templates
+    signal-types.tsx       - CRUD for Discord embed templates (admin-only)
     discord-channels.tsx   - Manage Discord webhook channels
+    user-management.tsx    - Admin user/role management
   hooks/
+    use-auth.ts            - Auth hooks (useAuth, useLogin, useRegister, useLogout)
     use-signals.ts         - All API hooks (queries + mutations)
   lib/
     constants.ts           - App constants, colors
-    queryClient.ts         - TanStack Query config
+    queryClient.ts         - TanStack Query config with 401 handling
 
 server/
-  index.ts                 - Express app entry
+  index.ts                 - Express app entry with session middleware
+  auth.ts                  - Auth helpers (hash, compare, requireAuth, requireAdmin)
   db.ts                    - Database connection
-  routes.ts                - API routes
+  routes.ts                - API routes (auth, users, signals, channels, stats)
   storage.ts               - Database storage layer (IStorage interface)
-  seed.ts                  - Seed data
+  seed.ts                  - Seed data (demo users + signal types)
   utils/
     discord.ts             - Discord webhook embed builder + sender
     template.ts            - Template variable replacement utility
+    validation.ts          - Input validation helpers
 
 shared/
-  schema.ts                - Drizzle schema + Zod validation
+  schema.ts                - Drizzle schema + Zod validation + types
 ```
 
 ## Key Features
 
-- **Signal Types**: Customizable templates with variables, title/description/fields/footer templates, colors
+- **Authentication**: Login/register with session-based auth, bcryptjs password hashing
+- **Role System**: Admin and user roles; admin-only pages for templates and user management
+- **Discord Templates**: Customizable templates with variables, title/description/fields/footer templates, colors (admin-only)
 - **Signal Submission**: Dynamic form based on signal type, live Discord embed preview
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks
 - **Signal History**: Search and filter past signals
 - **Dashboard**: Stats overview with recent signals
+- **User Management**: Admin can view/edit roles/delete users
 
 ## Database Tables
 
-- `users` - User accounts (serial id)
+- `users` - User accounts (id, username, password, role)
 - `signal_types` - Signal type templates with JSON variables and templates
-- `signals` - Submitted signals with JSON data
+- `signals` - Submitted signals with JSON data, userId
 - `discord_channels` - Discord webhook configurations
+- `session` - Express sessions (created automatically by connect-pg-simple)
 
 ## Environment
 
 - `DATABASE_URL` - PostgreSQL connection string
+- `SESSION_SECRET` - Session encryption secret
 - Uses `.env` file when not on Replit
+
+## Seed Credentials
+
+- admin / admin123 (role: admin)
+- trader1 / user123 (role: user)
+
+## API Routes
+
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+- `GET /api/users` - List users (admin)
+- `PATCH /api/users/:id/role` - Update user role (admin)
+- `DELETE /api/users/:id` - Delete user (admin)
+- `GET/POST /api/signal-types` - Signal types (GET: auth, POST: admin)
+- `PATCH/DELETE /api/signal-types/:id` - Signal type CRUD (admin)
+- `GET/POST /api/signals` - Signals (auth)
+- `GET/POST /api/discord-channels` - Discord channels (auth)
+- `PATCH/DELETE /api/discord-channels/:id` - Channel CRUD (auth)
+- `GET /api/stats` - Dashboard stats (auth)

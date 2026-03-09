@@ -19,7 +19,7 @@ import {
   useCreateSignalType,
   useDeleteSignalType,
 } from "@/hooks/use-signals";
-import { Plus, Trash2, Settings, X } from "lucide-react";
+import { Plus, Trash2, FileText, X } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { SIGNAL_COLORS } from "@/lib/constants";
 
@@ -34,7 +34,7 @@ interface EmbedField {
   value: string;
 }
 
-export default function SignalTypesPage() {
+export default function DiscordTemplatesPage() {
   const { data: signalTypes, isLoading } = useSignalTypes();
   const createSignalType = useCreateSignalType();
   const deleteSignalType = useDeleteSignalType();
@@ -106,7 +106,7 @@ export default function SignalTypesPage() {
         showTitleDefault: true,
         showDescriptionDefault: true,
       });
-      toast({ title: "Signal type created" });
+      toast({ title: "Template created" });
       resetForm();
       setOpen(false);
     } catch (err: any) {
@@ -117,7 +117,7 @@ export default function SignalTypesPage() {
   async function handleDelete(id: number) {
     try {
       await deleteSignalType.mutateAsync(id);
-      toast({ title: "Signal type deleted" });
+      toast({ title: "Template deleted" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -141,21 +141,21 @@ export default function SignalTypesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-            Signal Types
+            Discord Templates
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your signal type templates
+            Manage your Discord embed templates
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-type">
-              <Plus className="h-4 w-4 mr-2" /> New Signal Type
+              <Plus className="h-4 w-4 mr-2" /> New Template
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Signal Type</DialogTitle>
+              <DialogTitle>Create Discord Template</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -298,7 +298,7 @@ export default function SignalTypesPage() {
                 disabled={createSignalType.isPending}
                 data-testid="button-submit-type"
               >
-                {createSignalType.isPending ? "Creating..." : "Create Signal Type"}
+                {createSignalType.isPending ? "Creating..." : "Create Template"}
               </Button>
             </div>
           </DialogContent>
@@ -307,9 +307,9 @@ export default function SignalTypesPage() {
 
       {!signalTypes || signalTypes.length === 0 ? (
         <EmptyState
-          icon={Settings}
-          title="No signal types"
-          description="Create your first signal type to get started."
+          icon={FileText}
+          title="No templates"
+          description="Create your first Discord template to get started."
           testId="empty-signal-types"
         />
       ) : (

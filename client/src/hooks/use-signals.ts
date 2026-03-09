@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Signal, SignalType, DiscordChannel } from "@shared/schema";
+import type { Signal, SignalType, DiscordChannel, SafeUser } from "@shared/schema";
 
 export function useSignalTypes() {
   return useQuery<SignalType[]>({
@@ -29,6 +29,12 @@ export function useStats() {
     recentSignals: Signal[];
   }>({
     queryKey: ["/api/stats"],
+  });
+}
+
+export function useUsers() {
+  return useQuery<SafeUser[]>({
+    queryKey: ["/api/users"],
   });
 }
 
@@ -103,6 +109,29 @@ export function useDeleteDiscordChannel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+  });
+}
+
+export function useUpdateUserRole() {
+  return useMutation({
+    mutationFn: async ({ id, role }: { id: number; role: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${id}/role`, { role });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
   });
 }

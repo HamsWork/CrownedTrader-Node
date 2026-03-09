@@ -1,0 +1,143 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useLogin, useRegister } from "@/hooks/use-auth";
+import { ThemeToggle } from "@/components/theme-provider";
+import { Crown, LogIn, UserPlus } from "lucide-react";
+
+export default function LoginPage() {
+  const { toast } = useToast();
+  const login = useLogin();
+  const register = useRegister();
+
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [regUsername, setRegUsername] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await login.mutateAsync({ username: loginUsername, password: loginPassword });
+    } catch (err: any) {
+      toast({
+        title: "Login failed",
+        description: err.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await register.mutateAsync({ username: regUsername, password: regPassword });
+      toast({ title: "Account created", description: "Welcome to Crowned Trader!" });
+    } catch (err: any) {
+      toast({
+        title: "Registration failed",
+        description: err.message || "Could not create account",
+        variant: "destructive",
+      });
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground" data-testid="logo-login">
+          <Crown className="h-6 w-6" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-app-title">Crowned Trader</h1>
+          <p className="text-sm text-muted-foreground">Trading Signal Dashboard</p>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <Tabs defaultValue="login">
+            <TabsList className="w-full">
+              <TabsTrigger value="login" className="flex-1" data-testid="tab-login">
+                <LogIn className="h-4 w-4 mr-2" /> Sign In
+              </TabsTrigger>
+              <TabsTrigger value="register" className="flex-1" data-testid="tab-register">
+                <UserPlus className="h-4 w-4 mr-2" /> Register
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-username">Username</Label>
+                  <Input
+                    id="login-username"
+                    placeholder="Enter your username"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    data-testid="input-login-username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    data-testid="input-login-password"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={login.isPending} data-testid="button-login">
+                  {login.isPending ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reg-username">Username</Label>
+                  <Input
+                    id="reg-username"
+                    placeholder="Choose a username"
+                    value={regUsername}
+                    onChange={(e) => setRegUsername(e.target.value)}
+                    data-testid="input-reg-username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password">Password</Label>
+                  <Input
+                    id="reg-password"
+                    type="password"
+                    placeholder="Choose a password (min 6 characters)"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    data-testid="input-reg-password"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={register.isPending} data-testid="button-register">
+                  {register.isPending ? "Creating account..." : "Create Account"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground mt-6" data-testid="text-demo-credentials">
+        Demo: admin / admin123 or trader1 / user123
+      </p>
+    </div>
+  );
+}

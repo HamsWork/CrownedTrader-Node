@@ -1,34 +1,100 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSignalTypeSchema, insertSignalSchema, insertDiscordChannelSchema } from "@shared/schema";
+import { insertSignalTypeSchema, insertSignalSchema, insertDiscordChannelSchema, registerSchema, loginSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord } from "./utils/discord";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
+import { hashPassword, comparePassword, toSafeUser, requireAuth, requireAdmin } from "./auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
 
-  app.get("/api/signal-types", async (_req, res) => {
+  app.post("/api/auth/register", async (req, res) => {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+    const existing = await storage.getUserByUsername(parsed.data.username);
+    if (existing) return res.status(400).json({ message: "Username already taken" });
+
+    const hashed = await hashPassword(parsed.data.password);
+    const user = await storage.createUser({ username: parsed.data.username, password: hashed });
+    req.session.userId = user.id;
+    res.status(201).json(toSafeUser(user));
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+    const user = await storage.getUserByUsername(parsed.data.username);
+    if (!user) return res.status(401).json({ message: "Invalid username or password" });
+
+    const valid = await comparePassword(parsed.data.password, user.password);
+    if (!valid) return res.status(401).json({ message: "Invalid username or password" });
+
+    req.session.userId = user.id;
+    res.json(toSafeUser(user));
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ message: "Logged out" });
+    });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ message: "Not authenticated" });
+    const user = await storage.getUser(req.session.userId);
+    if (!user) return res.status(401).json({ message: "Not authenticated" });
+    res.json(toSafeUser(user));
+  });
+
+  app.get("/api/users", requireAdmin, async (_req, res) => {
+    const allUsers = await storage.getUsers();
+    res.json(allUsers.map(toSafeUser));
+  });
+
+  app.patch("/api/users/:id/role", requireAdmin, async (req, res) => {
+    const { role } = req.body;
+    if (!role || !["admin", "user"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role. Must be 'admin' or 'user'." });
+    }
+    const updated = await storage.updateUserRole(Number(req.params.id), role);
+    if (!updated) return res.status(404).json({ message: "User not found" });
+    res.json(toSafeUser(updated));
+  });
+
+  app.delete("/api/users/:id", requireAdmin, async (req, res) => {
+    const currentUser = (req as any).user;
+    if (currentUser.id === Number(req.params.id)) {
+      return res.status(400).json({ message: "Cannot delete your own account" });
+    }
+    const deleted = await storage.deleteUser(Number(req.params.id));
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/signal-types", requireAuth, async (_req, res) => {
     const types = await storage.getSignalTypes();
     res.json(types);
   });
 
-  app.get("/api/signal-types/:id", async (req, res) => {
+  app.get("/api/signal-types/:id", requireAuth, async (req, res) => {
     const st = await storage.getSignalType(Number(req.params.id));
     if (!st) return res.status(404).json({ message: "Signal type not found" });
     res.json(st);
   });
 
-  app.post("/api/signal-types", async (req, res) => {
+  app.post("/api/signal-types", requireAdmin, async (req, res) => {
     const parsed = insertSignalTypeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     const st = await storage.createSignalType(parsed.data);
     res.status(201).json(st);
   });
 
-  app.patch("/api/signal-types/:id", async (req, res) => {
+  app.patch("/api/signal-types/:id", requireAdmin, async (req, res) => {
     const partial = insertSignalTypeSchema.partial().safeParse(req.body);
     if (!partial.success) return res.status(400).json({ message: partial.error.message });
     const updated = await storage.updateSignalType(Number(req.params.id), partial.data);
@@ -36,18 +102,18 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/signal-types/:id", async (req, res) => {
+  app.delete("/api/signal-types/:id", requireAdmin, async (req, res) => {
     const deleted = await storage.deleteSignalType(Number(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Signal type not found" });
     res.status(204).send();
   });
 
-  app.get("/api/signals", async (_req, res) => {
+  app.get("/api/signals", requireAuth, async (_req, res) => {
     const sigs = await storage.getSignals();
     res.json(sigs);
   });
 
-  app.post("/api/signals", async (req, res) => {
+  app.post("/api/signals", requireAuth, async (req, res) => {
     const parsed = insertSignalSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
 
@@ -59,7 +125,8 @@ export async function registerRoutes(
       if (!channel) return res.status(400).json({ message: "Invalid discord channel" });
     }
 
-    const signal = await storage.createSignal(parsed.data);
+    const currentUser = (req as any).user;
+    const signal = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
 
     if (signal.discordChannelId) {
       const channel = await storage.getDiscordChannel(signal.discordChannelId);
@@ -74,12 +141,12 @@ export async function registerRoutes(
     res.status(201).json(signal);
   });
 
-  app.get("/api/discord-channels", async (_req, res) => {
+  app.get("/api/discord-channels", requireAuth, async (_req, res) => {
     const channels = await storage.getDiscordChannels();
     res.json(channels);
   });
 
-  app.post("/api/discord-channels", async (req, res) => {
+  app.post("/api/discord-channels", requireAuth, async (req, res) => {
     const parsed = insertDiscordChannelSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
     if (!isValidDiscordWebhookUrl(parsed.data.webhookUrl)) {
@@ -89,7 +156,7 @@ export async function registerRoutes(
     res.status(201).json(ch);
   });
 
-  app.patch("/api/discord-channels/:id", async (req, res) => {
+  app.patch("/api/discord-channels/:id", requireAuth, async (req, res) => {
     const partial = insertDiscordChannelSchema.partial().safeParse(req.body);
     if (!partial.success) return res.status(400).json({ message: partial.error.message });
     if (partial.data.webhookUrl && !isValidDiscordWebhookUrl(partial.data.webhookUrl)) {
@@ -100,13 +167,13 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/discord-channels/:id", async (req, res) => {
+  app.delete("/api/discord-channels/:id", requireAuth, async (req, res) => {
     const deleted = await storage.deleteDiscordChannel(Number(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Channel not found" });
     res.status(204).send();
   });
 
-  app.get("/api/stats", async (_req, res) => {
+  app.get("/api/stats", requireAuth, async (_req, res) => {
     const [allSignals, allTypes, allChannels] = await Promise.all([
       storage.getSignals(),
       storage.getSignalTypes(),
