@@ -1,207 +1,502 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useSignalTypes, useCreateSignal } from "@/hooks/use-signals";
+import { useCreateSignal } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
-import { Send, Zap } from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
-import { buildPreviewEmbed } from "@/components/discord-templates";
-import type { SignalType } from "@shared/schema";
+import { Send, Settings, Rocket, Info } from "lucide-react";
+
+const TRADE_TYPES = ["Scalp", "Swing", "Day Trade", "Position"];
+const TRADE_TRACKING = ["Manual updates", "Automatic"];
+const OPTION_TYPES = ["CALL", "PUT"];
+
+function getDefaultExpiration() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split("T")[0];
+}
+
+interface TradeForm {
+  channel: string;
+  tradeType: string;
+  tradeTracking: string;
+  ticker: string;
+  isShares: boolean;
+  manualContract: boolean;
+  optionType: string;
+  expiration: string;
+  strike: string;
+  optionPrice: string;
+  stockPrice: string;
+  entryPrice: string;
+  stopLossPct: string;
+  tp1Pct: string;
+  tp2Pct: string;
+  tp3Pct: string;
+}
+
+function computeTargets(entry: number, tp1Pct: number, tp2Pct: number, tp3Pct: number) {
+  return {
+    tp1: (entry * (1 + tp1Pct / 100)).toFixed(2),
+    tp2: (entry * (1 + tp2Pct / 100)).toFixed(2),
+    tp3: (entry * (1 + tp3Pct / 100)).toFixed(2),
+  };
+}
+
+function LivePreview({ form }: { form: TradeForm }) {
+  const entry = parseFloat(form.isShares ? form.entryPrice : form.optionPrice) || 0;
+  const stockPrice = parseFloat(form.stockPrice) || 0;
+  const tp1Pct = parseFloat(form.tp1Pct) || 10;
+  const tp2Pct = parseFloat(form.tp2Pct) || 20;
+  const tp3Pct = parseFloat(form.tp3Pct) || 30;
+  const slPct = parseFloat(form.stopLossPct) || 10;
+  const targets = computeTargets(entry, tp1Pct, tp2Pct, tp3Pct);
+
+  return (
+    <Card className="sticky top-20" data-testid="card-live-preview">
+      <CardContent className="pt-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500/20">
+            <span className="text-sm">🔮</span>
+          </div>
+          <h2 className="font-bold text-lg" data-testid="text-preview-title">Live Preview</h2>
+        </div>
+
+        <div className="rounded-lg bg-[#1a1d23] border border-[#2a2d35] overflow-hidden">
+          <div className="p-4 space-y-4 text-sm text-[#dcddde]">
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>🔺</span> Trade Alert
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+              <div>
+                <span className="text-[#72767d] text-xs">🟢 Ticker</span>
+                <p className="font-semibold text-white">{form.ticker || "Ticker"}</p>
+                <p className="text-[#72767d] text-xs">(Company Name)</p>
+              </div>
+              <div>
+                <span className="text-[#72767d] text-xs">💹 Stock Price</span>
+                <p className="font-semibold text-white">$ {stockPrice.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {!form.isShares && (
+              <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                <div>
+                  <span className="text-[#72767d] text-xs">❌ Expiration</span>
+                  <p className="text-white">{form.expiration || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[#72767d] text-xs">🔥 Strike</span>
+                  <p className="text-white">{form.strike || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[#72767d] text-xs">💰 Option Price</span>
+                  <p className="text-white">$ {entry.toFixed(2)}</p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>📋</span> Trade Plan
+              </p>
+              <p className="mt-1">
+                <span className="text-[#72767d]">🎯</span>{" "}
+                Targets: ${targets.tp1} (+{tp1Pct}%), ${targets.tp2} (+{tp2Pct}%), ${targets.tp3} (+{tp3Pct}%)
+              </p>
+              <p>
+                <span className="text-[#72767d]">🔴</span>{" "}
+                Stop Loss: -{slPct}%
+              </p>
+            </div>
+
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>🔥</span> Take Profit Plan
+              </p>
+              <p className="text-xs mt-1 leading-relaxed">
+                Take Profit (1): At {tp1Pct}% take off 50% of position and raise stop loss to break even.
+              </p>
+              <p className="text-xs leading-relaxed">
+                Take Profit (2): At {tp2Pct}% take off 50% of remaining position.
+              </p>
+              <p className="text-xs leading-relaxed">
+                Take Profit (3): At {tp3Pct}% take off 50.0% of remaining position.
+              </p>
+            </div>
+
+            <p className="text-xs text-[#72767d] italic">
+              Disclaimer: Not financial advice. Trade at your own risk.
+            </p>
+          </div>
+
+          <div className="bg-[#12141a] border-t border-[#2a2d35] px-4 py-3 flex items-start gap-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/30 shrink-0 mt-0.5">
+              <Info className="h-3 w-3 text-blue-400" />
+            </div>
+            <p className="text-xs text-[#72767d]">
+              This is how your signal will appear in Discord. Update the form to see changes in real-time.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SendSignal() {
-  const { data: signalTypes, isLoading: typesLoading } = useSignalTypes();
   const { data: currentUser } = useAuth();
   const createSignal = useCreateSignal();
   const { toast } = useToast();
 
-  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
-  const [selectedChannelName, setSelectedChannelName] = useState<string>("");
-  const [formData, setFormData] = useState<Record<string, string>>({});
-
-  const selectedType = signalTypes?.find(st => st.id.toString() === selectedTypeId);
   const userChannels = currentUser?.discordChannels || [];
 
-  function handleTypeChange(value: string) {
-    setSelectedTypeId(value);
-    setFormData({});
-  }
+  const [form, setForm] = useState<TradeForm>({
+    channel: userChannels.length > 0 ? userChannels[0].name : "",
+    tradeType: "Scalp",
+    tradeTracking: "Manual updates",
+    ticker: "",
+    isShares: false,
+    manualContract: false,
+    optionType: "CALL",
+    expiration: getDefaultExpiration(),
+    strike: "",
+    optionPrice: "",
+    stockPrice: "",
+    entryPrice: "",
+    stopLossPct: "10",
+    tp1Pct: "10",
+    tp2Pct: "20",
+    tp3Pct: "30",
+  });
 
-  function handleFieldChange(name: string, value: string) {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
+  useEffect(() => {
+    if (userChannels.length > 0 && !form.channel) {
+      setForm(prev => ({ ...prev, channel: userChannels[0].name }));
+    }
+  }, [userChannels]);
 
-  function renderPreview(type: SignalType) {
-    const preview = buildPreviewEmbed(
-      { ...type, fieldsTemplate: type.fieldsTemplate as Array<{ name: string; value: string }> },
-      formData
-    );
-
-    return (
-      <div
-        className="rounded-md border-l-4 p-4 space-y-2 bg-card"
-        style={{ borderLeftColor: preview.color }}
-        data-testid="signal-preview"
-      >
-        {preview.title && (
-          <p className="font-bold text-sm">{preview.title}</p>
-        )}
-        {preview.description && (
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{preview.description}</p>
-        )}
-        {preview.fields.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            {preview.fields.map((f, i) => (
-              <div key={i}>
-                <p className="text-xs font-semibold text-muted-foreground">{f.name}</p>
-                <p className="text-sm">{f.value}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        {preview.footer && (
-          <p className="text-xs text-muted-foreground pt-2 border-t">
-            {preview.footer}
-          </p>
-        )}
-      </div>
-    );
+  function update<K extends keyof TradeForm>(key: K, value: TradeForm[K]) {
+    setForm(prev => ({ ...prev, [key]: value }));
   }
 
   async function handleSubmit() {
-    if (!selectedType) return;
-
-    const variables = selectedType.variables as Array<{ name: string; type: string; label?: string }>;
-    const missingFields = variables.filter(v => !formData[v.name]?.trim());
-    if (missingFields.length > 0) {
-      toast({
-        title: "Missing fields",
-        description: `Please fill in: ${missingFields.map(v => v.label || v.name).join(", ")}`,
-        variant: "destructive",
-      });
+    if (!form.ticker.trim()) {
+      toast({ title: "Ticker is required", variant: "destructive" });
       return;
+    }
+
+    const entry = parseFloat(form.isShares ? form.entryPrice : form.optionPrice) || 0;
+    if (entry <= 0) {
+      toast({ title: form.isShares ? "Entry price is required" : "Option price is required", variant: "destructive" });
+      return;
+    }
+
+    const tp1Pct = parseFloat(form.tp1Pct) || 10;
+    const tp2Pct = parseFloat(form.tp2Pct) || 20;
+    const tp3Pct = parseFloat(form.tp3Pct) || 30;
+    const slPct = parseFloat(form.stopLossPct) || 10;
+    const targets = computeTargets(entry, tp1Pct, tp2Pct, tp3Pct);
+
+    const signalData: Record<string, string> = {
+      ticker: form.ticker,
+      trade_type: form.tradeType,
+      trade_tracking: form.tradeTracking,
+      is_shares: form.isShares ? "true" : "false",
+      stock_price: form.stockPrice || "0",
+      entry_price: entry.toString(),
+      stop_loss_pct: slPct.toString(),
+      tp1_pct: tp1Pct.toString(),
+      tp2_pct: tp2Pct.toString(),
+      tp3_pct: tp3Pct.toString(),
+      tp1_target: targets.tp1,
+      tp2_target: targets.tp2,
+      tp3_target: targets.tp3,
+    };
+
+    if (!form.isShares) {
+      signalData.option_type = form.optionType;
+      signalData.expiration = form.expiration;
+      signalData.strike = form.strike;
+      signalData.option_price = form.optionPrice;
     }
 
     try {
       await createSignal.mutateAsync({
-        signalTypeId: selectedType.id,
-        data: formData,
-        discordChannelName: selectedChannelName || null,
+        signalTypeId: 1,
+        data: signalData,
+        discordChannelName: form.channel || null,
       });
-      toast({
-        title: "Signal sent",
-        description: "Your trading signal has been submitted successfully.",
-      });
-      setFormData({});
-      setSelectedTypeId("");
-      setSelectedChannelName("");
+      toast({ title: "Signal sent!", description: "Your trade alert has been published." });
+      setForm(prev => ({
+        ...prev,
+        ticker: "",
+        strike: "",
+        optionPrice: "",
+        stockPrice: "",
+        entryPrice: "",
+      }));
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to send signal",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err.message || "Failed to send signal", variant: "destructive" });
     }
   }
 
-  if (typesLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
-
-  if (!signalTypes || signalTypes.length === 0) {
-    return (
-      <div className="p-6">
-        <EmptyState
-          icon={Zap}
-          title="No signal types configured"
-          description="Create a signal type first before sending signals."
-          testId="empty-no-types"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-          Send Signal
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Submit a new trading signal
-        </p>
-      </div>
+    <div className="p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
+        <div className="space-y-6">
+          <Card data-testid="card-signal-config">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
+                  <Settings className="h-4 w-4 text-blue-400" />
+                </div>
+                <h2 className="font-bold text-lg">Signal Configuration</h2>
+              </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold">Signal Details</h2>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="signal-type">Signal Type</Label>
-              <Select value={selectedTypeId} onValueChange={handleTypeChange}>
-                <SelectTrigger id="signal-type" data-testid="select-signal-type">
-                  <SelectValue placeholder="Choose a signal type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {signalTypes.map(st => (
-                    <SelectItem key={st.id} value={st.id.toString()} data-testid={`option-type-${st.id}`}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                        {st.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedType && (
-              <>
-                {(selectedType.variables as Array<{ name: string; type: string; label?: string }>).map(variable => (
-                  <div key={variable.name} className="space-y-2">
-                    <Label htmlFor={`field-${variable.name}`}>
-                      {variable.label || variable.name}
-                    </Label>
-                    <Input
-                      id={`field-${variable.name}`}
-                      type={variable.type === "number" ? "number" : "text"}
-                      placeholder={`Enter ${variable.label || variable.name}`}
-                      value={formData[variable.name] || ""}
-                      onChange={(e) => handleFieldChange(variable.name, e.target.value)}
-                      data-testid={`input-${variable.name}`}
-                    />
-                  </div>
-                ))}
-
+              <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="discord-channel">Discord Channel (optional)</Label>
-                  <Select value={selectedChannelName} onValueChange={setSelectedChannelName}>
-                    <SelectTrigger id="discord-channel" data-testid="select-discord-channel">
+                  <Label className="font-semibold text-sm">Destination Channel</Label>
+                  <Select value={form.channel} onValueChange={v => update("channel", v)}>
+                    <SelectTrigger data-testid="select-channel">
                       <SelectValue placeholder="Select a channel" />
                     </SelectTrigger>
                     <SelectContent>
                       {userChannels.map((ch, i) => (
                         <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
-                          # {ch.name}
+                          {ch.name} {i === 0 ? "(Default)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">Trade Type</Label>
+                  <Select value={form.tradeType} onValueChange={v => update("tradeType", v)}>
+                    <SelectTrigger data-testid="select-trade-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRADE_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">Trade Tracking</Label>
+                  <Select value={form.tradeTracking} onValueChange={v => update("tradeTracking", v)}>
+                    <SelectTrigger data-testid="select-trade-tracking">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRADE_TRACKING.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    If you choose Automatic, you can switch to Manual at any time in Position Management.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-trade-details">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500/20">
+                  <Rocket className="h-4 w-4 text-purple-400" />
+                </div>
+                <h2 className="font-bold text-lg">Trade Details</h2>
+              </div>
+
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">
+                    Ticker <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Search ticker (e.g., AAPL, TSLA, BTCUSD, ETHUSD)"
+                    value={form.ticker}
+                    onChange={e => update("ticker", e.target.value.toUpperCase())}
+                    data-testid="input-ticker"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <Label className="font-semibold text-sm cursor-pointer" htmlFor="is-shares">
+                    Is_Shares (Disable Options fields)
+                  </Label>
+                  <Switch
+                    id="is-shares"
+                    checked={form.isShares}
+                    onCheckedChange={v => update("isShares", v)}
+                    data-testid="switch-is-shares"
+                  />
+                </div>
+
+                {!form.isShares && (
+                  <div className="space-y-5 rounded-lg border border-border p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-sm">Option contract</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={form.manualContract}
+                        onCheckedChange={v => update("manualContract", v)}
+                        data-testid="switch-manual-contract"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        Manual option contract (enter Expiration and Strike manually)
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Option Type</Label>
+                      <Select value={form.optionType} onValueChange={v => update("optionType", v)}>
+                        <SelectTrigger data-testid="select-option-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OPTION_TYPES.map(t => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-sm">Expiration</Label>
+                        <Input
+                          type="date"
+                          value={form.expiration}
+                          onChange={e => update("expiration", e.target.value)}
+                          disabled={!form.manualContract}
+                          data-testid="input-expiration"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-sm">Strike</Label>
+                        <Input
+                          placeholder="Strike price"
+                          value={form.strike}
+                          onChange={e => update("strike", e.target.value)}
+                          disabled={!form.manualContract}
+                          data-testid="input-strike"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Option Price</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.optionPrice}
+                        onChange={e => update("optionPrice", e.target.value)}
+                        data-testid="input-option-price"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">Stock Price</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.stockPrice}
+                    onChange={e => update("stockPrice", e.target.value)}
+                    data-testid="input-stock-price"
+                  />
+                </div>
+
+                {form.isShares && (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">
+                      Entry Price <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={form.entryPrice}
+                      onChange={e => update("entryPrice", e.target.value)}
+                      data-testid="input-entry-price"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <span className="font-semibold text-sm">Risk Management</span>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Stop Loss %</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      placeholder="10"
+                      value={form.stopLossPct}
+                      onChange={e => update("stopLossPct", e.target.value)}
+                      data-testid="input-stop-loss"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm">TP1 %</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="10"
+                        value={form.tp1Pct}
+                        onChange={e => update("tp1Pct", e.target.value)}
+                        data-testid="input-tp1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">TP2 %</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="20"
+                        value={form.tp2Pct}
+                        onChange={e => update("tp2Pct", e.target.value)}
+                        data-testid="input-tp2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">TP3 %</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="30"
+                        value={form.tp3Pct}
+                        onChange={e => update("tp3Pct", e.target.value)}
+                        data-testid="input-tp3"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <Button
                   className="w-full"
+                  size="lg"
                   onClick={handleSubmit}
                   disabled={createSignal.isPending}
                   data-testid="button-send-signal"
@@ -209,39 +504,15 @@ export default function SendSignal() {
                   <Send className="h-4 w-4 mr-2" />
                   {createSignal.isPending ? "Sending..." : "Send Signal"}
                 </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {selectedType && (
-          <Card>
-            <CardHeader>
-              <h2 className="font-semibold">Discord Preview</h2>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md bg-[#36393f] p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">
-                    CT
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-white">Crowned Trader</span>
-                      <LocalBadge className="text-[10px] bg-[#5865F2] text-white px-1 py-0">BOT</LocalBadge>
-                    </div>
-                    {renderPreview(selectedType)}
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
+
+        <div className="lg:sticky lg:top-6">
+          <LivePreview form={form} />
+        </div>
       </div>
     </div>
   );
-}
-
-function LocalBadge({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center rounded-sm font-medium ${className}`}>{children}</span>;
 }
