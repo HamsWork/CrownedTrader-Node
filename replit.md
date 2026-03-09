@@ -20,16 +20,21 @@ client/src/
     signal-card.tsx        - Signal display card component
     stat-card.tsx          - Dashboard stat card
     empty-state.tsx        - Empty state placeholder
+    discord-templates/     - Reusable Discord template module
+      index.ts             - Module barrel export
+      template-card.tsx    - Template display card component
+      template-form-dialog.tsx - Create/edit template dialog
+      template-utils.ts    - Client-side preview rendering (uses shared/template-render)
   pages/
-    login.tsx              - Login/register page
+    login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
     send-signal.tsx        - Signal submission form with Discord preview
     signal-history.tsx     - Browsable signal history with search/filter
-    signal-types.tsx       - CRUD for Discord embed templates (admin-only)
+    signal-types.tsx       - Discord Templates page (admin-only, uses discord-templates module)
     discord-channels.tsx   - Manage Discord webhook channels
     user-management.tsx    - Admin user/role management
   hooks/
-    use-auth.ts            - Auth hooks (useAuth, useLogin, useRegister, useLogout)
+    use-auth.ts            - Auth hooks (useAuth, useLogin, useLogout)
     use-signals.ts         - All API hooks (queries + mutations)
   lib/
     constants.ts           - App constants, colors
@@ -41,14 +46,16 @@ server/
   db.ts                    - Database connection
   routes.ts                - API routes (auth, users, signals, channels, stats)
   storage.ts               - Database storage layer (IStorage interface)
-  seed.ts                  - Seed data (demo users + 5 asset-class templates)
+  seed.ts                  - Seed data (uses shared/template-definitions)
   utils/
     discord.ts             - Discord webhook embed builder + sender
-    template.ts            - Template variable replacement utility
+    template.ts            - Re-exports shared/template-render
     validation.ts          - Input validation helpers
 
 shared/
   schema.ts                - Drizzle schema + Zod validation + types
+  template-definitions.ts  - Default template data (Options, Shares, LETF, LETF Options, Crypto)
+  template-render.ts       - Template variable rendering (shared by client + server)
 ```
 
 ## Key Features

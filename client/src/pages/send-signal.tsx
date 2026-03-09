@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSignalTypes, useDiscordChannels, useCreateSignal } from "@/hooks/use-signals";
 import { Send, Zap } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { buildPreviewEmbed } from "@/components/discord-templates";
 import type { SignalType } from "@shared/schema";
 
 export default function SendSignal() {
@@ -33,28 +34,26 @@ export default function SendSignal() {
   }
 
   function renderPreview(type: SignalType) {
-    const title = type.titleTemplate.replace(/\{\{(\w+)\}\}/g, (_, key) => formData[key] || `{${key}}`);
-    const desc = type.descriptionTemplate.replace(/\{\{(\w+)\}\}/g, (_, key) => formData[key] || `{${key}}`);
-    const fields = (type.fieldsTemplate as Array<{ name: string; value: string }>).map(f => ({
-      name: f.name.replace(/\{\{(\w+)\}\}/g, (_, key) => formData[key] || `{${key}}`),
-      value: f.value.replace(/\{\{(\w+)\}\}/g, (_, key) => formData[key] || `{${key}}`),
-    }));
+    const preview = buildPreviewEmbed(
+      { ...type, fieldsTemplate: type.fieldsTemplate as Array<{ name: string; value: string }> },
+      formData
+    );
 
     return (
       <div
         className="rounded-md border-l-4 p-4 space-y-2 bg-card"
-        style={{ borderLeftColor: type.color }}
+        style={{ borderLeftColor: preview.color }}
         data-testid="signal-preview"
       >
-        {type.showTitleDefault && title && (
-          <p className="font-bold text-sm">{title}</p>
+        {preview.title && (
+          <p className="font-bold text-sm">{preview.title}</p>
         )}
-        {type.showDescriptionDefault && desc && (
-          <p className="text-sm text-muted-foreground">{desc}</p>
+        {preview.description && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{preview.description}</p>
         )}
-        {fields.length > 0 && (
+        {preview.fields.length > 0 && (
           <div className="grid grid-cols-2 gap-2 pt-2">
-            {fields.map((f, i) => (
+            {preview.fields.map((f, i) => (
               <div key={i}>
                 <p className="text-xs font-semibold text-muted-foreground">{f.name}</p>
                 <p className="text-sm">{f.value}</p>
@@ -62,9 +61,9 @@ export default function SendSignal() {
             ))}
           </div>
         )}
-        {type.footerTemplate && (
+        {preview.footer && (
           <p className="text-xs text-muted-foreground pt-2 border-t">
-            {type.footerTemplate.replace(/\{\{(\w+)\}\}/g, (_, key) => formData[key] || `{${key}}`)}
+            {preview.footer}
           </p>
         )}
       </div>
