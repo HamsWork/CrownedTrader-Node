@@ -401,7 +401,7 @@ function PlanFormModal({
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mt-4 items-start">
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
@@ -496,7 +496,7 @@ function PlanFormModal({
             </Button>
           </div>
 
-          <div>
+          <div className="lg:sticky lg:top-0">
             <Card data-testid="card-modal-preview">
               <CardContent className="pt-5">
                 <div className="flex items-center gap-2 mb-4">
