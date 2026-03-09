@@ -113,6 +113,18 @@ export function useDeleteDiscordChannel() {
   });
 }
 
+export function useCreateUser() {
+  return useMutation({
+    mutationFn: async (data: { username: string; password: string; role: string }) => {
+      const res = await apiRequest("POST", "/api/users", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+  });
+}
+
 export function useUpdateUserRole() {
   return useMutation({
     mutationFn: async ({ id, role }: { id: number; role: string }) => {

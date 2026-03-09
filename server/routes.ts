@@ -11,16 +11,16 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/users", requireAdmin, async (req, res) => {
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
 
     const existing = await storage.getUserByUsername(parsed.data.username);
     if (existing) return res.status(400).json({ message: "Username already taken" });
 
+    const role = req.body.role === "admin" ? "admin" : "user";
     const hashed = await hashPassword(parsed.data.password);
-    const user = await storage.createUser({ username: parsed.data.username, password: hashed });
-    req.session.userId = user.id;
+    const user = await storage.createUser({ username: parsed.data.username, password: hashed, role });
     res.status(201).json(toSafeUser(user));
   });
 

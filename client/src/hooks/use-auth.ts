@@ -24,18 +24,6 @@ export function useLogin() {
   });
 }
 
-export function useRegister() {
-  return useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
-      const res = await apiRequest("POST", "/api/auth/register", data);
-      return res.json() as Promise<SafeUser>;
-    },
-    onSuccess: (user) => {
-      queryClient.setQueryData(["/api/auth/me"], user);
-      queryClient.invalidateQueries();
-    },
-  });
-}
 
 export function useLogout() {
   return useMutation({
