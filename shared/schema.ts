@@ -91,43 +91,28 @@ export const insertSignalSchema = createInsertSchema(signals).omit({
 export type InsertSignal = z.infer<typeof insertSignalSchema>;
 export type Signal = typeof signals.$inferSelect;
 
+export const takeProfitLevelSchema = z.object({
+  levelPct: z.number(),
+  takeOffPct: z.number(),
+  raiseStopLossTo: z.string().default("Off"),
+  trailingStop: z.string().default("Off"),
+});
+export type TakeProfitLevel = z.infer<typeof takeProfitLevelSchema>;
+
 export const tradePlans = pgTable("trade_plans", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  ticker: text("ticker").notNull(),
-  tradeType: text("trade_type").notNull().default("Scalp"),
-  tradeTracking: text("trade_tracking").notNull().default("Manual updates"),
-  isShares: boolean("is_shares").notNull().default(false),
-  optionType: text("option_type").default("CALL"),
-  expiration: text("expiration"),
-  strike: text("strike"),
-  optionPrice: text("option_price"),
-  stockPrice: text("stock_price"),
-  entryPrice: text("entry_price").notNull(),
+  name: text("name").notNull().default("Default Plan"),
+  targetType: text("target_type").notNull().default("% based (Option)"),
   stopLossPct: text("stop_loss_pct").notNull().default("10"),
-  tp1Pct: text("tp1_pct").notNull().default("10"),
-  tp2Pct: text("tp2_pct").notNull().default("20"),
-  tp3Pct: text("tp3_pct").notNull().default("30"),
-  tp1Target: text("tp1_target"),
-  tp2Target: text("tp2_target"),
-  tp3Target: text("tp3_target"),
-  tp1Hit: boolean("tp1_hit").notNull().default(false),
-  tp2Hit: boolean("tp2_hit").notNull().default(false),
-  tp3Hit: boolean("tp3_hit").notNull().default(false),
-  stopLossHit: boolean("stop_loss_hit").notNull().default(false),
-  status: text("status").notNull().default("active"),
-  currentPrice: text("current_price"),
-  pnl: text("pnl"),
-  notes: text("notes"),
-  discordChannelName: text("discord_channel_name"),
+  takeProfitLevels: jsonb("take_profit_levels").$type<TakeProfitLevel[]>().default([]).notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  closedAt: timestamp("closed_at"),
 });
 
 export const insertTradePlanSchema = createInsertSchema(tradePlans).omit({
   id: true,
   createdAt: true,
-  closedAt: true,
 });
 export type InsertTradePlan = z.infer<typeof insertTradePlanSchema>;
 export type TradePlan = typeof tradePlans.$inferSelect;

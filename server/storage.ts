@@ -41,7 +41,7 @@ export interface IStorage {
   getTradePlansByUser(userId: number): Promise<TradePlan[]>;
   getTradePlan(id: number): Promise<TradePlan | undefined>;
   createTradePlan(plan: InsertTradePlan): Promise<TradePlan>;
-  updateTradePlan(id: number, data: Partial<InsertTradePlan>): Promise<TradePlan | undefined>;
+  updateTradePlan(id: number, data: Partial<Omit<InsertTradePlan, "userId">>): Promise<TradePlan | undefined>;
   deleteTradePlan(id: number): Promise<boolean>;
 }
 

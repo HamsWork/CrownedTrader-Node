@@ -165,7 +165,7 @@ export function useTradePlans() {
 
 export function useCreateTradePlan() {
   return useMutation({
-    mutationFn: async (data: Omit<TradePlan, "id" | "createdAt" | "closedAt">) => {
+    mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/trade-plans", data);
       return res.json();
     },
@@ -177,7 +177,7 @@ export function useCreateTradePlan() {
 
 export function useUpdateTradePlan() {
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<TradePlan> }) => {
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await apiRequest("PATCH", `/api/trade-plans/${id}`, data);
       return res.json();
     },

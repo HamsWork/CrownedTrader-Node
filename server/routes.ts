@@ -266,8 +266,7 @@ export async function registerRoutes(
     }
 
     const allowedFields = [
-      "tp1Hit", "tp2Hit", "tp3Hit", "stopLossHit", "status",
-      "currentPrice", "pnl", "notes",
+      "name", "targetType", "stopLossPct", "takeProfitLevels", "isDefault",
     ] as const;
     const updateData: Record<string, any> = {};
     for (const key of allowedFields) {

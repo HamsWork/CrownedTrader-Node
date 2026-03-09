@@ -72,7 +72,7 @@ shared/
   - Preview dialog shows full Discord embed with sample data
   - Send Manual dialog with form fields, channel selector, and live preview
 - **Signal Submission**: Unified trade entry form (no signal type selector) with live Discord embed preview
-- **Trade Plans**: Track active positions with TP1/TP2/TP3 target progress, stop loss tracking, close/delete actions, search and status filtering
+- **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
   - Channels stored on user record; channel selection uses user's own channels
 - **Signal History**: Search and filter past signals
@@ -83,7 +83,7 @@ shared/
 - `users` - User accounts (id, username, password, role, discordChannels JSONB array of {name, webhookUrl})
 - `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
 - `signals` - Submitted signals (id, signalTypeId (optional), userId, data JSONB, discordChannelName, sentToDiscord, createdAt)
-- `trade_plans` - Active trade positions (id, userId, ticker, tradeType, isShares, optionType, expiration, strike, entryPrice, targets, tp1-3Hit, stopLossHit, status, pnl, createdAt, closedAt)
+- `trade_plans` - Trade plan presets (id, userId, name, targetType, stopLossPct, takeProfitLevels JSONB array of {levelPct, takeOffPct, raiseStopLossTo, trailingStop}, isDefault, createdAt)
 - `session` - Express sessions (created automatically by connect-pg-simple)
 
 ## Environment
