@@ -4,12 +4,15 @@ import {
   users,
   signalTypes,
   signals,
+  tradePlans,
   type User,
   type InsertUser,
   type SignalType,
   type InsertSignalType,
   type Signal,
   type InsertSignal,
+  type TradePlan,
+  type InsertTradePlan,
   type UserDiscordChannel,
 } from "@shared/schema";
 
@@ -33,6 +36,13 @@ export interface IStorage {
   getSignal(id: number): Promise<Signal | undefined>;
   createSignal(signal: InsertSignal): Promise<Signal>;
   updateSignalDiscordStatus(id: number, sent: boolean): Promise<void>;
+
+  getTradePlans(): Promise<TradePlan[]>;
+  getTradePlansByUser(userId: number): Promise<TradePlan[]>;
+  getTradePlan(id: number): Promise<TradePlan | undefined>;
+  createTradePlan(plan: InsertTradePlan): Promise<TradePlan>;
+  updateTradePlan(id: number, data: Partial<InsertTradePlan>): Promise<TradePlan | undefined>;
+  deleteTradePlan(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -115,6 +125,34 @@ export class DatabaseStorage implements IStorage {
 
   async updateSignalDiscordStatus(id: number, sent: boolean): Promise<void> {
     await db.update(signals).set({ sentToDiscord: sent }).where(eq(signals.id, id));
+  }
+
+  async getTradePlans(): Promise<TradePlan[]> {
+    return db.select().from(tradePlans).orderBy(desc(tradePlans.createdAt));
+  }
+
+  async getTradePlansByUser(userId: number): Promise<TradePlan[]> {
+    return db.select().from(tradePlans).where(eq(tradePlans.userId, userId)).orderBy(desc(tradePlans.createdAt));
+  }
+
+  async getTradePlan(id: number): Promise<TradePlan | undefined> {
+    const [plan] = await db.select().from(tradePlans).where(eq(tradePlans.id, id));
+    return plan;
+  }
+
+  async createTradePlan(plan: InsertTradePlan): Promise<TradePlan> {
+    const [created] = await db.insert(tradePlans).values(plan).returning();
+    return created;
+  }
+
+  async updateTradePlan(id: number, data: Partial<InsertTradePlan>): Promise<TradePlan | undefined> {
+    const [updated] = await db.update(tradePlans).set(data).where(eq(tradePlans.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTradePlan(id: number): Promise<boolean> {
+    const result = await db.delete(tradePlans).where(eq(tradePlans.id, id)).returning();
+    return result.length > 0;
   }
 }
 

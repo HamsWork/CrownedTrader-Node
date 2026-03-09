@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateSignal } from "@/hooks/use-signals";
+import { useCreateSignal, useCreateTradePlan } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { Send, Settings, Rocket, Info } from "lucide-react";
 
@@ -154,6 +154,7 @@ function LivePreview({ form }: { form: TradeForm }) {
 export default function SendSignal() {
   const { data: currentUser } = useAuth();
   const createSignal = useCreateSignal();
+  const createTradePlan = useCreateTradePlan();
   const { toast } = useToast();
 
   const userChannels = currentUser?.discordChannels || [];
@@ -230,11 +231,41 @@ export default function SendSignal() {
 
     try {
       await createSignal.mutateAsync({
-        signalTypeId: 1,
         data: signalData,
         discordChannelName: form.channel || null,
       });
-      toast({ title: "Signal sent!", description: "Your trade alert has been published." });
+
+      await createTradePlan.mutateAsync({
+        userId: currentUser!.id,
+        ticker: form.ticker,
+        tradeType: form.tradeType,
+        tradeTracking: form.tradeTracking,
+        isShares: form.isShares,
+        optionType: form.isShares ? null : form.optionType,
+        expiration: form.isShares ? null : form.expiration,
+        strike: form.isShares ? null : form.strike,
+        optionPrice: form.isShares ? null : form.optionPrice,
+        stockPrice: form.stockPrice || null,
+        entryPrice: entry.toString(),
+        stopLossPct: slPct.toString(),
+        tp1Pct: tp1Pct.toString(),
+        tp2Pct: tp2Pct.toString(),
+        tp3Pct: tp3Pct.toString(),
+        tp1Target: targets.tp1,
+        tp2Target: targets.tp2,
+        tp3Target: targets.tp3,
+        tp1Hit: false,
+        tp2Hit: false,
+        tp3Hit: false,
+        stopLossHit: false,
+        status: "active",
+        currentPrice: null,
+        pnl: null,
+        notes: null,
+        discordChannelName: form.channel || null,
+      });
+
+      toast({ title: "Signal sent!", description: "Your trade alert has been published and trade plan created." });
       setForm(prev => ({
         ...prev,
         ticker: "",

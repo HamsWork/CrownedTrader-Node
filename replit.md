@@ -26,7 +26,8 @@ client/src/
   pages/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
-    send-signal.tsx        - Signal submission form with Discord preview
+    send-signal.tsx        - Unified trade entry form with live Discord preview
+    trade-plans.tsx        - Trade plan tracking with target/stop-loss management
     signal-history.tsx     - Browsable signal history with search/filter
     discord-templates.tsx  - Discord Message Templates page (admin-only, category tabs + cards)
     user-management.tsx    - Admin user management (list, create page, edit page)
@@ -70,7 +71,8 @@ shared/
   - Template cards with Preview and Send Manual buttons
   - Preview dialog shows full Discord embed with sample data
   - Send Manual dialog with form fields, channel selector, and live preview
-- **Signal Submission**: Dynamic form based on template, live Discord embed preview
+- **Signal Submission**: Unified trade entry form (no signal type selector) with live Discord embed preview
+- **Trade Plans**: Track active positions with TP1/TP2/TP3 target progress, stop loss tracking, close/delete actions, search and status filtering
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
   - Channels stored on user record; channel selection uses user's own channels
 - **Signal History**: Search and filter past signals
@@ -80,7 +82,8 @@ shared/
 
 - `users` - User accounts (id, username, password, role, discordChannels JSONB array of {name, webhookUrl})
 - `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
-- `signals` - Submitted signals (id, signalTypeId, userId, data JSONB, discordChannelName, sentToDiscord, createdAt)
+- `signals` - Submitted signals (id, signalTypeId (optional), userId, data JSONB, discordChannelName, sentToDiscord, createdAt)
+- `trade_plans` - Active trade positions (id, userId, ticker, tradeType, isShares, optionType, expiration, strike, entryPrice, targets, tp1-3Hit, stopLossHit, status, pnl, createdAt, closedAt)
 - `session` - Express sessions (created automatically by connect-pg-simple)
 
 ## Environment
@@ -107,7 +110,12 @@ shared/
 - `DELETE /api/users/:id` - Delete user (admin, cannot delete self)
 - `GET/POST /api/signal-types` - Signal types (GET: auth, POST: admin)
 - `PATCH/DELETE /api/signal-types/:id` - Signal type CRUD (admin)
-- `GET/POST /api/signals` - Signals (auth)
+- `GET/POST /api/signals` - Signals (auth, signalTypeId optional)
+- `GET /api/trade-plans` - Trade plans (auth, scoped to user; admin sees all)
+- `GET /api/trade-plans/:id` - Single trade plan (auth, owner or admin)
+- `POST /api/trade-plans` - Create trade plan (auth)
+- `PATCH /api/trade-plans/:id` - Update trade plan (auth, owner or admin, whitelisted fields only)
+- `DELETE /api/trade-plans/:id` - Delete trade plan (auth, owner or admin)
 - `GET /api/stats` - Dashboard stats (auth)
 
 ## Design Choices

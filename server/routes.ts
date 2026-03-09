@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSignalTypeSchema, insertSignalSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
+import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord } from "./utils/discord";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import { hashPassword, comparePassword, toSafeUser, requireAuth, requireAdmin } from "./auth";
@@ -183,9 +183,6 @@ export async function registerRoutes(
     const parsed = insertSignalSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
 
-    const signalType = await storage.getSignalType(parsed.data.signalTypeId);
-    if (!signalType) return res.status(400).json({ message: "Invalid signal type" });
-
     const currentUser = (req as any).user;
     const signal = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
 
@@ -193,14 +190,107 @@ export async function registerRoutes(
       const userChannels = currentUser.discordChannels || [];
       const channel = userChannels.find((ch: any) => ch.name === signal.discordChannelName);
       if (channel) {
-        const embed = buildEmbed(signalType, signal);
-        const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
-        await storage.updateSignalDiscordStatus(signal.id, sent);
-        signal.sentToDiscord = sent;
+        let signalType = null;
+        if (parsed.data.signalTypeId) {
+          signalType = await storage.getSignalType(parsed.data.signalTypeId);
+          if (!signalType) return res.status(400).json({ message: "Invalid signal type" });
+        }
+        if (signalType) {
+          const embed = buildEmbed(signalType, signal);
+          const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
+          await storage.updateSignalDiscordStatus(signal.id, sent);
+          signal.sentToDiscord = sent;
+        } else {
+          const data = signal.data as Record<string, string>;
+          const entry = parseFloat(data.entry_price) || 0;
+          const embed = {
+            title: `🔺 Trade Alert`,
+            description: `**${data.ticker || ""}** — ${data.trade_type || "Scalp"}\nEntry: $${entry.toFixed(2)}`,
+            color: 0x22c55e,
+            fields: [] as Array<{name: string; value: string; inline?: boolean}>,
+            footer: { text: "Crowned Trader" },
+          };
+          if (data.is_shares !== "true") {
+            embed.fields.push(
+              { name: "Option Type", value: data.option_type || "CALL", inline: true },
+              { name: "Strike", value: data.strike || "—", inline: true },
+              { name: "Expiration", value: data.expiration || "—", inline: true },
+            );
+          }
+          embed.fields.push(
+            { name: "Targets", value: `TP1: $${data.tp1_target || "—"} | TP2: $${data.tp2_target || "—"} | TP3: $${data.tp3_target || "—"}`, inline: false },
+            { name: "Stop Loss", value: `-${data.stop_loss_pct || "10"}%`, inline: true },
+          );
+          const sent = await sendToDiscord(channel.webhookUrl, embed);
+          await storage.updateSignalDiscordStatus(signal.id, sent);
+          signal.sentToDiscord = sent;
+        }
       }
     }
 
     res.status(201).json(signal);
+  });
+
+  app.get("/api/trade-plans", requireAuth, async (req, res) => {
+    const currentUser = (req as any).user;
+    const plans = currentUser.role === "admin"
+      ? await storage.getTradePlans()
+      : await storage.getTradePlansByUser(currentUser.id);
+    res.json(plans);
+  });
+
+  app.get("/api/trade-plans/:id", requireAuth, async (req, res) => {
+    const plan = await storage.getTradePlan(Number(req.params.id));
+    if (!plan) return res.status(404).json({ message: "Trade plan not found" });
+    const currentUser = (req as any).user;
+    if (currentUser.role !== "admin" && plan.userId !== currentUser.id) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    res.json(plan);
+  });
+
+  app.post("/api/trade-plans", requireAuth, async (req, res) => {
+    const currentUser = (req as any).user;
+    const parsed = insertTradePlanSchema.safeParse({ ...req.body, userId: currentUser.id });
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+    const plan = await storage.createTradePlan(parsed.data);
+    res.status(201).json(plan);
+  });
+
+  app.patch("/api/trade-plans/:id", requireAuth, async (req, res) => {
+    const plan = await storage.getTradePlan(Number(req.params.id));
+    if (!plan) return res.status(404).json({ message: "Trade plan not found" });
+    const currentUser = (req as any).user;
+    if (currentUser.role !== "admin" && plan.userId !== currentUser.id) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const allowedFields = [
+      "tp1Hit", "tp2Hit", "tp3Hit", "stopLossHit", "status",
+      "currentPrice", "pnl", "notes",
+    ] as const;
+    const updateData: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (key in req.body) updateData[key] = req.body[key];
+    }
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    const updated = await storage.updateTradePlan(Number(req.params.id), updateData);
+    if (!updated) return res.status(404).json({ message: "Trade plan not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/trade-plans/:id", requireAuth, async (req, res) => {
+    const plan = await storage.getTradePlan(Number(req.params.id));
+    if (!plan) return res.status(404).json({ message: "Trade plan not found" });
+    const currentUser = (req as any).user;
+    if (currentUser.role !== "admin" && plan.userId !== currentUser.id) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    await storage.deleteTradePlan(Number(req.params.id));
+    res.status(204).send();
   });
 
   app.get("/api/stats", requireAuth, async (_req, res) => {

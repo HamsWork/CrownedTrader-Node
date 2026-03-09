@@ -13,6 +13,7 @@ import SendSignal from "@/pages/send-signal";
 import SignalHistory from "@/pages/signal-history";
 import DiscordTemplatesPage from "@/pages/discord-templates";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
+import TradePlansPage from "@/pages/trade-plans";
 import LoginPage from "@/pages/login";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SafeUser } from "@shared/schema";
@@ -25,6 +26,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/send" component={SendSignal} />
+      <Route path="/trade-plans" component={TradePlansPage} />
       <Route path="/history" component={SignalHistory} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}
       {isAdmin && <Route path="/users" component={UserManagement} />}

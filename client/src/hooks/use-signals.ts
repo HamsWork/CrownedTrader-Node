@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Signal, SignalType, SafeUser, UserDiscordChannel } from "@shared/schema";
+import type { Signal, SignalType, SafeUser, UserDiscordChannel, TradePlan } from "@shared/schema";
 
 export function useSignalTypes() {
   return useQuery<SignalType[]>({
@@ -33,7 +33,7 @@ export function useUsers() {
 
 export function useCreateSignal() {
   return useMutation({
-    mutationFn: async (data: { signalTypeId: number; data: Record<string, string>; discordChannelName?: string | null }) => {
+    mutationFn: async (data: { signalTypeId?: number | null; data: Record<string, string>; discordChannelName?: string | null }) => {
       const res = await apiRequest("POST", "/api/signals", data);
       return res.json();
     },
@@ -153,6 +153,47 @@ export function useDeleteUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+  });
+}
+
+export function useTradePlans() {
+  return useQuery<TradePlan[]>({
+    queryKey: ["/api/trade-plans"],
+  });
+}
+
+export function useCreateTradePlan() {
+  return useMutation({
+    mutationFn: async (data: Omit<TradePlan, "id" | "createdAt" | "closedAt">) => {
+      const res = await apiRequest("POST", "/api/trade-plans", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trade-plans"] });
+    },
+  });
+}
+
+export function useUpdateTradePlan() {
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<TradePlan> }) => {
+      const res = await apiRequest("PATCH", `/api/trade-plans/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trade-plans"] });
+    },
+  });
+}
+
+export function useDeleteTradePlan() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/trade-plans/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trade-plans"] });
     },
   });
 }
