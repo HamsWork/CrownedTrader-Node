@@ -33,7 +33,6 @@ import { EmptyState } from "@/components/empty-state";
 import type { SafeUser } from "@shared/schema";
 
 interface ChannelEntry {
-  id?: number;
   name: string;
   webhookUrl: string;
 }
@@ -284,7 +283,7 @@ export function EditUserPage({ userId }: { userId: number }) {
 
   useEffect(() => {
     if (existingChannels && !channelsLoading && !initialized) {
-      setChannels(existingChannels.map(ch => ({ id: ch.id, name: ch.name, webhookUrl: ch.webhookUrl })));
+      setChannels(existingChannels.map(ch => ({ name: ch.name, webhookUrl: ch.webhookUrl })));
       setInitialized(true);
     }
   }, [existingChannels, channelsLoading, initialized]);
@@ -558,8 +557,7 @@ function UserRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const { data: channels } = useUserChannels(user.id);
-  const channelCount = channels?.length ?? 0;
+  const channelCount = user.discordChannels?.length ?? 0;
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/50 transition-colors" data-testid={`row-user-${user.id}`}>

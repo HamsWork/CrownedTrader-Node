@@ -1,4 +1,4 @@
-import { LayoutDashboard, Send, History, MessageSquare, Hash, Users, LogOut, Crown } from "lucide-react";
+import { LayoutDashboard, Send, History, MessageSquare, Users, LogOut, Crown } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import {
   Sidebar,
@@ -20,7 +20,6 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: false },
   { title: "Send Signal", url: "/send", icon: Send, adminOnly: false },
   { title: "History", url: "/history", icon: History, adminOnly: false },
-  { title: "Discord Channels", url: "/discord", icon: Hash, adminOnly: false },
 ];
 
 const adminItems = [

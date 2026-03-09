@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Signal, SignalType, DiscordChannel, SafeUser } from "@shared/schema";
+import type { Signal, SignalType, SafeUser, UserDiscordChannel } from "@shared/schema";
 
 export function useSignalTypes() {
   return useQuery<SignalType[]>({
@@ -14,17 +14,10 @@ export function useSignals() {
   });
 }
 
-export function useDiscordChannels() {
-  return useQuery<DiscordChannel[]>({
-    queryKey: ["/api/discord-channels"],
-  });
-}
-
 export function useStats() {
   return useQuery<{
     totalSignals: number;
     totalSignalTypes: number;
-    totalChannels: number;
     sentToDiscord: number;
     recentSignals: Signal[];
   }>({
@@ -40,7 +33,7 @@ export function useUsers() {
 
 export function useCreateSignal() {
   return useMutation({
-    mutationFn: async (data: { signalTypeId: number; data: Record<string, string>; discordChannelId?: number | null }) => {
+    mutationFn: async (data: { signalTypeId: number; data: Record<string, string>; discordChannelName?: string | null }) => {
       const res = await apiRequest("POST", "/api/signals", data);
       return res.json();
     },
@@ -88,33 +81,8 @@ export function useDeleteSignalType() {
   });
 }
 
-export function useCreateDiscordChannel() {
-  return useMutation({
-    mutationFn: async (data: { name: string; webhookUrl: string }) => {
-      const res = await apiRequest("POST", "/api/discord-channels", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    },
-  });
-}
-
-export function useDeleteDiscordChannel() {
-  return useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/discord-channels/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    },
-  });
-}
-
 export function useUserChannels(userId: number | null) {
-  return useQuery<DiscordChannel[]>({
+  return useQuery<UserDiscordChannel[]>({
     queryKey: ["/api/users", userId, "channels"],
     queryFn: async () => {
       if (!userId) return [];
@@ -134,7 +102,6 @@ export function useCreateUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     },
   });
@@ -166,13 +133,13 @@ export function useUpdateUserPassword() {
 
 export function useUpdateUserChannels() {
   return useMutation({
-    mutationFn: async ({ userId, channels }: { userId: number; channels: Array<{ id?: number; name: string; webhookUrl: string }> }) => {
+    mutationFn: async ({ userId, channels }: { userId: number; channels: Array<{ name: string; webhookUrl: string }> }) => {
       const res = await apiRequest("PUT", `/api/users/${userId}/channels`, { channels });
       return res.json();
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", variables.userId, "channels"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     },
   });
@@ -185,7 +152,6 @@ export function useDeleteUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     },
   });

@@ -12,11 +12,19 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const discordChannelSchema = z.object({
+  name: z.string(),
+  webhookUrl: z.string(),
+});
+
+export type UserDiscordChannel = z.infer<typeof discordChannelSchema>;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"),
+  discordChannels: jsonb("discord_channels").$type<UserDiscordChannel[]>().default([]).notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -37,21 +45,6 @@ export const loginSchema = z.object({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type SafeUser = Omit<User, "password">;
-
-export const discordChannels = pgTable("discord_channels", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  webhookUrl: text("webhook_url").notNull(),
-  userId: integer("user_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertDiscordChannelSchema = createInsertSchema(discordChannels).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertDiscordChannel = z.infer<typeof insertDiscordChannelSchema>;
-export type DiscordChannel = typeof discordChannels.$inferSelect;
 
 export const signalTypes = pgTable("signal_types", {
   id: serial("id").primaryKey(),
@@ -85,7 +78,7 @@ export const signals = pgTable("signals", {
   signalTypeId: integer("signal_type_id").notNull(),
   userId: integer("user_id"),
   data: jsonb("data").$type<Record<string, string>>().default({}).notNull(),
-  discordChannelId: integer("discord_channel_id"),
+  discordChannelName: text("discord_channel_name"),
   sentToDiscord: boolean("sent_to_discord").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

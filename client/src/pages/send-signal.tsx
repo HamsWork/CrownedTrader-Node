@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useSignalTypes, useDiscordChannels, useCreateSignal } from "@/hooks/use-signals";
+import { useSignalTypes, useCreateSignal } from "@/hooks/use-signals";
+import { useAuth } from "@/hooks/use-auth";
 import { Send, Zap } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { buildPreviewEmbed } from "@/components/discord-templates";
@@ -14,15 +15,16 @@ import type { SignalType } from "@shared/schema";
 
 export default function SendSignal() {
   const { data: signalTypes, isLoading: typesLoading } = useSignalTypes();
-  const { data: channels, isLoading: channelsLoading } = useDiscordChannels();
+  const { data: currentUser } = useAuth();
   const createSignal = useCreateSignal();
   const { toast } = useToast();
 
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
-  const [selectedChannelId, setSelectedChannelId] = useState<string>("");
+  const [selectedChannelName, setSelectedChannelName] = useState<string>("");
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   const selectedType = signalTypes?.find(st => st.id.toString() === selectedTypeId);
+  const userChannels = currentUser?.discordChannels || [];
 
   function handleTypeChange(value: string) {
     setSelectedTypeId(value);
@@ -88,7 +90,7 @@ export default function SendSignal() {
       await createSignal.mutateAsync({
         signalTypeId: selectedType.id,
         data: formData,
-        discordChannelId: selectedChannelId ? Number(selectedChannelId) : null,
+        discordChannelName: selectedChannelName || null,
       });
       toast({
         title: "Signal sent",
@@ -96,7 +98,7 @@ export default function SendSignal() {
       });
       setFormData({});
       setSelectedTypeId("");
-      setSelectedChannelId("");
+      setSelectedChannelName("");
     } catch (err: any) {
       toast({
         title: "Error",
@@ -106,7 +108,7 @@ export default function SendSignal() {
     }
   }
 
-  if (typesLoading || channelsLoading) {
+  if (typesLoading) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -184,13 +186,13 @@ export default function SendSignal() {
 
                 <div className="space-y-2">
                   <Label htmlFor="discord-channel">Discord Channel (optional)</Label>
-                  <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
+                  <Select value={selectedChannelName} onValueChange={setSelectedChannelName}>
                     <SelectTrigger id="discord-channel" data-testid="select-discord-channel">
                       <SelectValue placeholder="Select a channel" />
                     </SelectTrigger>
                     <SelectContent>
-                      {channels?.map(ch => (
-                        <SelectItem key={ch.id} value={ch.id.toString()} data-testid={`option-channel-${ch.id}`}>
+                      {userChannels.map((ch, i) => (
+                        <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
                           # {ch.name}
                         </SelectItem>
                       ))}
@@ -226,7 +228,7 @@ export default function SendSignal() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-white">Crowned Trader</span>
-                      <Badge className="text-[10px] bg-[#5865F2] text-white px-1 py-0">BOT</Badge>
+                      <LocalBadge className="text-[10px] bg-[#5865F2] text-white px-1 py-0">BOT</LocalBadge>
                     </div>
                     {renderPreview(selectedType)}
                   </div>
@@ -240,6 +242,6 @@ export default function SendSignal() {
   );
 }
 
-function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
+function LocalBadge({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center rounded-sm font-medium ${className}`}>{children}</span>;
 }

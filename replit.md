@@ -29,8 +29,7 @@ client/src/
     send-signal.tsx        - Signal submission form with Discord preview
     signal-history.tsx     - Browsable signal history with search/filter
     discord-templates.tsx  - Discord Message Templates page (admin-only, category tabs + cards)
-    discord-channels.tsx   - Manage Discord webhook channels
-    user-management.tsx    - Admin user/role management
+    user-management.tsx    - Admin user management (list, create page, edit page)
   hooks/
     use-auth.ts            - Auth hooks (useAuth, useLogin, useLogout)
     use-signals.ts         - All API hooks (queries + mutations)
@@ -42,7 +41,7 @@ server/
   index.ts                 - Express app entry with session middleware
   auth.ts                  - Auth helpers (hash, compare, requireAuth, requireAdmin)
   db.ts                    - Database connection
-  routes.ts                - API routes (auth, users, signals, channels, stats)
+  routes.ts                - API routes (auth, users, signals, stats)
   storage.ts               - Database storage layer (IStorage interface)
   seed.ts                  - Seed data (uses shared/template-definitions)
   utils/
@@ -60,10 +59,12 @@ shared/
 
 - **Authentication**: Login-only auth (no public registration), bcryptjs password hashing
 - **Role System**: Admin and user roles; admin-only pages for templates and user management
-- **User Management**: Admin can create/edit/delete users, assign Discord channel webhooks per user
-  - Each user can have multiple Discord channel webhooks
-  - Channels are managed inline when creating or editing a user
-  - User cards show channel count
+- **User Management**: Admin can create/edit/delete users via dedicated pages (/users, /users/create, /users/:id/edit)
+  - Discord channel webhooks stored as JSONB array on user record (no separate table)
+  - Full-page create form with account details + channel editor
+  - Full-page edit form with role, password change, and channel management
+  - User list displayed as a data table
+  - Delete confirmation via AlertDialog
 - **Discord Message Templates**: 30 templates organized by 5 categories (Options, Shares, LETF, LETF Option, Crypto) × 6 action types (Entry Signal, Target TP1 Hit, Target TP2 Hit, SL Raised, Stop Loss Hit, Trade Closed)
   - Category tabs with count badges
   - Template cards with Preview and Send Manual buttons
@@ -71,17 +72,15 @@ shared/
   - Send Manual dialog with form fields, channel selector, and live preview
 - **Signal Submission**: Dynamic form based on template, live Discord embed preview
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
-  - Channels are owned by users; non-admins only see their own channels
-  - Owner authorization enforced on channel CRUD operations
+  - Channels stored on user record; channel selection uses user's own channels
 - **Signal History**: Search and filter past signals
-- **Dashboard**: Stats overview with recent signals
+- **Dashboard**: Stats overview (Total Signals, Signal Types, Sent to Discord) with recent signals
 
 ## Database Tables
 
-- `users` - User accounts (id, username, password, role)
+- `users` - User accounts (id, username, password, role, discordChannels JSONB array of {name, webhookUrl})
 - `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
-- `signals` - Submitted signals with JSON data, userId
-- `discord_channels` - Discord webhook configurations (id, name, webhookUrl, userId, createdAt) — userId links channel to a user
+- `signals` - Submitted signals (id, signalTypeId, userId, data JSONB, discordChannelName, sentToDiscord, createdAt)
 - `session` - Express sessions (created automatically by connect-pg-simple)
 
 ## Environment
@@ -96,16 +95,26 @@ shared/
 
 ## API Routes
 
-- `POST /api/users` - Create user (admin)
+- `POST /api/users` - Create user with optional channels (admin)
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Get current user
+- `GET /api/auth/me` - Get current user (includes discordChannels)
 - `GET /api/users` - List users (admin)
-- `PATCH /api/users/:id/role` - Update user role (admin)
-- `DELETE /api/users/:id` - Delete user (admin)
+- `PATCH /api/users/:id/role` - Update user role (admin, cannot change own)
+- `PATCH /api/users/:id/password` - Update user password (admin)
+- `GET /api/users/:id/channels` - Get user's channels (admin)
+- `PUT /api/users/:id/channels` - Replace user's channels (admin)
+- `DELETE /api/users/:id` - Delete user (admin, cannot delete self)
 - `GET/POST /api/signal-types` - Signal types (GET: auth, POST: admin)
 - `PATCH/DELETE /api/signal-types/:id` - Signal type CRUD (admin)
 - `GET/POST /api/signals` - Signals (auth)
-- `GET/POST /api/discord-channels` - Discord channels (auth)
-- `PATCH/DELETE /api/discord-channels/:id` - Channel CRUD (auth)
 - `GET /api/stats` - Dashboard stats (auth)
+
+## Design Choices
+
+- No separate `discord_channels` table — channels are stored as JSONB on the user record
+- Signals reference channels by name (`discordChannelName`) rather than by ID
+- Server looks up the webhook URL from the sending user's channel list at send time
+- `drizzle.config.ts` uses `tablesFilter: ["!session"]` to skip session table on push
+- `queryClient` staleTime: Infinity; useAuth uses `getQueryFn({ on401: "returnNull" })`
+- Template rendering fallback: `{{key}}` for unresolved variables

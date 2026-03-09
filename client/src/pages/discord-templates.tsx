@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useSignalTypes, useDiscordChannels, useCreateSignal } from "@/hooks/use-signals";
+import { useSignalTypes, useCreateSignal } from "@/hooks/use-signals";
+import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -218,11 +219,12 @@ function SendManualDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: channels } = useDiscordChannels();
+  const { data: currentUser } = useAuth();
   const createSignal = useCreateSignal();
   const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [channelId, setChannelId] = useState<string>("");
+  const [channelName, setChannelName] = useState<string>("");
+  const userChannels = currentUser?.discordChannels || [];
 
   if (!template) return null;
 
@@ -249,11 +251,11 @@ function SendManualDialog({
       await createSignal.mutateAsync({
         signalTypeId: template.id,
         data: formData,
-        discordChannelId: channelId ? Number(channelId) : null,
+        discordChannelName: channelName || null,
       });
       toast({ title: "Signal sent", description: "Your trading signal has been sent successfully." });
       setFormData({});
-      setChannelId("");
+      setChannelName("");
       onOpenChange(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to send signal";
@@ -283,13 +285,13 @@ function SendManualDialog({
             ))}
             <div className="space-y-1">
               <Label className="text-xs">Discord Channel</Label>
-              <Select value={channelId} onValueChange={setChannelId}>
+              <Select value={channelName} onValueChange={setChannelName}>
                 <SelectTrigger data-testid="select-manual-channel">
                   <SelectValue placeholder="Select channel (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {channels?.map(ch => (
-                    <SelectItem key={ch.id} value={ch.id.toString()} data-testid={`option-channel-${ch.id}`}>
+                  {userChannels.map((ch, i) => (
+                    <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
                       # {ch.name}
                     </SelectItem>
                   ))}

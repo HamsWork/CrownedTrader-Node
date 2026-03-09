@@ -1,4 +1,4 @@
-import { BarChart3, Send, Hash, CheckCircle } from "lucide-react";
+import { BarChart3, Send, CheckCircle, Users } from "lucide-react";
 import { useStats, useSignalTypes } from "@/hooks/use-signals";
 import { StatCard } from "@/components/stat-card";
 import { SignalCard } from "@/components/signal-card";
@@ -40,7 +40,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Total Signals"
           value={stats?.totalSignals ?? 0}
@@ -54,13 +54,6 @@ export default function Dashboard() {
           icon={BarChart3}
           description="Configured types"
           testId="stat-signal-types"
-        />
-        <StatCard
-          title="Discord Channels"
-          value={stats?.totalChannels ?? 0}
-          icon={Hash}
-          description="Connected channels"
-          testId="stat-channels"
         />
         <StatCard
           title="Sent to Discord"

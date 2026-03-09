@@ -4,24 +4,23 @@ import {
   users,
   signalTypes,
   signals,
-  discordChannels,
   type User,
   type InsertUser,
   type SignalType,
   type InsertSignalType,
   type Signal,
   type InsertSignal,
-  type DiscordChannel,
-  type InsertDiscordChannel,
+  type UserDiscordChannel,
 } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser & { role?: string }): Promise<User>;
+  createUser(user: InsertUser & { role?: string; discordChannels?: UserDiscordChannel[] }): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserPassword(id: number, password: string): Promise<User | undefined>;
+  updateUserChannels(id: number, channels: UserDiscordChannel[]): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
 
   getSignalTypes(): Promise<SignalType[]>;
@@ -34,14 +33,6 @@ export interface IStorage {
   getSignal(id: number): Promise<Signal | undefined>;
   createSignal(signal: InsertSignal): Promise<Signal>;
   updateSignalDiscordStatus(id: number, sent: boolean): Promise<void>;
-
-  getDiscordChannels(): Promise<DiscordChannel[]>;
-  getDiscordChannelsByUser(userId: number): Promise<DiscordChannel[]>;
-  getDiscordChannel(id: number): Promise<DiscordChannel | undefined>;
-  createDiscordChannel(ch: InsertDiscordChannel): Promise<DiscordChannel>;
-  updateDiscordChannel(id: number, ch: Partial<InsertDiscordChannel>): Promise<DiscordChannel | undefined>;
-  deleteDiscordChannel(id: number): Promise<boolean>;
-  deleteDiscordChannelsByUser(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -55,7 +46,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(user: InsertUser & { role?: string }): Promise<User> {
+  async createUser(user: InsertUser & { role?: string; discordChannels?: UserDiscordChannel[] }): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created;
   }
@@ -71,6 +62,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserPassword(id: number, password: string): Promise<User | undefined> {
     const [updated] = await db.update(users).set({ password }).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async updateUserChannels(id: number, channels: UserDiscordChannel[]): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ discordChannels: channels }).where(eq(users.id, id)).returning();
     return updated;
   }
 
@@ -119,38 +115,6 @@ export class DatabaseStorage implements IStorage {
 
   async updateSignalDiscordStatus(id: number, sent: boolean): Promise<void> {
     await db.update(signals).set({ sentToDiscord: sent }).where(eq(signals.id, id));
-  }
-
-  async getDiscordChannels(): Promise<DiscordChannel[]> {
-    return db.select().from(discordChannels).orderBy(discordChannels.name);
-  }
-
-  async getDiscordChannelsByUser(userId: number): Promise<DiscordChannel[]> {
-    return db.select().from(discordChannels).where(eq(discordChannels.userId, userId)).orderBy(discordChannels.name);
-  }
-
-  async getDiscordChannel(id: number): Promise<DiscordChannel | undefined> {
-    const [ch] = await db.select().from(discordChannels).where(eq(discordChannels.id, id));
-    return ch;
-  }
-
-  async createDiscordChannel(ch: InsertDiscordChannel): Promise<DiscordChannel> {
-    const [created] = await db.insert(discordChannels).values(ch).returning();
-    return created;
-  }
-
-  async updateDiscordChannel(id: number, ch: Partial<InsertDiscordChannel>): Promise<DiscordChannel | undefined> {
-    const [updated] = await db.update(discordChannels).set(ch).where(eq(discordChannels.id, id)).returning();
-    return updated;
-  }
-
-  async deleteDiscordChannel(id: number): Promise<boolean> {
-    const result = await db.delete(discordChannels).where(eq(discordChannels.id, id)).returning();
-    return result.length > 0;
-  }
-
-  async deleteDiscordChannelsByUser(userId: number): Promise<void> {
-    await db.delete(discordChannels).where(eq(discordChannels.userId, userId));
   }
 }
 

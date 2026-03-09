@@ -12,7 +12,6 @@ import Dashboard from "@/pages/dashboard";
 import SendSignal from "@/pages/send-signal";
 import SignalHistory from "@/pages/signal-history";
 import DiscordTemplatesPage from "@/pages/discord-templates";
-import DiscordChannelsPage from "@/pages/discord-channels";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
 import LoginPage from "@/pages/login";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +26,6 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/send" component={SendSignal} />
       <Route path="/history" component={SignalHistory} />
-      <Route path="/discord" component={DiscordChannelsPage} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}
       {isAdmin && <Route path="/users" component={UserManagement} />}
       {isAdmin && <Route path="/users/create" component={CreateUserPage} />}
