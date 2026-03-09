@@ -60,7 +60,10 @@ shared/
 
 - **Authentication**: Login-only auth (no public registration), bcryptjs password hashing
 - **Role System**: Admin and user roles; admin-only pages for templates and user management
-- **User Creation**: Admin-only via User Management page
+- **User Management**: Admin can create/edit/delete users, assign Discord channel webhooks per user
+  - Each user can have multiple Discord channel webhooks
+  - Channels are managed inline when creating or editing a user
+  - User cards show channel count
 - **Discord Message Templates**: 30 templates organized by 5 categories (Options, Shares, LETF, LETF Option, Crypto) × 6 action types (Entry Signal, Target TP1 Hit, Target TP2 Hit, SL Raised, Stop Loss Hit, Trade Closed)
   - Category tabs with count badges
   - Template cards with Preview and Send Manual buttons
@@ -68,16 +71,17 @@ shared/
   - Send Manual dialog with form fields, channel selector, and live preview
 - **Signal Submission**: Dynamic form based on template, live Discord embed preview
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
+  - Channels are owned by users; non-admins only see their own channels
+  - Owner authorization enforced on channel CRUD operations
 - **Signal History**: Search and filter past signals
 - **Dashboard**: Stats overview with recent signals
-- **User Management**: Admin can create/view/edit roles/delete users
 
 ## Database Tables
 
 - `users` - User accounts (id, username, password, role)
 - `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
 - `signals` - Submitted signals with JSON data, userId
-- `discord_channels` - Discord webhook configurations
+- `discord_channels` - Discord webhook configurations (id, name, webhookUrl, userId, createdAt) — userId links channel to a user
 - `session` - Express sessions (created automatically by connect-pg-simple)
 
 ## Environment

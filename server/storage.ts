@@ -35,10 +35,12 @@ export interface IStorage {
   updateSignalDiscordStatus(id: number, sent: boolean): Promise<void>;
 
   getDiscordChannels(): Promise<DiscordChannel[]>;
+  getDiscordChannelsByUser(userId: number): Promise<DiscordChannel[]>;
   getDiscordChannel(id: number): Promise<DiscordChannel | undefined>;
   createDiscordChannel(ch: InsertDiscordChannel): Promise<DiscordChannel>;
   updateDiscordChannel(id: number, ch: Partial<InsertDiscordChannel>): Promise<DiscordChannel | undefined>;
   deleteDiscordChannel(id: number): Promise<boolean>;
+  deleteDiscordChannelsByUser(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -117,6 +119,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(discordChannels).orderBy(discordChannels.name);
   }
 
+  async getDiscordChannelsByUser(userId: number): Promise<DiscordChannel[]> {
+    return db.select().from(discordChannels).where(eq(discordChannels.userId, userId)).orderBy(discordChannels.name);
+  }
+
   async getDiscordChannel(id: number): Promise<DiscordChannel | undefined> {
     const [ch] = await db.select().from(discordChannels).where(eq(discordChannels.id, id));
     return ch;
@@ -135,6 +141,10 @@ export class DatabaseStorage implements IStorage {
   async deleteDiscordChannel(id: number): Promise<boolean> {
     const result = await db.delete(discordChannels).where(eq(discordChannels.id, id)).returning();
     return result.length > 0;
+  }
+
+  async deleteDiscordChannelsByUser(userId: number): Promise<void> {
+    await db.delete(discordChannels).where(eq(discordChannels.userId, userId));
   }
 }
 

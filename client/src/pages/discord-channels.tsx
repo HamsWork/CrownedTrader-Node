@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -13,18 +14,22 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useDiscordChannels, useCreateDiscordChannel, useDeleteDiscordChannel } from "@/hooks/use-signals";
-import { Plus, Trash2, Hash } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Plus, Trash2, Hash, User } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { formatDistanceToNow } from "date-fns";
 
 export default function DiscordChannelsPage() {
   const { data: channels, isLoading } = useDiscordChannels();
+  const { data: currentUser } = useAuth();
   const createChannel = useCreateDiscordChannel();
   const deleteChannel = useDeleteDiscordChannel();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+
+  const isAdmin = currentUser?.role === "admin";
 
   async function handleSubmit() {
     if (!name.trim() || !webhookUrl.trim()) {
@@ -44,8 +49,9 @@ export default function DiscordChannelsPage() {
       setName("");
       setWebhookUrl("");
       setOpen(false);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to add channel";
+      toast({ title: "Error", description: message, variant: "destructive" });
     }
   }
 
@@ -53,8 +59,9 @@ export default function DiscordChannelsPage() {
     try {
       await deleteChannel.mutateAsync(id);
       toast({ title: "Channel deleted" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to delete channel";
+      toast({ title: "Error", description: message, variant: "destructive" });
     }
   }
 
@@ -136,34 +143,45 @@ export default function DiscordChannelsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {channels.map(ch => (
-            <Card key={ch.id} data-testid={`card-channel-${ch.id}`}>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <div className="flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold">{ch.name}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(ch.id)}
-                  data-testid={`button-delete-channel-${ch.id}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground font-mono truncate" data-testid={`text-webhook-${ch.id}`}>
-                  {ch.webhookUrl.slice(0, 50)}...
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Added {ch.createdAt
-                    ? formatDistanceToNow(new Date(ch.createdAt), { addSuffix: true })
-                    : "recently"}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {channels.map(ch => {
+            const ownerName = (ch as any).ownerUsername as string | null;
+            return (
+              <Card key={ch.id} data-testid={`card-channel-${ch.id}`}>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">{ch.name}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(ch.id)}
+                    data-testid={`button-delete-channel-${ch.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground font-mono truncate" data-testid={`text-webhook-${ch.id}`}>
+                    {ch.webhookUrl.slice(0, 50)}...
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    {ownerName && (
+                      <Badge variant="outline" className="text-xs gap-1" data-testid={`badge-owner-${ch.id}`}>
+                        <User className="h-3 w-3" />
+                        {ownerName}
+                      </Badge>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Added {ch.createdAt
+                        ? formatDistanceToNow(new Date(ch.createdAt), { addSuffix: true })
+                        : "recently"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

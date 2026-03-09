@@ -113,14 +113,29 @@ export function useDeleteDiscordChannel() {
   });
 }
 
+export function useUserChannels(userId: number | null) {
+  return useQuery<DiscordChannel[]>({
+    queryKey: ["/api/users", userId, "channels"],
+    queryFn: async () => {
+      if (!userId) return [];
+      const res = await fetch(`/api/users/${userId}/channels`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch channels");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+}
+
 export function useCreateUser() {
   return useMutation({
-    mutationFn: async (data: { username: string; password: string; role: string }) => {
+    mutationFn: async (data: { username: string; password: string; role: string; channels?: Array<{ name: string; webhookUrl: string }> }) => {
       const res = await apiRequest("POST", "/api/users", data);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     },
   });
 }
@@ -137,6 +152,20 @@ export function useUpdateUserRole() {
   });
 }
 
+export function useUpdateUserChannels() {
+  return useMutation({
+    mutationFn: async ({ userId, channels }: { userId: number; channels: Array<{ id?: number; name: string; webhookUrl: string }> }) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}/channels`, { channels });
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", variables.userId, "channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+  });
+}
+
 export function useDeleteUser() {
   return useMutation({
     mutationFn: async (id: number) => {
@@ -144,6 +173,8 @@ export function useDeleteUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/discord-channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     },
   });
 }

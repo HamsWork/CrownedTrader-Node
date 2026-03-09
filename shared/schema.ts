@@ -42,6 +42,7 @@ export const discordChannels = pgTable("discord_channels", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   webhookUrl: text("webhook_url").notNull(),
+  userId: integer("user_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
