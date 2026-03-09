@@ -11,7 +11,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import SendSignal from "@/pages/send-signal";
 import SignalHistory from "@/pages/signal-history";
-import DiscordTemplatesPage from "@/pages/signal-types";
+import DiscordTemplatesPage from "@/pages/discord-templates";
 import DiscordChannelsPage from "@/pages/discord-channels";
 import UserManagement from "@/pages/user-management";
 import LoginPage from "@/pages/login";

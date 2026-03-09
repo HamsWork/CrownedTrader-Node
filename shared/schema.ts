@@ -55,6 +55,9 @@ export type DiscordChannel = typeof discordChannels.$inferSelect;
 export const signalTypes = pgTable("signal_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  slug: text("slug").notNull().default(""),
+  category: text("category").notNull().default("Options"),
+  content: text("content").default(""),
   variables: jsonb("variables").$type<Array<{ name: string; type: string; label?: string }>>().default([]).notNull(),
   titleTemplate: text("title_template").notNull().default(""),
   descriptionTemplate: text("description_template").notNull().default(""),
@@ -66,7 +69,10 @@ export const signalTypes = pgTable("signal_types", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertSignalTypeSchema = createInsertSchema(signalTypes).omit({
+export const insertSignalTypeSchema = createInsertSchema(signalTypes, {
+  variables: z.array(z.object({ name: z.string(), type: z.string(), label: z.string().optional() })).default([]),
+  fieldsTemplate: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
+}).omit({
   id: true,
   createdAt: true,
 });

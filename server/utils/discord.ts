@@ -45,15 +45,18 @@ export function buildEmbed(
 
 export async function sendToDiscord(
   webhookUrl: string,
-  embed: DiscordEmbed
+  embed: DiscordEmbed,
+  content?: string
 ): Promise<boolean> {
   try {
+    const body: Record<string, unknown> = { embeds: [embed] };
+    if (content) {
+      body.content = content;
+    }
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        embeds: [embed],
-      }),
+      body: JSON.stringify(body),
     });
     return res.ok;
   } catch (err) {

@@ -132,7 +132,7 @@ export async function registerRoutes(
       const channel = await storage.getDiscordChannel(signal.discordChannelId);
       if (channel) {
         const embed = buildEmbed(signalType, signal);
-        const sent = await sendToDiscord(channel.webhookUrl, embed);
+        const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
         await storage.updateSignalDiscordStatus(signal.id, sent);
         signal.sentToDiscord = sent;
       }

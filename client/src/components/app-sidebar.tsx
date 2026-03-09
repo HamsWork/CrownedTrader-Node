@@ -1,4 +1,4 @@
-import { LayoutDashboard, Send, History, FileText, Hash, Users, LogOut, Crown } from "lucide-react";
+import { LayoutDashboard, Send, History, MessageSquare, Hash, Users, LogOut, Crown } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import {
   Sidebar,
@@ -24,7 +24,7 @@ const navItems = [
 ];
 
 const adminItems = [
-  { title: "Discord Templates", url: "/discord-templates", icon: FileText, adminOnly: true },
+  { title: "Discord Templates", url: "/discord-templates", icon: MessageSquare, adminOnly: true },
   { title: "User Management", url: "/users", icon: Users, adminOnly: true },
 ];
 

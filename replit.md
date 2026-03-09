@@ -1,6 +1,6 @@
 # Crowned Trader
 
-Trading signal dashboard that lets you create signal types with customizable templates, submit signals with dynamic fields, and send them to Discord via webhooks.
+Trading signal dashboard that lets you send trading signals using categorized Discord message templates to Discord channels via webhooks.
 
 ## Architecture
 
@@ -20,17 +20,15 @@ client/src/
     signal-card.tsx        - Signal display card component
     stat-card.tsx          - Dashboard stat card
     empty-state.tsx        - Empty state placeholder
-    discord-templates/     - Reusable Discord template module
+    discord-templates/     - Discord template utilities
       index.ts             - Module barrel export
-      template-card.tsx    - Template display card component
-      template-form-dialog.tsx - Create/edit template dialog
       template-utils.ts    - Client-side preview rendering (uses shared/template-render)
   pages/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
     send-signal.tsx        - Signal submission form with Discord preview
     signal-history.tsx     - Browsable signal history with search/filter
-    signal-types.tsx       - Discord Templates page (admin-only, uses discord-templates module)
+    discord-templates.tsx  - Discord Message Templates page (admin-only, category tabs + cards)
     discord-channels.tsx   - Manage Discord webhook channels
     user-management.tsx    - Admin user/role management
   hooks/
@@ -48,13 +46,13 @@ server/
   storage.ts               - Database storage layer (IStorage interface)
   seed.ts                  - Seed data (uses shared/template-definitions)
   utils/
-    discord.ts             - Discord webhook embed builder + sender
+    discord.ts             - Discord webhook embed builder + sender (supports content field)
     template.ts            - Re-exports shared/template-render
     validation.ts          - Input validation helpers
 
 shared/
   schema.ts                - Drizzle schema + Zod validation + types
-  template-definitions.ts  - Default template data (Options, Shares, LETF, LETF Options, Crypto)
+  template-definitions.ts  - 30 templates (6 actions × 5 categories) with CATEGORIES, ACTION_TYPES, SAMPLE_TICKERS
   template-render.ts       - Template variable rendering (shared by client + server)
 ```
 
@@ -63,17 +61,21 @@ shared/
 - **Authentication**: Login-only auth (no public registration), bcryptjs password hashing
 - **Role System**: Admin and user roles; admin-only pages for templates and user management
 - **User Creation**: Admin-only via User Management page
-- **Discord Templates**: 5 asset-class templates (Options, Shares, LETF, LETF Options, Crypto) with full create/edit/delete (admin-only)
-- **Signal Submission**: Dynamic form based on signal type, live Discord embed preview
-- **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks
+- **Discord Message Templates**: 30 templates organized by 5 categories (Options, Shares, LETF, LETF Option, Crypto) × 6 action types (Entry Signal, Target TP1 Hit, Target TP2 Hit, SL Raised, Stop Loss Hit, Trade Closed)
+  - Category tabs with count badges
+  - Template cards with Preview and Send Manual buttons
+  - Preview dialog shows full Discord embed with sample data
+  - Send Manual dialog with form fields, channel selector, and live preview
+- **Signal Submission**: Dynamic form based on template, live Discord embed preview
+- **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
 - **Signal History**: Search and filter past signals
 - **Dashboard**: Stats overview with recent signals
-- **User Management**: Admin can view/edit roles/delete users
+- **User Management**: Admin can create/view/edit roles/delete users
 
 ## Database Tables
 
 - `users` - User accounts (id, username, password, role)
-- `signal_types` - Signal type templates with JSON variables and templates
+- `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
 - `signals` - Submitted signals with JSON data, userId
 - `discord_channels` - Discord webhook configurations
 - `session` - Express sessions (created automatically by connect-pg-simple)
@@ -82,7 +84,6 @@ shared/
 
 - `DATABASE_URL` - PostgreSQL connection string
 - `SESSION_SECRET` - Session encryption secret
-- Uses `.env` file when not on Replit
 
 ## Seed Credentials
 
@@ -91,7 +92,7 @@ shared/
 
 ## API Routes
 
-- `POST /api/auth/register` - Register new user
+- `POST /api/users` - Create user (admin)
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Get current user
