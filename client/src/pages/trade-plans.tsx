@@ -330,9 +330,7 @@ function PlanFormModal({
   const [levels, setLevels] = useState<TakeProfitLevel[]>(
     editingPlan?.takeProfitLevels?.length ? editingPlan.takeProfitLevels : [...DEFAULT_LEVELS]
   );
-  const [entryPrice, setEntryPrice] = useState("5.00");
-
-  const ep = parseFloat(entryPrice) || 5;
+  const ep = 5;
   const slPct = parseFloat(stopLossPct) || 10;
 
   function handleLevelChange(index: number, updated: TakeProfitLevel) {
@@ -421,29 +419,6 @@ function PlanFormModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-semibold text-sm">Preview Entry Price</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={entryPrice}
-                  onChange={(e) => setEntryPrice(e.target.value)}
-                  data-testid="input-entry-price"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-2">
-                <Label className="font-semibold text-sm">Stop Loss %</Label>
-                <Input
-                  type="number"
-                  step="1"
-                  value={stopLossPct}
-                  onChange={(e) => setStopLossPct(e.target.value)}
-                  data-testid="input-stop-loss-pct"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label className="font-semibold text-sm">Target Type</Label>
                 <Select value={targetType} onValueChange={setTargetType}>
                   <SelectTrigger data-testid="select-target-type">
@@ -478,6 +453,18 @@ function PlanFormModal({
                   onRemove={() => removeLevel(i)}
                 />
               ))}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm">Stop Loss %</Label>
+              <Input
+                type="number"
+                step="1"
+                value={stopLossPct}
+                onChange={(e) => setStopLossPct(e.target.value)}
+                className="max-w-[200px]"
+                data-testid="input-stop-loss-pct"
+              />
             </div>
 
             <Button
