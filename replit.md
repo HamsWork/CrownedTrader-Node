@@ -49,6 +49,7 @@ server/
   seed.ts                  - Seed data (uses shared/template-definitions)
   utils/
     discord.ts             - Discord webhook embed builder + sender (supports content field)
+    tradesync.ts           - TradeSync API client (sends signals to external TradeSync dashboard)
     template.ts            - Re-exports shared/template-render
     validation.ts          - Input validation helpers
 
@@ -77,6 +78,8 @@ shared/
   - Auto-fetches stock price from Polygon when ticker is selected
   - Auto-selects best option contract (expiration, strike, option price) based on trade type (Scalp/Swing/Leap) when Is Option is ON and Manual Contract is OFF
   - Best option selection uses progressive fallback levels matching CrownedTrader Django app logic (delta, DTE, OI, spread filters)
+  - Sends signal to TradeSync API (`POST /api/ingest/signals`) with Bearer token auth alongside Discord delivery
+  - TradeSync payload includes: ticker, instrumentType, direction, entryPrice, stop_loss, targets (with raise_stop_loss), time_stop, auto_track, underlying_price_based, discord_channel_webhook
 - **Send TA**: Post technical analysis with image/video upload and optional commentary to Discord channels via webhooks; drag & drop media, live Discord preview
 - **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
@@ -96,6 +99,8 @@ shared/
 
 - `DATABASE_URL` - PostgreSQL connection string
 - `SESSION_SECRET` - Session encryption secret
+- `POLYGON_API_KEY` - Polygon.io API key for stock/option data
+- `TRADESYNC_API_KEY` - TradeSync API key for pushing signals to TradeSync dashboard
 
 ## Seed Credentials
 

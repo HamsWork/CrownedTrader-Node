@@ -716,6 +716,12 @@ export default function SendSignal() {
       trade_plan_id: form.tradePlanId,
       stop_loss_pct: slPct.toString(),
       target_type: isUnderlyingBased ? "Underlying Price Based" : "Symbol Price Based",
+      take_profit_levels: JSON.stringify(levels),
+      instrument_type: tickerDetails?.category === "LETF"
+        ? (form.isOption ? "LETF Option" : "LETF")
+        : tickerDetails?.category === "Crypto"
+          ? "Crypto"
+          : (form.isOption ? "Options" : "Shares"),
     };
 
     levels.forEach((l, i) => {
@@ -770,10 +776,18 @@ export default function SendSignal() {
         });
       }
 
+      const errors: string[] = [];
       if (responseData?.discordErrors?.length > 0) {
+        errors.push("Discord: " + responseData.discordErrors.join("; "));
+      }
+      if (responseData?.tradeSyncError) {
+        errors.push("TradeSync: " + responseData.tradeSyncError);
+      }
+
+      if (errors.length > 0) {
         toast({
-          title: "Signal saved, but Discord failed",
-          description: responseData.discordErrors.join("\n"),
+          title: "Signal saved, but some deliveries failed",
+          description: errors.join("\n"),
           variant: "destructive",
         });
       } else {

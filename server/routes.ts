@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
+import { sendToTradeSync, buildTradeSyncPayload } from "./utils/tradesync";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import { hashPassword, comparePassword, toSafeUser, requireAuth, requireAdmin } from "./auth";
 import { z } from "zod";
@@ -263,9 +264,33 @@ export async function registerRoutes(
       }
     }
 
+    let tradeSyncError: string | undefined;
+    try {
+      const data = signal.data as Record<string, string>;
+      const levelsRaw = data.take_profit_levels ? JSON.parse(data.take_profit_levels) : [];
+
+      let webhookUrl: string | undefined;
+      if (signal.discordChannelName) {
+        const userChannels = currentUser.discordChannels || [];
+        const ch = userChannels.find((c: any) => c.name === signal.discordChannelName);
+        if (ch?.webhookUrl) webhookUrl = ch.webhookUrl;
+      }
+
+      const tsPayload = buildTradeSyncPayload(data, levelsRaw, webhookUrl);
+      const tsResult = await sendToTradeSync(tsPayload);
+      if (!tsResult.ok) {
+        tradeSyncError = tsResult.error;
+      }
+    } catch (err: any) {
+      tradeSyncError = err.message || "TradeSync integration error";
+    }
+
     const response: Record<string, unknown> = { ...signal };
     if (discordErrors.length > 0) {
       response.discordErrors = discordErrors;
+    }
+    if (tradeSyncError) {
+      response.tradeSyncError = tradeSyncError;
     }
     res.status(201).json(response);
   });
