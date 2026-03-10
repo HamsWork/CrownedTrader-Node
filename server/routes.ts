@@ -1095,24 +1095,22 @@ export async function registerRoutes(
 
       const fs = await import("fs");
       const path = await import("path");
-
       const projectRoot = process.cwd();
 
-      const categories: Record<string, { files: { path: string; description: string; lines: number; lastModified: string }[] }> = {
-        "Server Core": { files: [] },
-        "Server Utilities": { files: [] },
-        "Shared / Schema": { files: [] },
-        "Client Pages": { files: [] },
-        "Client Components": { files: [] },
-        "Client Hooks & Libs": { files: [] },
-        "Config": { files: [] },
-      };
+      let auditJson: any = {};
+      try {
+        const jsonPath = path.join(projectRoot, "SYSTEM_AUDIT.json");
+        const raw = fs.readFileSync(jsonPath, "utf-8");
+        auditJson = JSON.parse(raw);
+      } catch {
+        auditJson = { overview: { name: "Crowned Trader", version: "1.0.0" }, features: [], dataFlows: [], latestChanges: [] };
+      }
 
       const fileDescriptions: Record<string, string> = {
         "server/index.ts": "Application entry point, starts Express server",
         "server/routes.ts": "All API route handlers and endpoint definitions",
         "server/storage.ts": "Database storage interface and implementation (Drizzle ORM)",
-        "server/auth.ts": "Session-based authentication with Passport.js",
+        "server/auth.ts": "Custom session-based authentication with bcryptjs",
         "server/db.ts": "Database connection pool configuration",
         "server/seed.ts": "Database seeding with default users and signal types",
         "server/vite.ts": "Vite dev server integration for development",
@@ -1157,9 +1155,9 @@ export async function registerRoutes(
 
       const lastUpdateNotes: Record<string, string> = {
         "server/index.ts": "Stable entry point — no recent changes",
-        "server/routes.ts": "Added /api/leaderboard endpoint with period filtering, /api/audit endpoint for system codebase overview, PATCH /api/signals/:id/data for updating signal data fields",
+        "server/routes.ts": "Added /api/leaderboard endpoint, enhanced /api/audit to serve SYSTEM_AUDIT.json with dynamic file stats",
         "server/storage.ts": "Added updateSignalData() method for merging signal data fields; extended IStorage interface",
-        "server/auth.ts": "Session-based auth with Passport local strategy — stable",
+        "server/auth.ts": "Custom session auth with bcryptjs (10 rounds) — stable",
         "server/db.ts": "Database connection pool — stable, no recent changes",
         "server/seed.ts": "Seeds admin/trader1 users and 30 Discord templates — stable",
         "server/vite.ts": "Vite dev server middleware integration — stable",
@@ -1171,20 +1169,20 @@ export async function registerRoutes(
         "shared/schema.ts": "Added status, closedAt, closePrice, closeNote fields to signals table; exported TakeProfitLevel type",
         "shared/template-definitions.ts": "30 Discord embed templates across Options, Shares, LETF, LETF Option, Crypto categories — stable",
         "shared/template-render.ts": "Template rendering logic for Discord embeds — stable",
-        "client/src/App.tsx": "Added routes for /history (Signal History), /audit (System Audit); imported new page components",
+        "client/src/App.tsx": "Added routes for /history, /audit; imported new page components",
         "client/src/main.tsx": "React entry point — stable",
-        "client/src/pages/dashboard.tsx": "Removed Recent Signals section; added Crowned Traders Leaderboard with period filtering (This Week, Last Week, This Month, Last Month)",
+        "client/src/pages/dashboard.tsx": "Crowned Traders Leaderboard with period filtering and responsive stats grid",
         "client/src/pages/send-signal.tsx": "Unified Send Signal form with crypto detection, LETF underlying map, live Discord preview, TradeSync integration",
         "client/src/pages/send-ta.tsx": "Send Technical Analysis page — stable",
-        "client/src/pages/position-management.tsx": "Rebuilt with tab navigation (Open/Closed/All), Partial Exit modal with Discord preview and TP level detection, Full Exit modal with Take Profit/Stop Loss/Trailing Stop reason tabs, Switch to Manual tracking",
-        "client/src/pages/signal-history.tsx": "Redesigned as card-based layout grouped by date, with summary stats (Total Sent, Success, Failed), expandable raw payload, copy and Discord preview actions",
+        "client/src/pages/position-management.tsx": "Rebuilt with tab navigation, Partial/Full Exit modals, Switch to Manual tracking, responsive table",
+        "client/src/pages/signal-history.tsx": "Card-based layout grouped by date with summary stats, expandable payload, copy and Discord preview",
         "client/src/pages/trade-plans.tsx": "Trade plan CRUD with take profit levels, stop loss, trailing stop configuration — stable",
-        "client/src/pages/discord-templates.tsx": "Admin template editor for 30 Discord embed templates — stable",
-        "client/src/pages/user-management.tsx": "Admin user CRUD (create, edit, delete users) — stable",
+        "client/src/pages/discord-templates.tsx": "Admin template editor with preview and manual send dialogs — stable",
+        "client/src/pages/user-management.tsx": "Admin user CRUD with channel management — stable",
         "client/src/pages/login.tsx": "Login page with session-based auth — stable",
         "client/src/pages/not-found.tsx": "404 page — stable",
-        "client/src/pages/system-audit.tsx": "System audit page showing codebase structure, tech stack, file descriptions and last update explanations",
-        "client/src/components/app-sidebar.tsx": "Added Signal History and System Audit nav items; uses lucide History and ShieldCheck icons",
+        "client/src/pages/system-audit.tsx": "Rebuilt as comprehensive architecture reference with tabs: Overview, Features, Codebase, Updates",
+        "client/src/components/app-sidebar.tsx": "Navigation sidebar with role-aware menu items — stable",
         "client/src/components/signal-card.tsx": "Signal display card — stable",
         "client/src/components/stat-card.tsx": "Dashboard stat card — stable",
         "client/src/components/empty-state.tsx": "Empty state placeholder — stable",
@@ -1213,25 +1211,24 @@ export async function registerRoutes(
       }
 
       function countLines(fullPath: string): number {
-        try {
-          const content = fs.readFileSync(fullPath, "utf-8");
-          return content.split("\n").length;
-        } catch {
-          return 0;
-        }
+        try { return fs.readFileSync(fullPath, "utf-8").split("\n").length; } catch { return 0; }
       }
 
       function getModTime(fullPath: string): string {
-        try {
-          const stat = fs.statSync(fullPath);
-          return stat.mtime.toISOString();
-        } catch {
-          return new Date().toISOString();
-        }
+        try { return fs.statSync(fullPath).mtime.toISOString(); } catch { return new Date().toISOString(); }
       }
 
-      const sourceFiles = Object.keys(fileDescriptions);
-      for (const relPath of sourceFiles) {
+      const categories: Record<string, { files: any[] }> = {
+        "Server Core": { files: [] },
+        "Server Utilities": { files: [] },
+        "Shared / Schema": { files: [] },
+        "Client Pages": { files: [] },
+        "Client Components": { files: [] },
+        "Client Hooks & Libs": { files: [] },
+        "Config": { files: [] },
+      };
+
+      for (const relPath of Object.keys(fileDescriptions)) {
         const fullPath = path.join(projectRoot, relPath);
         if (!fs.existsSync(fullPath)) continue;
         const cat = categorize(relPath);
@@ -1247,20 +1244,24 @@ export async function registerRoutes(
       }
 
       const totalFiles = Object.values(categories).reduce((s, c) => s + c.files.length, 0);
-      const totalLines = Object.values(categories).reduce((s, c) => s + c.files.reduce((ls, f) => ls + f.lines, 0), 0);
-
+      const totalLines = Object.values(categories).reduce((s, c) => s + c.files.reduce((ls: number, f: any) => ls + f.lines, 0), 0);
       const allFiles = Object.values(categories).flatMap(c => c.files);
       const lastUpdated = allFiles.length > 0
-        ? allFiles.reduce((latest, f) => f.lastModified > latest ? f.lastModified : latest, allFiles[0].lastModified)
+        ? allFiles.reduce((latest: string, f: any) => f.lastModified > latest ? f.lastModified : latest, allFiles[0].lastModified)
         : new Date().toISOString();
 
       res.json({
-        projectName: "Crowned Trader",
-        version: "1.0.0",
+        projectName: auditJson.overview?.name || "Crowned Trader",
+        version: auditJson.overview?.version || "1.0.0",
+        description: auditJson.overview?.description || "",
+        architecture: auditJson.overview?.architecture || {},
         lastUpdated,
         totalFiles,
         totalLines,
         categories,
+        features: auditJson.features || [],
+        dataFlows: auditJson.dataFlows || [],
+        latestChanges: auditJson.latestChanges || [],
         techStack: [
           { name: "Node.js", category: "Runtime" },
           { name: "Express", category: "Backend Framework" },
@@ -1273,7 +1274,7 @@ export async function registerRoutes(
           { name: "Shadcn/ui", category: "UI Components" },
           { name: "TanStack Query", category: "Data Fetching" },
           { name: "Wouter", category: "Routing" },
-          { name: "Passport.js", category: "Authentication" },
+          { name: "express-session + bcryptjs", category: "Authentication" },
           { name: "Zod", category: "Validation" },
           { name: "Polygon.io API", category: "Market Data" },
           { name: "Discord Webhooks", category: "Notifications" },

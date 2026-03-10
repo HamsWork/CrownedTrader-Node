@@ -85,7 +85,10 @@ shared/
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
   - Channels stored on user record; channel selection uses user's own channels
 - **Position Management**: Track open/closed positions with P&L calculation, close with exit price and notes, reopen positions
-- **Dashboard**: Stats overview (Total Signals, Signal Types, Sent to Discord) with recent signals
+- **Dashboard**: Stats overview (Total Signals, Signal Types, Sent to Discord) with Crowned Traders leaderboard
+- **Signal History**: Card-based signal browser grouped by date, with summary stats, expandable payload, copy and Discord preview
+- **Leaderboard**: Trader rankings by period (this_week, last_week, this_month, last_month) with performance metrics
+- **System Audit**: Comprehensive architecture reference page with tabbed UI (Overview, Features, Codebase, Updates); backed by `SYSTEM_AUDIT.json`, `SYSTEM_AUDIT.md`, `FEATURE_FILE_MAP.md`
 
 ## Database Tables
 
@@ -131,7 +134,13 @@ shared/
 - `DELETE /api/trade-plans/:id` - Delete trade plan (auth, owner or admin)
 - `GET /api/stock-price/:ticker` - Get current stock price via Polygon API (auth)
 - `GET /api/best-option` - Auto-select best option contract via Polygon API (auth, params: underlying, side, tradeType, underlyingPrice)
+- `PATCH /api/signals/:id/data` - Merge data fields into signal (auth)
 - `GET /api/stats` - Dashboard stats (auth)
+- `GET /api/leaderboard?period=...` - Trader leaderboard (auth, periods: this_week, last_week, this_month, last_month)
+- `GET /api/audit` - System audit data with features, codebase stats, updates (admin)
+- `GET /api/ticker-search?q=...&market=...` - Search tickers via Polygon API (auth)
+- `GET /api/ticker-details/:ticker` - Instrument metadata and classification (auth)
+- `GET /api/option-quote` - Specific option contract quote (auth)
 
 ## Responsive Design
 

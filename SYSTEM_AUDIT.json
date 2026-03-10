@@ -1,0 +1,425 @@
+{
+  "overview": {
+    "name": "Crowned Trader",
+    "version": "1.0.0",
+    "description": "A full-stack trading signal management and distribution platform. Enables traders to generate, track, and distribute trading signals across multiple asset classes via Discord webhooks, with automated trade tracking through TradeSync integration.",
+    "architecture": {
+      "pattern": "Full-Stack TypeScript Monorepo",
+      "frontend": "React 18 + Vite + TanStack Query + wouter routing",
+      "backend": "Express.js + custom session auth (bcryptjs)",
+      "database": "PostgreSQL + Drizzle ORM",
+      "sharedLayer": "Shared TypeScript types, Zod validators, and template rendering logic used by both client and server"
+    }
+  },
+  "features": [
+    {
+      "id": "auth",
+      "name": "Authentication & Authorization",
+      "category": "Core",
+      "icon": "Shield",
+      "description": "Login-only authentication (no public registration) with role-based access control. Admin users access all pages; regular users see only trading-related pages.",
+      "howItWorks": [
+        "Users authenticate via POST /api/auth/login with username and password",
+        "Passwords are hashed with bcryptjs (10 salt rounds) before storage",
+        "Sessions are stored in PostgreSQL via connect-pg-simple middleware",
+        "requireAuth middleware checks for valid session on all protected routes",
+        "requireAdmin middleware additionally verifies user.role === 'admin'",
+        "Frontend useAuth hook fetches GET /api/auth/me to determine auth state",
+        "Sidebar navigation conditionally shows admin-only items based on role"
+      ],
+      "files": [
+        { "path": "server/auth.ts", "role": "Custom session auth, bcryptjs password hashing (10 rounds), requireAuth/requireAdmin middleware" },
+        { "path": "server/index.ts", "role": "Session middleware setup (express-session + connect-pg-simple)" },
+        { "path": "client/src/hooks/use-auth.ts", "role": "useAuth() hook, useLogin() and useLogout() mutations" },
+        { "path": "client/src/pages/login.tsx", "role": "Login form UI" },
+        { "path": "client/src/App.tsx", "role": "Auth-gated routing" }
+      ],
+      "connections": ["User Management", "Navigation & Layout"],
+      "latestUpdates": "Stable - custom session-based auth with bcryptjs and express-session"
+    },
+    {
+      "id": "signal-engine",
+      "name": "Signal Submission Engine",
+      "category": "Trading",
+      "icon": "Zap",
+      "description": "Unified form for creating and sending trading signals across all asset classes. Supports options, shares, LETF, LETF options, and crypto with instrument-specific fields, auto-pricing, and live Discord preview.",
+      "howItWorks": [
+        "User searches for a ticker via Polygon.io API autocomplete",
+        "System auto-detects instrument category (Stock, ETF, LETF, Crypto) from Polygon metadata",
+        "Stock price is auto-fetched; for LETFs, underlying ticker price is also fetched via LETF_UNDERLYING_MAP",
+        "If 'Is Option' is enabled, best option contract is auto-selected based on trade type (Scalp/Swing/Leap)",
+        "User configures trade plan: saved preset or live custom with TP levels, stop loss, trailing stops",
+        "Live Discord embed preview renders in real-time as the form is filled",
+        "On submit: signal saved to DB, sent to Discord via webhook, pushed to TradeSync API",
+        "Optional chart analysis image can be attached via multipart upload"
+      ],
+      "files": [
+        { "path": "client/src/pages/send-signal.tsx", "role": "Unified Send Signal form with all instrument modes and live preview" },
+        { "path": "server/routes.ts", "role": "POST /api/signals handler: validation, DB save, Discord send, TradeSync push" },
+        { "path": "server/utils/discord.ts", "role": "buildEmbed() and sendToDiscord() for webhook delivery" },
+        { "path": "server/utils/tradesync.ts", "role": "buildTradeSyncPayload() and sendToTradeSync() for trade tracking" },
+        { "path": "client/src/components/take-profit-level-form.tsx", "role": "Shared TP level editor component" }
+      ],
+      "connections": ["Discord Integration", "TradeSync Integration", "Ticker Intelligence", "Trade Plans"],
+      "latestUpdates": "Unified Send Signal form with crypto detection, LETF underlying map, live Discord preview, TradeSync integration"
+    },
+    {
+      "id": "discord",
+      "name": "Discord Integration",
+      "category": "Integration",
+      "icon": "MessageSquare",
+      "description": "Sends trading signals as rich embedded messages to Discord channels via webhooks. 30 pre-defined templates across 5 instrument categories and 6 action types.",
+      "howItWorks": [
+        "Each user has Discord channels stored as JSONB on their user record ({name, webhookUrl} pairs)",
+        "When a signal is sent, buildEmbed() loads the matching template and renders it with signal data",
+        "Template rendering uses Handlebars-style {{variable}} interpolation for title, description, and fields",
+        "Category-specific color coding is applied to the embed sidebar",
+        "Footer includes standard disclaimer text",
+        "The content field (e.g., '@everyone') is sent alongside the embed",
+        "File attachments (chart images) are sent as multipart form data",
+        "TLS verification is disabled for webhook compatibility"
+      ],
+      "files": [
+        { "path": "server/utils/discord.ts", "role": "Core webhook client: embed builder, sender, multipart support" },
+        { "path": "shared/template-definitions.ts", "role": "30 template definitions (5 categories x 6 actions)" },
+        { "path": "shared/template-render.ts", "role": "{{variable}} rendering logic shared by client and server" },
+        { "path": "client/src/components/discord-templates/template-utils.ts", "role": "Client-side preview rendering" },
+        { "path": "server/seed.ts", "role": "Seeds templates from definitions on first run" }
+      ],
+      "connections": ["Signal Submission Engine", "Position Management", "Send Technical Analysis", "Discord Templates Page"],
+      "latestUpdates": "Stable - Discord webhook sender with TLS override and multipart support"
+    },
+    {
+      "id": "tradesync",
+      "name": "TradeSync Integration",
+      "category": "Integration",
+      "icon": "RefreshCw",
+      "description": "Pushes trade signals to an external TradeSync dashboard for automated position tracking and portfolio management.",
+      "howItWorks": [
+        "buildTradeSyncPayload() maps signal data to TradeSync format: ticker, instrument type, direction, entry price",
+        "Calculates stop loss price (percentage-based or underlying price-based)",
+        "Builds targets object with TP prices, take-off percentages, and raise-SL rules",
+        "Sets time stop based on trade type: Scalp (2 days), Swing (5 days), Leap (10 days)",
+        "Includes Discord webhook URL for TradeSync's own notifications",
+        "Payload POSTed to TradeSync API with Bearer token authentication",
+        "Auto-track flag controls whether TradeSync monitors the position automatically"
+      ],
+      "files": [
+        { "path": "server/utils/tradesync.ts", "role": "TradeSyncSignal interface, payload builder, API client" },
+        { "path": "server/routes.ts", "role": "Calls TradeSync inside POST /api/signals handler" }
+      ],
+      "connections": ["Signal Submission Engine"],
+      "latestUpdates": "Stable - TradeSync API integration for auto-tracking trade signals"
+    },
+    {
+      "id": "positions",
+      "name": "Position Management",
+      "category": "Trading",
+      "icon": "TrendingUp",
+      "description": "Tracks all trading positions from entry through exit, supporting partial exits (TP hits), full exits (with reason classification), and manual tracking mode.",
+      "howItWorks": [
+        "Positions are signals with status: 'open' or 'closed'",
+        "Position Management page shows three tabs: Open, Closed, All",
+        "Each position displays: ticker, contract details, entry price, mark price, P/L %, realized P/L %, tracking mode",
+        "Partial Exit: triggered at TP levels, sends TP hit Discord embed, updates signal data",
+        "Full Exit: offers three reason types (Take Profit, Stop Loss, Trailing Stop)",
+        "User enters current price, system calculates P/L, sends closing embed to Discord",
+        "Switch to Manual: converts auto-tracked signals to manual tracking mode",
+        "Position data updates use PATCH /api/signals/:id/data to merge fields into JSONB"
+      ],
+      "files": [
+        { "path": "client/src/pages/position-management.tsx", "role": "Position table with tabs, Partial/Full Exit modals, Switch to Manual" },
+        { "path": "server/routes.ts", "role": "PATCH /api/signals/:id/status and PATCH /api/signals/:id/data endpoints" },
+        { "path": "server/storage.ts", "role": "updateSignalStatus() and updateSignalData() operations" }
+      ],
+      "connections": ["Signal Submission Engine", "Discord Integration"],
+      "latestUpdates": "Rebuilt with tab navigation, Partial Exit modal with TP detection, Full Exit with reason classification, Switch to Manual"
+    },
+    {
+      "id": "trade-plans",
+      "name": "Trade Plans",
+      "category": "Trading",
+      "icon": "Target",
+      "description": "Customizable presets for take-profit/stop-loss strategies that can be saved, loaded, and applied when sending signals.",
+      "howItWorks": [
+        "Each trade plan defines: target type, stop loss percentage, and take profit levels array",
+        "TP levels configure: level %, take off %, raise stop loss to, and trailing stop per level",
+        "Plans are user-scoped (admin can see all plans)",
+        "One plan can be marked as default (auto-selected in Send Signal form)",
+        "Send Signal form offers 'Saved Plan' or 'Live Custom' modes",
+        "Live Custom mode exposes the full trade plan editor inline",
+        "Plans include a live Discord embed preview showing how targets will appear"
+      ],
+      "files": [
+        { "path": "client/src/pages/trade-plans.tsx", "role": "Trade plan CRUD UI with create/edit modal and live preview" },
+        { "path": "client/src/components/take-profit-level-form.tsx", "role": "Shared TP level form (used by trade plans and send signal)" },
+        { "path": "shared/schema.ts", "role": "tradePlans table schema, TakeProfitLevel type" },
+        { "path": "server/routes.ts", "role": "CRUD endpoints: GET/POST/PATCH/DELETE /api/trade-plans" },
+        { "path": "server/storage.ts", "role": "Trade plan database operations" }
+      ],
+      "connections": ["Signal Submission Engine"],
+      "latestUpdates": "Stable - trade plan CRUD with TP levels, stop loss, trailing stop configuration"
+    },
+    {
+      "id": "ticker-intel",
+      "name": "Ticker Intelligence",
+      "category": "Integration",
+      "icon": "Search",
+      "description": "Real-time ticker search, price fetching, instrument classification, and automated best option contract selection via the Polygon.io API.",
+      "howItWorks": [
+        "Ticker Search: /api/ticker-search searches Polygon with optional market filter (stocks, crypto)",
+        "Crypto tickers have 'X:' prefix stripped for display but re-added for API calls",
+        "Ticker Details: /api/ticker-details/:ticker classifies as Stock, ETF, LETF, or Crypto",
+        "For LETFs, maps to underlying using LETF_UNDERLYING_MAP (e.g., TQQQ -> QQQ, SOXL -> SOXX)",
+        "Stock Price: /api/stock-price/:ticker fetches latest via Polygon previous close endpoint",
+        "Best Option: /api/best-option auto-selects optimal contract using progressive fallback filters",
+        "Option selection considers: delta, DTE, open interest, bid-ask spread based on trade type"
+      ],
+      "files": [
+        { "path": "server/routes.ts", "role": "All Polygon API proxy endpoints (ticker-search, ticker-details, stock-price, best-option, option-quote)" },
+        { "path": "client/src/pages/send-signal.tsx", "role": "Ticker search input, auto-price fetching, best option selection UI" }
+      ],
+      "connections": ["Signal Submission Engine"],
+      "latestUpdates": "Stable - Polygon.io integration with LETF underlying mapping"
+    },
+    {
+      "id": "leaderboard",
+      "name": "Leaderboard",
+      "category": "Analytics",
+      "icon": "Crown",
+      "description": "Ranks traders by performance metrics over configurable time periods with aggregate statistics.",
+      "howItWorks": [
+        "GET /api/leaderboard?period=... aggregates signal data by user",
+        "Supported periods: this_week, last_week, this_month, last_month",
+        "For each trader: counts trades, wins, losses, calculates average P/L and win rate",
+        "Win determination based on realized P/L from closed positions",
+        "Dashboard displays leaderboard with rank indicators and crown icon for top trader",
+        "Stats grid shows aggregate totals: Trades, Wins, Losses, Avg P/L, Win Rate"
+      ],
+      "files": [
+        { "path": "client/src/pages/dashboard.tsx", "role": "Leaderboard component with period tabs and stats grid" },
+        { "path": "server/routes.ts", "role": "GET /api/leaderboard endpoint with period-based aggregation" }
+      ],
+      "connections": ["Dashboard"],
+      "latestUpdates": "Added Crowned Traders Leaderboard with period filtering (This Week, Last Week, This Month, Last Month)"
+    },
+    {
+      "id": "signal-history",
+      "name": "Signal History",
+      "category": "Analytics",
+      "icon": "History",
+      "description": "Searchable, browsable audit log of all trading signals sent through the system with expandable payloads and Discord previews.",
+      "howItWorks": [
+        "Displays signals grouped by date in a card-based layout",
+        "Each card shows: ticker, instrument type, trade type, Discord delivery status, timestamp",
+        "Summary stats at top: Total Sent, Success (delivered to Discord), Failed",
+        "Expandable raw payload section shows the full JSONB data",
+        "Copy button copies payload to clipboard; Discord preview shows embed as it appeared",
+        "Search filters signals by ticker name",
+        "Cards arranged in 2-column grid on desktop, single column on mobile"
+      ],
+      "files": [
+        { "path": "client/src/pages/signal-history.tsx", "role": "Card-based signal browser with date grouping and search" },
+        { "path": "client/src/components/signal-card.tsx", "role": "Individual signal display card" },
+        { "path": "server/routes.ts", "role": "GET /api/signals returns all signals" }
+      ],
+      "connections": ["Discord Integration"],
+      "latestUpdates": "Redesigned as card-based layout grouped by date with summary stats, expandable payload, copy and Discord preview"
+    },
+    {
+      "id": "user-mgmt",
+      "name": "User Management",
+      "category": "Admin",
+      "icon": "Users",
+      "description": "Admin interface for creating, editing, and deleting user accounts with role assignment and Discord channel configuration.",
+      "howItWorks": [
+        "User List (/users): table showing all users with role badges, channel counts, edit/delete actions",
+        "Create User (/users/create): full-page form with username, password, role, and channel editor",
+        "Edit User (/users/:id/edit): edit role, change password, manage Discord channels",
+        "Channel Editor: inline component for adding/removing channel entries (name + webhook URL)",
+        "Channels stored as JSONB array on user record (no separate table)",
+        "Admin cannot delete themselves; delete requires AlertDialog confirmation"
+      ],
+      "files": [
+        { "path": "client/src/pages/user-management.tsx", "role": "Three-view page: list, create, edit with channel editor" },
+        { "path": "server/routes.ts", "role": "User CRUD endpoints" },
+        { "path": "server/storage.ts", "role": "User database operations" },
+        { "path": "server/auth.ts", "role": "Password hashing for user creation" }
+      ],
+      "connections": ["Authentication & Authorization"],
+      "latestUpdates": "Stable - admin user CRUD with channel management"
+    },
+    {
+      "id": "discord-templates",
+      "name": "Discord Templates Page",
+      "category": "Admin",
+      "icon": "Layout",
+      "description": "Admin page for browsing, previewing, and manually sending the 30 pre-defined Discord message templates organized by category.",
+      "howItWorks": [
+        "Templates organized by category tabs (Options, Shares, LETF, LETF Option, Crypto)",
+        "Each template displayed as a card with name, slug, variable list, and field preview",
+        "Preview Dialog: renders full Discord embed preview with sample data",
+        "Send Manual Dialog: form with channel selector and variable inputs, live preview on right side",
+        "Sends to selected Discord webhook on submit",
+        "Category count badges show template counts per category"
+      ],
+      "files": [
+        { "path": "client/src/pages/discord-templates.tsx", "role": "Category-tabbed template browser with preview and send dialogs" },
+        { "path": "client/src/components/discord-templates/template-utils.ts", "role": "Client-side rendering for previews" },
+        { "path": "shared/template-definitions.ts", "role": "Source definitions for all 30 templates" }
+      ],
+      "connections": ["Discord Integration"],
+      "latestUpdates": "Stable - admin template editor with preview and manual send"
+    },
+    {
+      "id": "send-ta",
+      "name": "Send Technical Analysis",
+      "category": "Trading",
+      "icon": "Image",
+      "description": "Post technical analysis commentary with media (images or videos) to Discord channels with live preview.",
+      "howItWorks": [
+        "User selects a destination Discord channel from their configured channels",
+        "Enters analysis commentary text",
+        "Uploads an image or video file via drag & drop or file picker",
+        "Live Discord preview shows the embed with attached media",
+        "On submit, sends as multipart form to POST /api/send-ta",
+        "Server constructs Discord embed with commentary and attached media file"
+      ],
+      "files": [
+        { "path": "client/src/pages/send-ta.tsx", "role": "TA form with channel selector, commentary, media upload, and live preview" },
+        { "path": "server/routes.ts", "role": "POST /api/send-ta handler with multipart processing" },
+        { "path": "server/utils/discord.ts", "role": "Discord webhook file attachment handling" }
+      ],
+      "connections": ["Discord Integration"],
+      "latestUpdates": "Stable - Send Technical Analysis page"
+    },
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "category": "Core",
+      "icon": "BarChart3",
+      "description": "Overview page showing aggregate signal statistics and the Crowned Traders leaderboard.",
+      "howItWorks": [
+        "Three stats cards: Total Signals, Signal Types, Sent to Discord",
+        "Full leaderboard component with period filtering embedded below stats",
+        "Stats fetched from GET /api/stats",
+        "Leaderboard fetched from GET /api/leaderboard"
+      ],
+      "files": [
+        { "path": "client/src/pages/dashboard.tsx", "role": "Stats cards and embedded Leaderboard component" },
+        { "path": "client/src/components/stat-card.tsx", "role": "Reusable stat display card" },
+        { "path": "server/routes.ts", "role": "GET /api/stats and GET /api/leaderboard endpoints" }
+      ],
+      "connections": ["Leaderboard"],
+      "latestUpdates": "Removed Recent Signals section; added Crowned Traders Leaderboard with period filtering"
+    },
+    {
+      "id": "system-audit",
+      "name": "System Audit",
+      "category": "Admin",
+      "icon": "FileCode2",
+      "description": "Comprehensive reference page documenting the entire system's architecture, features, codebase structure, and latest updates.",
+      "howItWorks": [
+        "Displays system overview with architecture description and tech stack",
+        "Browsable feature reference with detailed explanations and file mappings",
+        "Codebase file listing with line counts and last modified timestamps",
+        "Latest update log with change explanations per file",
+        "Data served from GET /api/audit which combines SYSTEM_AUDIT.json with dynamic file stats"
+      ],
+      "files": [
+        { "path": "client/src/pages/system-audit.tsx", "role": "Tabbed UI: Overview, Features, Codebase, Latest Updates" },
+        { "path": "server/routes.ts", "role": "GET /api/audit endpoint" },
+        { "path": "SYSTEM_AUDIT.json", "role": "Structured architecture data for frontend" },
+        { "path": "SYSTEM_AUDIT.md", "role": "Comprehensive architecture narrative" },
+        { "path": "FEATURE_FILE_MAP.md", "role": "Feature-to-file cross-reference" }
+      ],
+      "connections": [],
+      "latestUpdates": "Transformed from file listing to comprehensive architecture reference with features, data flows, and cross-references"
+    }
+  ],
+  "dataFlows": [
+    {
+      "name": "Signal Submission Flow",
+      "steps": [
+        "User fills Send Signal form",
+        "Ticker search via Polygon API",
+        "Auto-fetch stock price",
+        "Auto-select best option (if applicable)",
+        "Configure trade plan (saved or live custom)",
+        "Live Discord preview renders in real-time",
+        "Submit: POST /api/signals",
+        "Save signal to database",
+        "Build Discord embed from template",
+        "Send embed to Discord webhook",
+        "Build TradeSync payload",
+        "POST to TradeSync API",
+        "Navigate to position management"
+      ]
+    },
+    {
+      "name": "Position Lifecycle",
+      "steps": [
+        "Signal created with status: 'open'",
+        "Position Management tracks it in Open tab",
+        "Mark price updated periodically",
+        "User triggers Partial Exit (TP hit)",
+        "Discord embed sent for TP hit",
+        "Signal data updated with TP details",
+        "User triggers Full Exit",
+        "Reason selected: TP / SL / Trailing Stop",
+        "Exit price entered, P/L calculated",
+        "Discord embed sent for close",
+        "Signal status set to 'closed'"
+      ]
+    },
+    {
+      "name": "Authentication Flow",
+      "steps": [
+        "Browser loads app",
+        "GET /api/auth/me checks session",
+        "401 response: show login page",
+        "200 response: show authenticated app with sidebar",
+        "Login: POST /api/auth/login creates session",
+        "Logout: POST /api/auth/logout destroys session"
+      ]
+    }
+  ],
+  "latestChanges": [
+    {
+      "title": "System Audit Enhancement",
+      "description": "Transformed from simple file listing to comprehensive architecture reference with features, data flows, and cross-reference maps. Added browsable tabbed UI.",
+      "category": "Admin",
+      "files": ["client/src/pages/system-audit.tsx", "server/routes.ts", "SYSTEM_AUDIT.json", "SYSTEM_AUDIT.md", "FEATURE_FILE_MAP.md"]
+    },
+    {
+      "title": "Position Management Overhaul",
+      "description": "Rebuilt with tab navigation (Open/Closed/All), Partial Exit modal with Discord preview and TP level detection, Full Exit modal with reason classification, and Switch to Manual tracking.",
+      "category": "Trading",
+      "files": ["client/src/pages/position-management.tsx", "server/routes.ts", "server/storage.ts"]
+    },
+    {
+      "title": "Dashboard Leaderboard",
+      "description": "Removed Recent Signals section. Added Crowned Traders Leaderboard with period filtering (This Week, Last Week, This Month, Last Month) and aggregate performance stats grid.",
+      "category": "Analytics",
+      "files": ["client/src/pages/dashboard.tsx", "server/routes.ts"]
+    },
+    {
+      "title": "Signal History Redesign",
+      "description": "Rebuilt as card-based layout grouped by date with summary stats (Total Sent, Success, Failed), expandable raw payload viewer, copy and Discord preview actions.",
+      "category": "Analytics",
+      "files": ["client/src/pages/signal-history.tsx"]
+    },
+    {
+      "title": "Responsive Design Overhaul",
+      "description": "Applied consistent responsive patterns across all pages: p-4 sm:p-6 padding, responsive text sizing, mobile-friendly tables with horizontal scroll, responsive dialogs, and mobile card views for complex data.",
+      "category": "Core",
+      "files": ["client/src/pages/dashboard.tsx", "client/src/pages/position-management.tsx", "client/src/pages/send-signal.tsx", "client/src/pages/send-ta.tsx", "client/src/pages/signal-history.tsx", "client/src/pages/system-audit.tsx", "client/src/pages/discord-templates.tsx", "client/src/pages/user-management.tsx"]
+    },
+    {
+      "title": "Unified Signal Submission",
+      "description": "Built unified Send Signal form with crypto detection, LETF underlying map, live Discord preview, TradeSync integration, and chart analysis upload.",
+      "category": "Trading",
+      "files": ["client/src/pages/send-signal.tsx", "server/routes.ts", "server/utils/tradesync.ts"]
+    }
+  ]
+}
