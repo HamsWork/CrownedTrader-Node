@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSignals, useSignalTypes } from "@/hooks/use-signals";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -326,7 +326,112 @@ export default function PositionManagement() {
   const [fullExitReason, setFullExitReason] = useState<FullExitReason>("take_profit");
   const { toast } = useToast();
 
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  const pricePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const useManualPriceRef = useRef(useManualPrice);
+  useManualPriceRef.current = useManualPrice;
+
   useEffect(() => {
+    if (pricePollingRef.current) {
+      clearInterval(pricePollingRef.current);
+      pricePollingRef.current = null;
+    }
+
+    const openSignals = signals?.filter(s => s.status === "open") ?? [];
+    if (openSignals.length === 0) return;
+
+    interface PriceFetchJob {
+      key: string;
+      isOption: boolean;
+      ticker: string;
+      optionType?: string;
+      expiration?: string;
+      strike?: string;
+    }
+
+    const jobs: PriceFetchJob[] = [];
+    const seenKeys = new Set<string>();
+
+    for (const s of openSignals) {
+      const d = (s.data ?? {}) as Record<string, string>;
+      const ticker = d.ticker;
+      if (!ticker) continue;
+
+      const isOpt = d.is_option === "true";
+      const hasOptionFields = isOpt && !!d.expiration && !!d.strike && !!d.option_type;
+      const key = hasOptionFields
+        ? `opt:${ticker}:${d.expiration}:${d.strike}:${d.option_type}`
+        : `stock:${ticker}`;
+
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+
+      if (hasOptionFields) {
+        jobs.push({ key, isOption: true, ticker, optionType: d.option_type, expiration: d.expiration, strike: d.strike });
+      } else {
+        jobs.push({ key, isOption: false, ticker });
+      }
+    }
+
+    const abortController = new AbortController();
+
+    const pollAll = async () => {
+      if (abortController.signal.aborted) return;
+      const results: Record<string, number> = {};
+      await Promise.allSettled(
+        jobs.map(async (job) => {
+          try {
+            let url: string;
+            if (job.isOption) {
+              const params = new URLSearchParams({
+                underlying: job.ticker,
+                expiration: job.expiration!,
+                strike: job.strike!,
+                optionType: job.optionType!,
+              });
+              url = `/api/option-quote?${params}`;
+            } else {
+              url = `/api/stock-price/${encodeURIComponent(job.ticker)}`;
+            }
+            const res = await fetch(url, {
+              credentials: "include",
+              signal: abortController.signal,
+            });
+            if (res.ok) {
+              const d = await res.json();
+              const price = d?.price;
+              if (price) results[job.key] = price;
+            }
+          } catch {}
+        })
+      );
+      if (!abortController.signal.aborted && Object.keys(results).length > 0) {
+        setLivePrices(prev => ({ ...prev, ...results }));
+        setLastPriceUpdate(new Date());
+      }
+    };
+
+    pollAll();
+    pricePollingRef.current = setInterval(pollAll, 15000);
+
+    return () => {
+      abortController.abort();
+      if (pricePollingRef.current) {
+        clearInterval(pricePollingRef.current);
+        pricePollingRef.current = null;
+      }
+    };
+  }, [signals]);
+
+  const dialogPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (dialogPollingRef.current) {
+      clearInterval(dialogPollingRef.current);
+      dialogPollingRef.current = null;
+    }
+
     if (!closeDialog) {
       setLivePrice(null);
       return;
@@ -335,19 +440,52 @@ export default function PositionManagement() {
     const ticker = data.ticker;
     if (!ticker) return;
 
-    setIsFetchingPrice(true);
-    fetch(`/api/stock-price/${encodeURIComponent(ticker)}`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.price) {
-          setLivePrice(d.price);
-          if (!useManualPrice) {
-            setClosePrice(d.price.toString());
+    const abortController = new AbortController();
+    const isOption = data.is_option === "true";
+
+    const fetchPrice = async () => {
+      if (abortController.signal.aborted) return;
+      try {
+        let url: string;
+        if (isOption && data.expiration && data.strike && data.option_type) {
+          const params = new URLSearchParams({
+            underlying: ticker,
+            expiration: data.expiration,
+            strike: data.strike,
+            optionType: data.option_type,
+          });
+          url = `/api/option-quote?${params}`;
+        } else {
+          url = `/api/stock-price/${encodeURIComponent(ticker)}`;
+        }
+        const res = await fetch(url, {
+          credentials: "include",
+          signal: abortController.signal,
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d?.price) {
+            setLivePrice(d.price);
+            if (!useManualPriceRef.current) {
+              setClosePrice(d.price.toString());
+            }
           }
         }
-      })
-      .catch(() => {})
-      .finally(() => setIsFetchingPrice(false));
+      } catch {}
+      setIsFetchingPrice(false);
+    };
+
+    setIsFetchingPrice(true);
+    fetchPrice();
+    dialogPollingRef.current = setInterval(fetchPrice, 15000);
+
+    return () => {
+      abortController.abort();
+      if (dialogPollingRef.current) {
+        clearInterval(dialogPollingRef.current);
+        dialogPollingRef.current = null;
+      }
+    };
   }, [closeDialog]);
 
   const filtered = signals?.filter(signal => {
@@ -443,6 +581,11 @@ export default function PositionManagement() {
         </h1>
         <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Track and manage your trading positions
+          {lastPriceUpdate && (
+            <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">
+              Live · {lastPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
         </p>
       </div>
 
@@ -510,11 +653,17 @@ export default function PositionManagement() {
             const direction = data.direction || "Long";
             const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
             const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-            const markPrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
             const isOpen = signal.status === "open";
             const tracking = data.trade_tracking || "Manual";
+            const livePriceKey = isOption && data.expiration && data.strike && data.option_type
+              ? `opt:${ticker}:${data.expiration}:${data.strike}:${data.option_type}`
+              : `stock:${ticker}`;
+            const liveMarkPrice = isOpen && ticker !== "—" ? livePrices[livePriceKey] : undefined;
+            const markPrice = isOpen
+              ? (liveMarkPrice ?? null)
+              : (signal.closePrice ? parseFloat(signal.closePrice) : null);
             const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
-            const realizedPnl = !isOpen && markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+            const realizedPnl = !isOpen && signal.closePrice ? getPnlPct(entryPrice, parseFloat(signal.closePrice), direction) : 0;
             const tradeType = data.trade_type || "—";
 
             let contractLine = "";
@@ -579,7 +728,12 @@ export default function PositionManagement() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Mark</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium flex items-center gap-1">
+                        Mark
+                        {isOpen && markPrice && (
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" title="Live price" />
+                        )}
+                      </div>
                       <div className="text-sm font-semibold mt-0.5" data-testid={`text-mark-${signal.id}`}>
                         {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
                       </div>
