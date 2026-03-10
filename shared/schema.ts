@@ -95,6 +95,7 @@ export const takeProfitLevelSchema = z.object({
   levelPct: z.number(),
   takeOffPct: z.number(),
   raiseStopLossTo: z.string().default("Off"),
+  customRaiseSLValue: z.string().optional().default(""),
   trailingStop: z.string().default("Off"),
 });
 export type TakeProfitLevel = z.infer<typeof takeProfitLevelSchema>;
