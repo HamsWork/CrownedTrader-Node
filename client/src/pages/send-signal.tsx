@@ -230,7 +230,7 @@ interface TradeForm {
 }
 
 function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
 
   const levels = form.customLevels;
@@ -703,9 +703,9 @@ export default function SendSignal() {
       return;
     }
 
-    const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
+    const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
     if (entry <= 0) {
-      toast({ title: form.isOption ? "Option price is required" : "Entry price is required", variant: "destructive" });
+      toast({ title: form.isOption ? "Option price is required" : "Stock price is required", variant: "destructive" });
       return;
     }
 
@@ -1025,29 +1025,18 @@ export default function SendSignal() {
 
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Direction</Label>
-                      <Select value={form.direction} onValueChange={v => update("direction", v)}>
-                        <SelectTrigger data-testid="select-direction">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DIRECTIONS.map(d => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Entry Price</Label>
-                      <Input
-                        placeholder="Entry price"
-                        value={form.entryPrice}
-                        onChange={e => update("entryPrice", e.target.value)}
-                        data-testid="input-entry-price"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Direction</Label>
+                    <Select value={form.direction} onValueChange={v => update("direction", v)}>
+                      <SelectTrigger data-testid="select-direction">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DIRECTIONS.map(d => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
