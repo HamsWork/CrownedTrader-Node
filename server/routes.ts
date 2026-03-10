@@ -201,6 +201,8 @@ export async function registerRoutes(
     const signal = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
     const chartFile = req.file;
 
+    const discordErrors: string[] = [];
+
     try {
       if (signal.discordChannelName) {
         const userChannels = currentUser.discordChannels || [];
@@ -213,9 +215,10 @@ export async function registerRoutes(
           }
           if (signalType) {
             const embed = buildEmbed(signalType, signal);
-            const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
-            await storage.updateSignalDiscordStatus(signal.id, sent);
-            signal.sentToDiscord = sent;
+            const result = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
+            await storage.updateSignalDiscordStatus(signal.id, result.ok);
+            signal.sentToDiscord = result.ok;
+            if (!result.ok) discordErrors.push(result.error || "Failed to send embed to Discord");
           } else {
             const data = signal.data as Record<string, string>;
             const entry = parseFloat(data.entry_price) || 0;
@@ -240,18 +243,18 @@ export async function registerRoutes(
             if (data.risk_management) {
               embed.fields.push({ name: "🛡️ Risk Management", value: data.risk_management, inline: false });
             }
-            const sent = await sendToDiscord(channel.webhookUrl, embed);
-            await storage.updateSignalDiscordStatus(signal.id, sent);
-            signal.sentToDiscord = sent;
+            const result = await sendToDiscord(channel.webhookUrl, embed);
+            await storage.updateSignalDiscordStatus(signal.id, result.ok);
+            signal.sentToDiscord = result.ok;
+            if (!result.ok) discordErrors.push(result.error || "Failed to send embed to Discord");
           }
 
           if (chartFile) {
-            try {
-              await sendFileToDiscord(channel.webhookUrl, chartFile.path, chartFile.originalname || "chart.png", "📊 **Chart Analysis**");
-            } catch (err) {
-              console.error("Failed to send chart to Discord:", err);
-            }
+            const chartResult = await sendFileToDiscord(channel.webhookUrl, chartFile.path, chartFile.originalname || "chart.png", "📊 **Chart Analysis**");
+            if (!chartResult.ok) discordErrors.push(`Chart upload: ${chartResult.error || "Failed"}`);
           }
+        } else {
+          discordErrors.push(`Channel "${signal.discordChannelName}" not found or has no webhook URL`);
         }
       }
     } finally {
@@ -260,7 +263,11 @@ export async function registerRoutes(
       }
     }
 
-    res.status(201).json(signal);
+    const response: Record<string, unknown> = { ...signal };
+    if (discordErrors.length > 0) {
+      response.discordErrors = discordErrors;
+    }
+    res.status(201).json(response);
   });
 
   app.get("/api/trade-plans", requireAuth, async (req, res) => {
@@ -359,9 +366,9 @@ export async function registerRoutes(
         taEmbed.image = { url: `attachment://${fileName}` };
       }
 
-      let sent: boolean;
+      let discordResult;
       if (file) {
-        sent = await sendFileToDiscord(
+        discordResult = await sendFileToDiscord(
           selectedChannel.webhookUrl,
           file.path,
           fileName,
@@ -370,15 +377,15 @@ export async function registerRoutes(
         );
         fs.unlink(file.path, () => {});
       } else {
-        sent = await sendToDiscord(
+        discordResult = await sendToDiscord(
           selectedChannel.webhookUrl,
           taEmbed,
           "@everyone"
         );
       }
 
-      if (!sent) {
-        return res.status(502).json({ message: "Failed to send to Discord" });
+      if (!discordResult.ok) {
+        return res.status(502).json({ message: `Discord error: ${discordResult.error || "Failed to send to Discord"}` });
       }
 
       res.json({ success: true });

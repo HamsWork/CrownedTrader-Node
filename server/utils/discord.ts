@@ -46,11 +46,16 @@ export function buildEmbed(
   return embed;
 }
 
+export interface DiscordResult {
+  ok: boolean;
+  error?: string;
+}
+
 export async function sendToDiscord(
   webhookUrl: string,
   embed: DiscordEmbed,
   content?: string
-): Promise<boolean> {
+): Promise<DiscordResult> {
   try {
     const body: Record<string, unknown> = { embeds: [embed] };
     if (content) {
@@ -61,10 +66,20 @@ export async function sendToDiscord(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    return res.ok;
-  } catch (err) {
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "");
+      let detail = `Discord returned ${res.status}`;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.message) detail = parsed.message;
+      } catch { if (errorText) detail = errorText.slice(0, 200); }
+      console.error("Discord webhook error:", res.status, errorText);
+      return { ok: false, error: detail };
+    }
+    return { ok: true };
+  } catch (err: any) {
     console.error("Discord webhook error:", err);
-    return false;
+    return { ok: false, error: err.message || "Network error sending to Discord" };
   }
 }
 
@@ -74,7 +89,7 @@ export async function sendFileToDiscord(
   fileName: string,
   content?: string,
   embed?: DiscordEmbed
-): Promise<boolean> {
+): Promise<DiscordResult> {
   try {
     const fs = await import("fs");
     const fileBuffer = fs.readFileSync(filePath);
@@ -101,12 +116,18 @@ export async function sendFileToDiscord(
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
-      console.error("Discord file webhook response error:", res.status, errorText);
+      let detail = `Discord returned ${res.status}`;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.message) detail = parsed.message;
+      } catch { if (errorText) detail = errorText.slice(0, 200); }
+      console.error("Discord file webhook error:", res.status, errorText);
+      return { ok: false, error: detail };
     }
 
-    return res.ok;
-  } catch (err) {
+    return { ok: true };
+  } catch (err: any) {
     console.error("Discord file webhook error:", err);
-    return false;
+    return { ok: false, error: err.message || "Network error sending file to Discord" };
   }
 }

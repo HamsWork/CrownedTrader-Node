@@ -654,6 +654,7 @@ export default function SendSignal() {
     }
 
     try {
+      let responseData: any;
       if (form.showChartAnalysis && chartFile) {
         setIsSendingMultipart(true);
         const formData = new FormData();
@@ -670,16 +671,25 @@ export default function SendSignal() {
           const err = await res.json().catch(() => ({ message: "Failed to send signal" }));
           throw new Error(err.message || "Failed to send signal");
         }
+        responseData = await res.json().catch(() => ({}));
         queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
         queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       } else {
-        await createSignal.mutateAsync({
+        responseData = await createSignal.mutateAsync({
           data: signalData,
           discordChannelName: form.channel || null,
         });
       }
 
-      toast({ title: "Signal sent!", description: "Your trade alert has been published." });
+      if (responseData?.discordErrors?.length > 0) {
+        toast({
+          title: "Signal saved, but Discord failed",
+          description: responseData.discordErrors.join("\n"),
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Signal sent!", description: "Your trade alert has been published." });
+      }
       clearChart();
       setForm(prev => ({
         ...prev,
