@@ -186,52 +186,77 @@ export async function registerRoutes(
     res.json(sigs);
   });
 
-  app.post("/api/signals", requireAuth, async (req, res) => {
-    const parsed = insertSignalSchema.safeParse(req.body);
+  app.post("/api/signals", requireAuth, upload.single("chartMedia"), async (req, res) => {
+    let body = req.body;
+    if (typeof body.data === "string") {
+      try {
+        body = { ...body, data: JSON.parse(body.data) };
+      } catch { /* keep as-is */ }
+    }
+
+    const parsed = insertSignalSchema.safeParse(body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
 
     const currentUser = (req as any).user;
     const signal = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
+    const chartFile = req.file;
 
-    if (signal.discordChannelName) {
-      const userChannels = currentUser.discordChannels || [];
-      const channel = userChannels.find((ch: any) => ch.name === signal.discordChannelName);
-      if (channel) {
-        let signalType = null;
-        if (parsed.data.signalTypeId) {
-          signalType = await storage.getSignalType(parsed.data.signalTypeId);
-          if (!signalType) return res.status(400).json({ message: "Invalid signal type" });
-        }
-        if (signalType) {
-          const embed = buildEmbed(signalType, signal);
-          const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
-          await storage.updateSignalDiscordStatus(signal.id, sent);
-          signal.sentToDiscord = sent;
-        } else {
-          const data = signal.data as Record<string, string>;
-          const entry = parseFloat(data.entry_price) || 0;
-          const embed = {
-            title: `🔺 Trade Alert`,
-            description: `**${data.ticker || ""}** — ${data.trade_type || "Scalp"}\nEntry: $${entry.toFixed(2)}`,
-            color: 0x22c55e,
-            fields: [] as Array<{name: string; value: string; inline?: boolean}>,
-            footer: { text: "Crowned Trader" },
-          };
-          if (data.is_shares !== "true") {
-            embed.fields.push(
-              { name: "Option Type", value: data.option_type || "CALL", inline: true },
-              { name: "Strike", value: data.strike || "—", inline: true },
-              { name: "Expiration", value: data.expiration || "—", inline: true },
-            );
+    try {
+      if (signal.discordChannelName) {
+        const userChannels = currentUser.discordChannels || [];
+        const channel = userChannels.find((ch: any) => ch.name === signal.discordChannelName);
+        if (channel) {
+          let signalType = null;
+          if (parsed.data.signalTypeId) {
+            signalType = await storage.getSignalType(parsed.data.signalTypeId);
+            if (!signalType) return res.status(400).json({ message: "Invalid signal type" });
           }
-          embed.fields.push(
-            { name: "Targets", value: `TP1: $${data.tp1_target || "—"} | TP2: $${data.tp2_target || "—"} | TP3: $${data.tp3_target || "—"}`, inline: false },
-            { name: "Stop Loss", value: `-${data.stop_loss_pct || "10"}%`, inline: true },
-          );
-          const sent = await sendToDiscord(channel.webhookUrl, embed);
-          await storage.updateSignalDiscordStatus(signal.id, sent);
-          signal.sentToDiscord = sent;
+          if (signalType) {
+            const embed = buildEmbed(signalType, signal);
+            const sent = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
+            await storage.updateSignalDiscordStatus(signal.id, sent);
+            signal.sentToDiscord = sent;
+          } else {
+            const data = signal.data as Record<string, string>;
+            const entry = parseFloat(data.entry_price) || 0;
+            const embed = {
+              title: `🔺 Trade Alert`,
+              description: `**${data.ticker || ""}** — ${data.trade_type || "Scalp"}\nEntry: $${entry.toFixed(2)}`,
+              color: 0x22c55e,
+              fields: [] as Array<{name: string; value: string; inline?: boolean}>,
+              footer: { text: "Crowned Trader" },
+            };
+            if (data.is_shares !== "true") {
+              embed.fields.push(
+                { name: "Option Type", value: data.option_type || "CALL", inline: true },
+                { name: "Strike", value: data.strike || "—", inline: true },
+                { name: "Expiration", value: data.expiration || "—", inline: true },
+              );
+            }
+            embed.fields.push(
+              { name: "Targets", value: `TP1: $${data.tp1_target || "—"} | TP2: $${data.tp2_target || "—"} | TP3: $${data.tp3_target || "—"}`, inline: false },
+              { name: "Stop Loss", value: `-${data.stop_loss_pct || "10"}%`, inline: true },
+            );
+            if (data.risk_management) {
+              embed.fields.push({ name: "🛡️ Risk Management", value: data.risk_management, inline: false });
+            }
+            const sent = await sendToDiscord(channel.webhookUrl, embed);
+            await storage.updateSignalDiscordStatus(signal.id, sent);
+            signal.sentToDiscord = sent;
+          }
+
+          if (chartFile) {
+            try {
+              await sendFileToDiscord(channel.webhookUrl, chartFile.path, chartFile.originalname || "chart.png", "📊 **Chart Analysis**");
+            } catch (err) {
+              console.error("Failed to send chart to Discord:", err);
+            }
+          }
         }
+      }
+    } finally {
+      if (chartFile) {
+        try { fs.unlinkSync(chartFile.path); } catch {}
       }
     }
 

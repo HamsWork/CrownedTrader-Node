@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, Sele
 import { useToast } from "@/hooks/use-toast";
 import { useCreateSignal, useTradePlans } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
-import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
+import { Textarea } from "@/components/ui/textarea";
+import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText, ShieldCheck } from "lucide-react";
 import type { TradePlan, TakeProfitLevel } from "@shared/schema";
 import {
   TakeProfitLevelForm,
@@ -204,9 +206,12 @@ interface TradeForm {
   customTargetType: string;
   customStopLossPct: string;
   customLevels: TakeProfitLevel[];
+  showChartAnalysis: boolean;
+  showRiskManagement: boolean;
+  riskManagement: string;
 }
 
-function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradePlan[] }) {
+function LivePreview({ form, tradePlans, chartPreviewUrl, chartMediaType }: { form: TradeForm; tradePlans: TradePlan[]; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null }) {
   const isCustom = form.tradePlanId === "live-custom";
   const selectedPlan = isCustom ? null : (tradePlans || []).find(p => p.id.toString() === form.tradePlanId);
   const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
@@ -331,6 +336,33 @@ function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradeP
               </div>
             )}
 
+            {form.showChartAnalysis && chartPreviewUrl && (
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>📊</span> Chart Analysis
+                </p>
+                {chartMediaType === "image" && (
+                  <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2">
+                    <img src={chartPreviewUrl} alt="Chart" className="w-full max-h-[200px] object-contain" data-testid="preview-chart-image" />
+                  </div>
+                )}
+                {chartMediaType === "video" && (
+                  <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2">
+                    <video src={chartPreviewUrl} controls className="w-full max-h-[200px]" data-testid="preview-chart-video" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {form.showRiskManagement && form.riskManagement.trim() && (
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>🛡️</span> Risk Management
+                </p>
+                <p className="text-xs mt-1 whitespace-pre-wrap leading-relaxed">{form.riskManagement}</p>
+              </div>
+            )}
+
             <p className="text-xs text-[#72767d] italic">
               Disclaimer: Not financial advice. Trade at your own risk.
             </p>
@@ -378,7 +410,38 @@ export default function SendSignal() {
     customTargetType: "Symbol Price Based",
     customStopLossPct: "10.00",
     customLevels: [...DEFAULT_LEVELS_SYMBOL],
+    showChartAnalysis: false,
+    showRiskManagement: false,
+    riskManagement: "",
   });
+
+  const [isSendingMultipart, setIsSendingMultipart] = useState(false);
+  const [chartFile, setChartFile] = useState<File | null>(null);
+  const [chartPreviewUrl, setChartPreviewUrl] = useState<string | null>(null);
+  const [chartMediaType, setChartMediaType] = useState<"image" | "video" | null>(null);
+  const [chartDragging, setChartDragging] = useState(false);
+  const chartFileRef = useRef<HTMLInputElement>(null);
+
+  const handleChartFile = useCallback((file: File) => {
+    if (file.type.startsWith("image/")) {
+      setChartMediaType("image");
+    } else if (file.type.startsWith("video/")) {
+      setChartMediaType("video");
+    } else {
+      toast({ title: "Unsupported file type. Please upload an image or video.", variant: "destructive" });
+      return;
+    }
+    setChartFile(file);
+    setChartPreviewUrl(URL.createObjectURL(file));
+  }, [toast]);
+
+  const clearChart = useCallback(() => {
+    if (chartPreviewUrl) URL.revokeObjectURL(chartPreviewUrl);
+    setChartFile(null);
+    setChartPreviewUrl(null);
+    setChartMediaType(null);
+    if (chartFileRef.current) chartFileRef.current.value = "";
+  }, [chartPreviewUrl]);
 
   useEffect(() => {
     if (userChannels.length > 0 && !form.channel) {
@@ -459,13 +522,38 @@ export default function SendSignal() {
       signalData.direction = form.direction;
     }
 
+    if (form.showRiskManagement && form.riskManagement.trim()) {
+      signalData.risk_management = form.riskManagement.trim();
+    }
+
     try {
-      await createSignal.mutateAsync({
-        data: signalData,
-        discordChannelName: form.channel || null,
-      });
+      if (form.showChartAnalysis && chartFile) {
+        setIsSendingMultipart(true);
+        const formData = new FormData();
+        formData.append("data", JSON.stringify(signalData));
+        formData.append("discordChannelName", form.channel || "");
+        formData.append("chartMedia", chartFile);
+
+        const res = await fetch("/api/signals", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ message: "Failed to send signal" }));
+          throw new Error(err.message || "Failed to send signal");
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      } else {
+        await createSignal.mutateAsync({
+          data: signalData,
+          discordChannelName: form.channel || null,
+        });
+      }
 
       toast({ title: "Signal sent!", description: "Your trade alert has been published." });
+      clearChart();
       setForm(prev => ({
         ...prev,
         ticker: "",
@@ -473,9 +561,14 @@ export default function SendSignal() {
         optionPrice: "",
         stockPrice: "",
         entryPrice: "",
+        riskManagement: "",
+        showChartAnalysis: false,
+        showRiskManagement: false,
       }));
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to send signal", variant: "destructive" });
+    } finally {
+      setIsSendingMultipart(false);
     }
   }
 
@@ -885,15 +978,125 @@ export default function SendSignal() {
                   )}
                 </div>
 
+                <div className="rounded-lg border border-border p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-amber-400" />
+                    <span className="font-semibold text-sm">Optional Fields</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Select which optional fields to include in your Discord message:</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={form.showChartAnalysis}
+                        onCheckedChange={v => {
+                          update("showChartAnalysis", v);
+                          if (!v) clearChart();
+                        }}
+                        data-testid="switch-chart-analysis"
+                      />
+                      <Label className="font-medium text-sm cursor-pointer" onClick={() => {
+                        const next = !form.showChartAnalysis;
+                        update("showChartAnalysis", next);
+                        if (!next) clearChart();
+                      }}>Chart Analysis</Label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={form.showRiskManagement}
+                        onCheckedChange={v => update("showRiskManagement", v)}
+                        data-testid="switch-risk-management"
+                      />
+                      <Label className="font-medium text-sm cursor-pointer" onClick={() => update("showRiskManagement", !form.showRiskManagement)}>Risk Management</Label>
+                    </div>
+                  </div>
+                </div>
+
+                {(form.showChartAnalysis || form.showRiskManagement) && (
+                  <div className="rounded-lg border border-border p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-amber-400" />
+                      <span className="font-semibold text-sm">Related Variables</span>
+                    </div>
+
+                    {form.showChartAnalysis && (
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-sm">TA Media (Image or Video)</Label>
+                        <input
+                          ref={chartFileRef}
+                          type="file"
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleChartFile(f); }}
+                          data-testid="input-chart-media-file"
+                        />
+                        <div
+                          className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                            chartDragging
+                              ? "border-primary bg-primary/5"
+                              : chartFile
+                                ? "border-green-500/50 bg-green-500/5"
+                                : "border-border hover:border-muted-foreground/50"
+                          }`}
+                          onDragOver={e => { e.preventDefault(); setChartDragging(true); }}
+                          onDragLeave={e => { e.preventDefault(); setChartDragging(false); }}
+                          onDrop={e => { e.preventDefault(); setChartDragging(false); const f = e.dataTransfer.files[0]; if (f) handleChartFile(f); }}
+                          onClick={() => !chartFile && chartFileRef.current?.click()}
+                          data-testid="dropzone-chart-media"
+                        >
+                          {chartFile ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+                                {chartMediaType === "image" ? <ImageIcon className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+                                <span className="font-medium text-sm">{chartFile.name}</span>
+                              </div>
+                              {chartPreviewUrl && chartMediaType === "image" && (
+                                <img src={chartPreviewUrl} alt="Preview" className="mx-auto max-h-48 rounded-lg object-contain" data-testid="img-chart-preview" />
+                              )}
+                              {chartPreviewUrl && chartMediaType === "video" && (
+                                <video src={chartPreviewUrl} controls className="mx-auto max-h-48 rounded-lg" data-testid="video-chart-preview" />
+                              )}
+                              <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); clearChart(); }} data-testid="button-clear-chart">
+                                <X className="h-3 w-3 mr-1" /> Remove
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                              <div>
+                                <p className="font-medium text-sm">Drag & drop a file here</p>
+                                <p className="text-xs text-muted-foreground">or click to browse (images/videos)</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Supported: images and video clips. Keep files small enough for Discord webhook limits.</p>
+                      </div>
+                    )}
+
+                    {form.showRiskManagement && (
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-sm">Risk Management</Label>
+                        <Textarea
+                          value={form.riskManagement}
+                          onChange={e => update("riskManagement", e.target.value)}
+                          placeholder="Enter Risk Management (e.g., position size, 0DTE rules, due diligence)"
+                          rows={4}
+                          data-testid="textarea-risk-management"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   className="w-full"
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={createSignal.isPending}
+                  disabled={createSignal.isPending || isSendingMultipart}
                   data-testid="button-send-signal"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  {createSignal.isPending ? "Sending..." : "Send Signal"}
+                  {(createSignal.isPending || isSendingMultipart) ? "Sending..." : "Send Signal"}
                 </Button>
               </div>
             </CardContent>
@@ -901,7 +1104,7 @@ export default function SendSignal() {
         </div>
 
         <div className="lg:sticky lg:top-6">
-          <LivePreview form={form} tradePlans={tradePlans} />
+          <LivePreview form={form} tradePlans={tradePlans} chartPreviewUrl={chartPreviewUrl} chartMediaType={chartMediaType} />
         </div>
       </div>
     </div>
