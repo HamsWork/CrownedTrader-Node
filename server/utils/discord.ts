@@ -1,6 +1,8 @@
 import type { SignalType, Signal } from "@shared/schema";
 import { renderTemplate, renderFieldsTemplate } from "./template";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 interface DiscordEmbed {
   title?: string;
   description?: string;
