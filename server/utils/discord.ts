@@ -3,13 +3,14 @@ import { renderTemplate, renderFieldsTemplate } from "./template";
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-interface DiscordEmbed {
+export interface DiscordEmbed {
   title?: string;
   description?: string;
   color?: number;
   fields?: Array<{ name: string; value: string; inline: boolean }>;
   footer?: { text: string };
   timestamp?: string;
+  image?: { url: string };
 }
 
 function hexToDecimal(hex: string): number {
@@ -71,16 +72,25 @@ export async function sendFileToDiscord(
   webhookUrl: string,
   filePath: string,
   fileName: string,
-  content?: string
+  content?: string,
+  embed?: DiscordEmbed
 ): Promise<boolean> {
   try {
     const fs = await import("fs");
     const fileBuffer = fs.readFileSync(filePath);
 
     const formData = new FormData();
-    if (content) {
-      formData.append("content", content);
+
+    if (embed) {
+      const payload: Record<string, unknown> = { embeds: [embed] };
+      if (content) payload.content = content;
+      formData.append("payload_json", JSON.stringify(payload));
+    } else {
+      if (content) {
+        formData.append("content", content);
+      }
     }
+
     const blob = new Blob([fileBuffer]);
     formData.append("file", blob, fileName);
 

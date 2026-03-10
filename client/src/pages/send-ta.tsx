@@ -13,6 +13,11 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
   mediaPreviewUrl: string | null;
   mediaType: "image" | "video" | null;
 }) {
+  const description = commentary.trim() || "\u2014";
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const dateStr = `Today at ${timeStr}`;
+
   return (
     <Card className="sticky top-20" data-testid="card-ta-live-preview">
       <CardContent className="pt-5">
@@ -24,30 +29,44 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
         </div>
 
         <div className="rounded-lg bg-[#1a1d23] border border-[#2a2d35] overflow-hidden">
-          <div className="p-4 space-y-3 text-sm text-[#dcddde]">
-            <div className="whitespace-pre-wrap break-words leading-relaxed" data-testid="text-ta-preview-commentary">
-              {commentary || <span className="text-[#72767d] italic">(No commentary)</span>}
+          <div className="p-4 space-y-2 text-sm text-[#dcddde]">
+            <p className="text-[#dcddde] text-sm font-medium" data-testid="text-ta-preview-everyone">@everyone</p>
+
+            <div className="flex gap-1">
+              <div className="w-1 rounded-full bg-[#5865F2] shrink-0" />
+              <div className="flex-1 pl-3 space-y-2">
+                <p className="font-bold text-white" data-testid="text-ta-preview-title-embed">Technical Analysis</p>
+                <div className="whitespace-pre-wrap break-words leading-relaxed text-[#dcddde]" data-testid="text-ta-preview-commentary">
+                  {description}
+                </div>
+
+                {mediaPreviewUrl && mediaType === "image" && (
+                  <div className="rounded overflow-hidden mt-2" data-testid="preview-ta-image">
+                    <img
+                      src={mediaPreviewUrl}
+                      alt="TA Preview"
+                      className="w-full max-h-[300px] object-contain rounded"
+                    />
+                  </div>
+                )}
+
+                {mediaPreviewUrl && mediaType === "video" && (
+                  <div className="rounded overflow-hidden mt-2" data-testid="preview-ta-video">
+                    <video
+                      src={mediaPreviewUrl}
+                      controls
+                      className="w-full max-h-[300px] rounded"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1 pt-1">
+                  <span className="text-[10px] text-[#72767d]">Crowned Trader</span>
+                  <span className="text-[10px] text-[#72767d]">•</span>
+                  <span className="text-[10px] text-[#72767d]">{dateStr}</span>
+                </div>
+              </div>
             </div>
-
-            {mediaPreviewUrl && mediaType === "image" && (
-              <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2" data-testid="preview-ta-image">
-                <img
-                  src={mediaPreviewUrl}
-                  alt="TA Preview"
-                  className="w-full max-h-[360px] object-contain"
-                />
-              </div>
-            )}
-
-            {mediaPreviewUrl && mediaType === "video" && (
-              <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2" data-testid="preview-ta-video">
-                <video
-                  src={mediaPreviewUrl}
-                  controls
-                  className="w-full max-h-[360px]"
-                />
-              </div>
-            )}
           </div>
 
           <div className="bg-[#12141a] border-t border-[#2a2d35] px-4 py-3 flex items-start gap-2">

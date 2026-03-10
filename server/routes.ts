@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
-import { buildEmbed, sendToDiscord, sendFileToDiscord } from "./utils/discord";
+import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import { hashPassword, comparePassword, toSafeUser, requireAuth, requireAdmin } from "./auth";
 import { z } from "zod";
@@ -343,20 +343,37 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Channel not found or missing webhook URL" });
       }
 
+      const description = (commentary || "").trim() || "\u2014";
+      const fileName = file ? (file.originalname || "ta_media").trim() : "";
+      const isImage = file ? (file.mimetype || "").startsWith("image/") : false;
+
+      const taEmbed: DiscordEmbed = {
+        title: "Technical Analysis",
+        description,
+        color: 0x5865F2,
+        timestamp: new Date().toISOString(),
+        footer: { text: "Crowned Trader" },
+      };
+
+      if (file && isImage) {
+        taEmbed.image = { url: `attachment://${fileName}` };
+      }
+
       let sent: boolean;
       if (file) {
         sent = await sendFileToDiscord(
           selectedChannel.webhookUrl,
           file.path,
-          file.originalname,
-          commentary || undefined
+          fileName,
+          "@everyone",
+          taEmbed
         );
         fs.unlink(file.path, () => {});
       } else {
         sent = await sendToDiscord(
           selectedChannel.webhookUrl,
-          { description: commentary },
-          undefined
+          taEmbed,
+          "@everyone"
         );
       }
 
