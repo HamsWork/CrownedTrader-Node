@@ -33,10 +33,16 @@ const TARGET_TYPES = ["Underlying Price Based", "Symbol Price Based"];
 const RAISE_SL_OPTIONS = ["Off", "Break even (entry)", "+5%", "+10%", "Trail"];
 const TRAILING_STOP_OPTIONS = ["Off", "5%", "10%", "15%", "20%"];
 
-const DEFAULT_LEVELS: TakeProfitLevel[] = [
+const DEFAULT_LEVELS_SYMBOL: TakeProfitLevel[] = [
   { levelPct: 10, takeOffPct: 50, raiseStopLossTo: "Break even (entry)", trailingStop: "Off" },
   { levelPct: 20, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
   { levelPct: 30, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
+];
+
+const DEFAULT_LEVELS_UNDERLYING: TakeProfitLevel[] = [
+  { levelPct: 185, takeOffPct: 50, raiseStopLossTo: "Break even (entry)", trailingStop: "Off" },
+  { levelPct: 190, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
+  { levelPct: 195, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
 ];
 
 function computePrice(entryPrice: number, levelPct: number) {
@@ -359,10 +365,26 @@ function PlanFormModal({
   const [name, setName] = useState(editingPlan?.name || "");
   const [targetType, setTargetType] = useState(editingPlan?.targetType || "Symbol Price Based");
   const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct || "10");
-  const [levels, setLevels] = useState<TakeProfitLevel[]>(
-    editingPlan?.takeProfitLevels?.length ? editingPlan.takeProfitLevels : [...DEFAULT_LEVELS]
-  );
+  const defaultLevels = editingPlan?.takeProfitLevels?.length
+    ? editingPlan.takeProfitLevels
+    : (editingPlan?.targetType === "Underlying Price Based" ? [...DEFAULT_LEVELS_UNDERLYING] : [...DEFAULT_LEVELS_SYMBOL]);
+  const [levels, setLevels] = useState<TakeProfitLevel[]>(defaultLevels);
   const ep = 5;
+
+  function handleTargetTypeChange(newType: string) {
+    const wasUnderlying = targetType === "Underlying Price Based";
+    const isNowUnderlying = newType === "Underlying Price Based";
+    setTargetType(newType);
+    if (wasUnderlying !== isNowUnderlying) {
+      if (isNowUnderlying) {
+        setLevels([...DEFAULT_LEVELS_UNDERLYING]);
+        setStopLossPct("175");
+      } else {
+        setLevels([...DEFAULT_LEVELS_SYMBOL]);
+        setStopLossPct("10");
+      }
+    }
+  }
   const slPct = parseFloat(stopLossPct) || 10;
 
   function handleLevelChange(index: number, updated: TakeProfitLevel) {
@@ -371,9 +393,10 @@ function PlanFormModal({
 
   function addLevel() {
     const lastPct = levels.length > 0 ? levels[levels.length - 1].levelPct : 0;
+    const increment = targetType === "Underlying Price Based" ? 5 : 10;
     setLevels((prev) => [
       ...prev,
-      { levelPct: lastPct + 10, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
+      { levelPct: lastPct + increment, takeOffPct: 50, raiseStopLossTo: "Off", trailingStop: "Off" },
     ]);
   }
 
@@ -454,7 +477,7 @@ function PlanFormModal({
               </div>
               <div className="space-y-2">
                 <Label className="font-semibold text-sm">Trade Plan Type</Label>
-                <Select value={targetType} onValueChange={setTargetType}>
+                <Select value={targetType} onValueChange={handleTargetTypeChange}>
                   <SelectTrigger data-testid="select-target-type">
                     <SelectValue />
                   </SelectTrigger>
