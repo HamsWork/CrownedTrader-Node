@@ -595,7 +595,7 @@ function PlanFormModal({
                   index={i}
                   level={level}
                   entryPrice={ep}
-                  canRemove={levels.length > 1}
+                  canRemove={i > 0}
                   isUnderlyingBased={targetType === "Underlying Price Based"}
                   onChange={(updated) => handleLevelChange(i, updated)}
                   onRemove={() => removeLevel(i)}
