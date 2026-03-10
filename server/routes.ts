@@ -1155,6 +1155,53 @@ export async function registerRoutes(
         "package.json": "Project dependencies and scripts",
       };
 
+      const lastUpdateNotes: Record<string, string> = {
+        "server/index.ts": "Stable entry point — no recent changes",
+        "server/routes.ts": "Added /api/leaderboard endpoint with period filtering, /api/audit endpoint for system codebase overview, PATCH /api/signals/:id/data for updating signal data fields",
+        "server/storage.ts": "Added updateSignalData() method for merging signal data fields; extended IStorage interface",
+        "server/auth.ts": "Session-based auth with Passport local strategy — stable",
+        "server/db.ts": "Database connection pool — stable, no recent changes",
+        "server/seed.ts": "Seeds admin/trader1 users and 30 Discord templates — stable",
+        "server/vite.ts": "Vite dev server middleware integration — stable",
+        "server/static.ts": "Static file serving for production — stable",
+        "server/utils/discord.ts": "Discord webhook sender with TLS override — stable",
+        "server/utils/template.ts": "Template rendering with Handlebars-style variable substitution — stable",
+        "server/utils/tradesync.ts": "TradeSync API integration for auto-tracking trade signals — stable",
+        "server/utils/validation.ts": "Zod-based request validation helpers — stable",
+        "shared/schema.ts": "Added status, closedAt, closePrice, closeNote fields to signals table; exported TakeProfitLevel type",
+        "shared/template-definitions.ts": "30 Discord embed templates across Options, Shares, LETF, LETF Option, Crypto categories — stable",
+        "shared/template-render.ts": "Template rendering logic for Discord embeds — stable",
+        "client/src/App.tsx": "Added routes for /history (Signal History), /audit (System Audit); imported new page components",
+        "client/src/main.tsx": "React entry point — stable",
+        "client/src/pages/dashboard.tsx": "Removed Recent Signals section; added Crowned Traders Leaderboard with period filtering (This Week, Last Week, This Month, Last Month)",
+        "client/src/pages/send-signal.tsx": "Unified Send Signal form with crypto detection, LETF underlying map, live Discord preview, TradeSync integration",
+        "client/src/pages/send-ta.tsx": "Send Technical Analysis page — stable",
+        "client/src/pages/position-management.tsx": "Rebuilt with tab navigation (Open/Closed/All), Partial Exit modal with Discord preview and TP level detection, Full Exit modal with Take Profit/Stop Loss/Trailing Stop reason tabs, Switch to Manual tracking",
+        "client/src/pages/signal-history.tsx": "Redesigned as card-based layout grouped by date, with summary stats (Total Sent, Success, Failed), expandable raw payload, copy and Discord preview actions",
+        "client/src/pages/trade-plans.tsx": "Trade plan CRUD with take profit levels, stop loss, trailing stop configuration — stable",
+        "client/src/pages/discord-templates.tsx": "Admin template editor for 30 Discord embed templates — stable",
+        "client/src/pages/user-management.tsx": "Admin user CRUD (create, edit, delete users) — stable",
+        "client/src/pages/login.tsx": "Login page with session-based auth — stable",
+        "client/src/pages/not-found.tsx": "404 page — stable",
+        "client/src/pages/system-audit.tsx": "System audit page showing codebase structure, tech stack, file descriptions and last update explanations",
+        "client/src/components/app-sidebar.tsx": "Added Signal History and System Audit nav items; uses lucide History and ShieldCheck icons",
+        "client/src/components/signal-card.tsx": "Signal display card — stable",
+        "client/src/components/stat-card.tsx": "Dashboard stat card — stable",
+        "client/src/components/empty-state.tsx": "Empty state placeholder — stable",
+        "client/src/components/theme-provider.tsx": "Dark/light theme toggle with localStorage — stable",
+        "client/src/components/take-profit-level-form.tsx": "Take profit level form with trailing stop and raise SL options — stable",
+        "client/src/hooks/use-auth.ts": "Auth hook with login/logout mutations — stable",
+        "client/src/hooks/use-signals.ts": "Signal and signal type data fetching hooks — stable",
+        "client/src/hooks/use-toast.ts": "Toast notification hook — stable",
+        "client/src/lib/queryClient.ts": "TanStack Query client with default fetcher — stable",
+        "client/src/lib/constants.ts": "APP_NAME constant — stable",
+        "client/src/lib/utils.ts": "cn() utility — stable",
+        "drizzle.config.ts": "Drizzle config with session table filter — stable",
+        "vite.config.ts": "Vite config with path aliases — stable",
+        "tailwind.config.ts": "Tailwind config with dark mode class — stable",
+        "package.json": "Project dependencies — stable",
+      };
+
       function categorize(filePath: string): string {
         if (filePath.startsWith("server/utils/")) return "Server Utilities";
         if (filePath.startsWith("server/")) return "Server Core";
@@ -1192,6 +1239,7 @@ export async function registerRoutes(
           categories[cat].files.push({
             path: relPath,
             description: fileDescriptions[relPath] || relPath,
+            lastUpdateNote: lastUpdateNotes[relPath] || "No recent changes",
             lines: countLines(fullPath),
             lastModified: getModTime(fullPath),
           });

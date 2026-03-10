@@ -7,6 +7,7 @@ import { format } from "date-fns";
 type AuditFile = {
   path: string;
   description: string;
+  lastUpdateNote: string;
   lines: number;
   lastModified: string;
 };
@@ -157,8 +158,11 @@ export default function SystemAudit() {
                         <td className="px-4 py-2.5">
                           <code className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded">{file.path}</code>
                         </td>
-                        <td className="px-4 py-2.5 text-sm text-muted-foreground">
-                          {file.description}
+                        <td className="px-4 py-2.5">
+                          <div className="text-sm text-muted-foreground">{file.description}</div>
+                          <div className="text-[11px] text-muted-foreground/70 mt-0.5 italic" data-testid={`text-update-note-${file.path.replace(/[/.]/g, "-")}`}>
+                            Last updated: {file.lastUpdateNote}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-right text-xs font-mono text-muted-foreground">
                           {file.lines}
