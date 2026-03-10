@@ -27,6 +27,7 @@ client/src/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
     send-signal.tsx        - Unified trade entry form with live Discord preview
+    send-ta.tsx            - Technical Analysis post with media upload and Discord preview
     trade-plans.tsx        - Trade plan tracking with target/stop-loss management
     signal-history.tsx     - Browsable signal history with search/filter
     discord-templates.tsx  - Discord Message Templates page (admin-only, category tabs + cards)
@@ -71,7 +72,8 @@ shared/
   - Template cards with Preview and Send Manual buttons
   - Preview dialog shows full Discord embed with sample data
   - Send Manual dialog with form fields, channel selector, and live preview
-- **Signal Submission**: Unified trade entry form (no signal type selector) with live Discord embed preview
+- **Signal Submission**: Unified trade entry form (no signal type selector) with live Discord embed preview, trade plan selection
+- **Send TA**: Post technical analysis with image/video upload and optional commentary to Discord channels via webhooks; drag & drop media, live Discord preview
 - **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
   - Channels stored on user record; channel selection uses user's own channels
@@ -108,6 +110,7 @@ shared/
 - `GET /api/users/:id/channels` - Get user's channels (admin)
 - `PUT /api/users/:id/channels` - Replace user's channels (admin)
 - `DELETE /api/users/:id` - Delete user (admin, cannot delete self)
+- `POST /api/send-ta` - Send TA (auth, multipart/form-data with media file + channel + commentary)
 - `GET/POST /api/signal-types` - Signal types (GET: auth, POST: admin)
 - `PATCH/DELETE /api/signal-types/:id` - Signal type CRUD (admin)
 - `GET/POST /api/signals` - Signals (auth, signalTypeId optional)

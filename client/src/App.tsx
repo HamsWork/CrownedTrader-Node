@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import SendSignal from "@/pages/send-signal";
+import SendTA from "@/pages/send-ta";
 import SignalHistory from "@/pages/signal-history";
 import DiscordTemplatesPage from "@/pages/discord-templates";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
@@ -26,6 +27,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/send" component={SendSignal} />
+      <Route path="/send-ta" component={SendTA} />
       <Route path="/trade-plans" component={TradePlansPage} />
       <Route path="/history" component={SignalHistory} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}

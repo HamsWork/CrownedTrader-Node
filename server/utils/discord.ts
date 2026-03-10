@@ -64,3 +64,43 @@ export async function sendToDiscord(
     return false;
   }
 }
+
+export async function sendFileToDiscord(
+  webhookUrl: string,
+  filePath: string,
+  fileName: string,
+  content?: string
+): Promise<boolean> {
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const fileBuffer = fs.readFileSync(filePath);
+
+    const boundary = "----FormBoundary" + Math.random().toString(36).slice(2);
+    const parts: Buffer[] = [];
+
+    if (content) {
+      parts.push(Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="content"\r\n\r\n${content}\r\n`
+      ));
+    }
+
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
+    ));
+    parts.push(fileBuffer);
+    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body: body,
+    });
+    return res.ok;
+  } catch (err) {
+    console.error("Discord file webhook error:", err);
+    return false;
+  }
+}

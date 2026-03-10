@@ -2,10 +2,17 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
-import { buildEmbed, sendToDiscord } from "./utils/discord";
+import { buildEmbed, sendToDiscord, sendFileToDiscord } from "./utils/discord";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import { hashPassword, comparePassword, toSafeUser, requireAuth, requireAdmin } from "./auth";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir, limits: { fileSize: 25 * 1024 * 1024 } });
 
 export async function registerRoutes(
   httpServer: Server,
@@ -290,6 +297,45 @@ export async function registerRoutes(
     }
     await storage.deleteTradePlan(Number(req.params.id));
     res.status(204).send();
+  });
+
+  app.post("/api/send-ta", requireAuth, upload.single("media"), async (req, res) => {
+    try {
+      const currentUser = (req as any).user;
+      const { channel, commentary } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: "Media file is required" });
+      }
+      if (!channel) {
+        return res.status(400).json({ message: "Destination channel is required" });
+      }
+
+      const userChannels = currentUser.discordChannels || [];
+      const selectedChannel = userChannels.find((ch: any) => ch.name === channel);
+      if (!selectedChannel || !selectedChannel.webhookUrl) {
+        return res.status(400).json({ message: "Channel not found or missing webhook URL" });
+      }
+
+      const sent = await sendFileToDiscord(
+        selectedChannel.webhookUrl,
+        file.path,
+        file.originalname,
+        commentary || undefined
+      );
+
+      fs.unlink(file.path, () => {});
+
+      if (!sent) {
+        return res.status(502).json({ message: "Failed to send to Discord" });
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Send TA error:", err);
+      res.status(500).json({ message: "Failed to send TA" });
+    }
   });
 
   app.get("/api/ticker-search", requireAuth, async (req, res) => {

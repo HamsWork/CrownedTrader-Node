@@ -197,7 +197,7 @@ interface TradeForm {
 }
 
 function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradePlan[] }) {
-  const selectedPlan = tradePlans.find(p => p.id.toString() === form.tradePlanId);
+  const selectedPlan = (tradePlans || []).find(p => p.id.toString() === form.tradePlanId);
   const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
   const levels = selectedPlan?.takeProfitLevels || [];

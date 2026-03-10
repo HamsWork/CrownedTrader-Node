@@ -1,4 +1,4 @@
-import { LayoutDashboard, Send, History, MessageSquare, Users, LogOut, Crown, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Send, History, MessageSquare, Users, LogOut, Crown, ClipboardList, TrendingUp } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ import { APP_NAME } from "@/lib/constants";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: false },
   { title: "Send Signal", url: "/send", icon: Send, adminOnly: false },
+  { title: "Send TA", url: "/send-ta", icon: TrendingUp, adminOnly: false },
   { title: "Trade Plans", url: "/trade-plans", icon: ClipboardList, adminOnly: false },
   { title: "History", url: "/history", icon: History, adminOnly: false },
 ];
