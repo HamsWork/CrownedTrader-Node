@@ -668,70 +668,67 @@ export default function SendSignal() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-border">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                    onClick={() => setTradePlanOpen(!tradePlanOpen)}
-                    data-testid="button-toggle-trade-plan"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4 text-blue-400" />
-                      <span className="font-semibold text-sm">Trade Plan</span>
-                      {form.tradePlanId && (
-                        <span className="text-xs text-muted-foreground">
-                          — {form.tradePlanId === "live-custom" ? "Live Custom" : tradePlans.find(p => p.id.toString() === form.tradePlanId)?.name || ""}
-                        </span>
-                      )}
-                    </div>
-                    {tradePlanOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                  </button>
+                <div className="rounded-lg border border-border p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-blue-400" />
+                    <span className="font-semibold text-sm">Trade Plan</span>
+                  </div>
 
-                  {tradePlanOpen && (
-                    <div className="px-4 pb-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label className="font-semibold text-sm">Select Trade Plan</Label>
-                        <Select value={form.tradePlanId} onValueChange={v => {
-                          update("tradePlanId", v);
-                          if (v === "live-custom") {
-                            setForm(prev => ({
-                              ...prev,
-                              tradePlanId: v,
-                              customTargetType: "Symbol Price Based",
-                              customStopLossPct: "10.00",
-                              customLevels: [...DEFAULT_LEVELS_SYMBOL],
-                            }));
-                          }
-                        }}>
-                          <SelectTrigger data-testid="select-trade-plan">
-                            <SelectValue placeholder="Select a trade plan" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="live-custom" data-testid="option-trade-plan-live-custom">
-                              <span className="flex items-center gap-2">
-                                <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
-                                Live Custom
-                              </span>
-                            </SelectItem>
-                            {tradePlans.length > 0 && (
-                              <SelectSeparator />
-                            )}
-                            {tradePlans.map(plan => (
-                              <SelectItem key={plan.id} value={plan.id.toString()} data-testid={`option-trade-plan-${plan.id}`}>
-                                <span className="flex items-center gap-2">
-                                  <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
-                                  {plan.name} {plan.isDefault ? "(Default)" : ""}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {tradePlans.length === 0 && form.tradePlanId !== "live-custom" && (
-                          <p className="text-xs text-muted-foreground">No trade plans found. Create one on the Trade Plans page or use Live Custom.</p>
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Select Trade Plan</Label>
+                    <Select value={form.tradePlanId} onValueChange={v => {
+                      update("tradePlanId", v);
+                      if (v === "live-custom") {
+                        setForm(prev => ({
+                          ...prev,
+                          tradePlanId: v,
+                          customTargetType: "Symbol Price Based",
+                          customStopLossPct: "10.00",
+                          customLevels: [...DEFAULT_LEVELS_SYMBOL],
+                        }));
+                      }
+                    }}>
+                      <SelectTrigger data-testid="select-trade-plan">
+                        <SelectValue placeholder="Select a trade plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="live-custom" data-testid="option-trade-plan-live-custom">
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
+                            Live Custom
+                          </span>
+                        </SelectItem>
+                        {tradePlans.length > 0 && (
+                          <SelectSeparator />
                         )}
-                      </div>
+                        {tradePlans.map(plan => (
+                          <SelectItem key={plan.id} value={plan.id.toString()} data-testid={`option-trade-plan-${plan.id}`}>
+                            <span className="flex items-center gap-2">
+                              <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                              {plan.name} {plan.isDefault ? "(Default)" : ""}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {tradePlans.length === 0 && form.tradePlanId !== "live-custom" && (
+                      <p className="text-xs text-muted-foreground">No trade plans found. Create one on the Trade Plans page or use Live Custom.</p>
+                    )}
+                  </div>
 
-                      {form.tradePlanId === "live-custom" && (
+                  {form.tradePlanId === "live-custom" && (
+                    <>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between py-2 hover:text-foreground transition-colors"
+                        onClick={() => setTradePlanOpen(!tradePlanOpen)}
+                        data-testid="button-toggle-trade-plan"
+                      >
+                        <span className="text-sm font-semibold">Custom Trade Plan Settings</span>
+                        {tradePlanOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </button>
+
+                      {tradePlanOpen && (
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label className="font-semibold text-sm">Trade Plan Type</Label>
@@ -884,7 +881,7 @@ export default function SendSignal() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
 
