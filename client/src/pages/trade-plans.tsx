@@ -452,8 +452,8 @@ function PlanFormModal({
 
             <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid="section-stop-loss">
               <h4 className="font-semibold text-sm">Stop Loss</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
+              <div className="flex items-end gap-3">
+                <div className="space-y-1 w-24">
                   <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
                   <div className="flex items-center gap-1">
                     <Input
@@ -467,7 +467,7 @@ function PlanFormModal({
                     <span className="text-xs text-muted-foreground shrink-0">%</span>
                   </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 w-24">
                   <Label className="text-xs text-muted-foreground">Price</Label>
                   <Input
                     type="text"
