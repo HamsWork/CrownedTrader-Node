@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateSignal } from "@/hooks/use-signals";
+import { useCreateSignal, useTradePlans } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { Send, Settings, Rocket, Info, Search } from "lucide-react";
+import type { TradePlan } from "@shared/schema";
 
 const TRADE_TYPES = ["Scalp", "Swing", "Leap"];
 const TRADE_TRACKING = ["Manual updates", "Automatic"];
@@ -192,28 +193,15 @@ interface TradeForm {
   optionPrice: string;
   stockPrice: string;
   entryPrice: string;
-  stopLossPct: string;
-  tp1Pct: string;
-  tp2Pct: string;
-  tp3Pct: string;
+  tradePlanId: string;
 }
 
-function computeTargets(entry: number, tp1Pct: number, tp2Pct: number, tp3Pct: number) {
-  return {
-    tp1: (entry * (1 + tp1Pct / 100)).toFixed(2),
-    tp2: (entry * (1 + tp2Pct / 100)).toFixed(2),
-    tp3: (entry * (1 + tp3Pct / 100)).toFixed(2),
-  };
-}
-
-function LivePreview({ form }: { form: TradeForm }) {
+function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradePlan[] }) {
+  const selectedPlan = tradePlans.find(p => p.id.toString() === form.tradePlanId);
   const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
-  const tp1Pct = parseFloat(form.tp1Pct) || 10;
-  const tp2Pct = parseFloat(form.tp2Pct) || 20;
-  const tp3Pct = parseFloat(form.tp3Pct) || 30;
-  const slPct = parseFloat(form.stopLossPct) || 10;
-  const targets = computeTargets(entry, tp1Pct, tp2Pct, tp3Pct);
+  const levels = selectedPlan?.takeProfitLevels || [];
+  const slPct = parseFloat(selectedPlan?.stopLossPct || "10");
 
   return (
     <Card className="sticky top-20" data-testid="card-live-preview">
@@ -273,34 +261,46 @@ function LivePreview({ form }: { form: TradeForm }) {
               </div>
             )}
 
-            <div>
-              <p className="font-bold text-white flex items-center gap-1.5">
-                <span>📋</span> Trade Plan
-              </p>
-              <p className="mt-1">
-                <span className="text-[#72767d]">🎯</span>{" "}
-                Targets: ${targets.tp1} (+{tp1Pct}%), ${targets.tp2} (+{tp2Pct}%), ${targets.tp3} (+{tp3Pct}%)
-              </p>
-              <p>
-                <span className="text-[#72767d]">🔴</span>{" "}
-                Stop Loss: -{slPct}%
-              </p>
-            </div>
+            {selectedPlan ? (
+              <>
+                <div>
+                  <p className="font-bold text-white flex items-center gap-1.5">
+                    <span>📋</span> Trade Plan — {selectedPlan.name}
+                  </p>
+                  <p className="mt-1">
+                    <span className="text-[#72767d]">🎯</span>{" "}
+                    Targets: {levels.map((l, i) => {
+                      const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
+                      return `$${price} (+${l.levelPct}%)`;
+                    }).join(", ")}
+                  </p>
+                  <p>
+                    <span className="text-[#72767d]">🔴</span>{" "}
+                    Stop Loss: -{slPct}%
+                  </p>
+                </div>
 
-            <div>
-              <p className="font-bold text-white flex items-center gap-1.5">
-                <span>🔥</span> Take Profit Plan
-              </p>
-              <p className="text-xs mt-1 leading-relaxed">
-                Take Profit (1): At {tp1Pct}% take off 50% of position and raise stop loss to break even.
-              </p>
-              <p className="text-xs leading-relaxed">
-                Take Profit (2): At {tp2Pct}% take off 50% of remaining position.
-              </p>
-              <p className="text-xs leading-relaxed">
-                Take Profit (3): At {tp3Pct}% take off 50.0% of remaining position.
-              </p>
-            </div>
+                <div>
+                  <p className="font-bold text-white flex items-center gap-1.5">
+                    <span>🔥</span> Take Profit Plan
+                  </p>
+                  {levels.map((l, i) => (
+                    <p key={i} className="text-xs mt-1 leading-relaxed">
+                      Take Profit ({i + 1}): At {l.levelPct}% take off {l.takeOffPct}% of {i === 0 ? "position" : "remaining position"}
+                      {l.raiseStopLossTo !== "Off" && ` and raise stop loss to ${l.raiseStopLossTo === "Break even" ? "break even" : l.customRaiseSLValue}`}
+                      {l.trailingStop === "On" && ` with ${l.trailingStopPct}% trailing stop`}.
+                    </p>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>📋</span> Trade Plan
+                </p>
+                <p className="text-xs mt-1 text-[#72767d] italic">No trade plan selected</p>
+              </div>
+            )}
 
             <p className="text-xs text-[#72767d] italic">
               Disclaimer: Not financial advice. Trade at your own risk.
@@ -325,6 +325,7 @@ export default function SendSignal() {
   const { data: currentUser } = useAuth();
   const createSignal = useCreateSignal();
   const { toast } = useToast();
+  const { data: tradePlans = [] } = useTradePlans();
 
   const userChannels = currentUser?.discordChannels || [];
   const [tickerDetails, setTickerDetails] = useState<TickerDetails | null>(null);
@@ -343,10 +344,7 @@ export default function SendSignal() {
     optionPrice: "",
     stockPrice: "",
     entryPrice: "",
-    stopLossPct: "10",
-    tp1Pct: "10",
-    tp2Pct: "20",
-    tp3Pct: "30",
+    tradePlanId: "",
   });
 
   useEffect(() => {
@@ -354,6 +352,13 @@ export default function SendSignal() {
       setForm(prev => ({ ...prev, channel: userChannels[0].name }));
     }
   }, [userChannels]);
+
+  useEffect(() => {
+    if (tradePlans.length > 0 && !form.tradePlanId) {
+      const defaultPlan = tradePlans.find(p => p.isDefault) || tradePlans[0];
+      setForm(prev => ({ ...prev, tradePlanId: defaultPlan.id.toString() }));
+    }
+  }, [tradePlans]);
 
   function update<K extends keyof TradeForm>(key: K, value: TradeForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -371,11 +376,14 @@ export default function SendSignal() {
       return;
     }
 
-    const tp1Pct = parseFloat(form.tp1Pct) || 10;
-    const tp2Pct = parseFloat(form.tp2Pct) || 20;
-    const tp3Pct = parseFloat(form.tp3Pct) || 30;
-    const slPct = parseFloat(form.stopLossPct) || 10;
-    const targets = computeTargets(entry, tp1Pct, tp2Pct, tp3Pct);
+    if (!form.tradePlanId) {
+      toast({ title: "Please select a Trade Plan", variant: "destructive" });
+      return;
+    }
+
+    const selectedPlan = tradePlans.find(p => p.id.toString() === form.tradePlanId);
+    const levels = selectedPlan?.takeProfitLevels || [];
+    const slPct = parseFloat(selectedPlan?.stopLossPct || "10");
 
     const signalData: Record<string, string> = {
       ticker: form.ticker,
@@ -384,14 +392,15 @@ export default function SendSignal() {
       is_option: form.isOption ? "true" : "false",
       stock_price: form.stockPrice || "0",
       entry_price: entry.toString(),
+      trade_plan_id: form.tradePlanId,
       stop_loss_pct: slPct.toString(),
-      tp1_pct: tp1Pct.toString(),
-      tp2_pct: tp2Pct.toString(),
-      tp3_pct: tp3Pct.toString(),
-      tp1_target: targets.tp1,
-      tp2_target: targets.tp2,
-      tp3_target: targets.tp3,
     };
+
+    levels.forEach((l, i) => {
+      const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
+      signalData[`tp${i + 1}_pct`] = l.levelPct.toString();
+      signalData[`tp${i + 1}_target`] = price;
+    });
 
     if (form.isOption) {
       signalData.option_type = form.optionType;
@@ -611,56 +620,23 @@ export default function SendSignal() {
                   </div>
                 )}
 
-                <div className="space-y-3 rounded-lg border border-border p-4">
-                  <span className="font-semibold text-sm">Risk Management</span>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm">Stop Loss %</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      placeholder="10"
-                      value={form.stopLossPct}
-                      onChange={e => update("stopLossPct", e.target.value)}
-                      data-testid="input-stop-loss"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-sm">TP1 %</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        placeholder="10"
-                        value={form.tp1Pct}
-                        onChange={e => update("tp1Pct", e.target.value)}
-                        data-testid="input-tp1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm">TP2 %</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        placeholder="20"
-                        value={form.tp2Pct}
-                        onChange={e => update("tp2Pct", e.target.value)}
-                        data-testid="input-tp2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm">TP3 %</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        placeholder="30"
-                        value={form.tp3Pct}
-                        onChange={e => update("tp3Pct", e.target.value)}
-                        data-testid="input-tp3"
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  <Label className="font-semibold text-sm">Trade Plan</Label>
+                  <Select value={form.tradePlanId} onValueChange={v => update("tradePlanId", v)}>
+                    <SelectTrigger data-testid="select-trade-plan">
+                      <SelectValue placeholder="Select a trade plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tradePlans.map(plan => (
+                        <SelectItem key={plan.id} value={plan.id.toString()} data-testid={`option-trade-plan-${plan.id}`}>
+                          {plan.name} {plan.isDefault ? "(Default)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tradePlans.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No trade plans found. Create one on the Trade Plans page.</p>
+                  )}
                 </div>
 
                 <Button
@@ -679,7 +655,7 @@ export default function SendSignal() {
         </div>
 
         <div className="lg:sticky lg:top-6">
-          <LivePreview form={form} />
+          <LivePreview form={form} tradePlans={tradePlans} />
         </div>
       </div>
     </div>
