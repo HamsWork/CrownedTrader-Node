@@ -443,7 +443,7 @@ function TakeProfitLevelForm({
           <Label className="text-xs text-muted-foreground">Trailing Stop:</Label>
           <Select
             value={level.trailingStop}
-            onValueChange={(v) => onChange({ ...level, trailingStop: v, trailingStopPct: v === "On" ? (level.trailingStopPct || "") : "" })}
+            onValueChange={(v) => onChange({ ...level, trailingStop: v, trailingStopPct: v === "On" ? (level.trailingStopPct || "5") : "" })}
           >
             <SelectTrigger className="text-sm" data-testid={`select-trailing-stop-${index}`}>
               <SelectValue />
