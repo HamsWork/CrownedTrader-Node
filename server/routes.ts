@@ -1086,5 +1086,156 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/audit", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Admin only" });
+      }
+
+      const fs = await import("fs");
+      const path = await import("path");
+
+      const projectRoot = process.cwd();
+
+      const categories: Record<string, { files: { path: string; description: string; lines: number; lastModified: string }[] }> = {
+        "Server Core": { files: [] },
+        "Server Utilities": { files: [] },
+        "Shared / Schema": { files: [] },
+        "Client Pages": { files: [] },
+        "Client Components": { files: [] },
+        "Client Hooks & Libs": { files: [] },
+        "Config": { files: [] },
+      };
+
+      const fileDescriptions: Record<string, string> = {
+        "server/index.ts": "Application entry point, starts Express server",
+        "server/routes.ts": "All API route handlers and endpoint definitions",
+        "server/storage.ts": "Database storage interface and implementation (Drizzle ORM)",
+        "server/auth.ts": "Session-based authentication with Passport.js",
+        "server/db.ts": "Database connection pool configuration",
+        "server/seed.ts": "Database seeding with default users and signal types",
+        "server/vite.ts": "Vite dev server integration for development",
+        "server/static.ts": "Static file serving for production builds",
+        "server/utils/discord.ts": "Discord webhook integration for sending embeds",
+        "server/utils/template.ts": "Discord message template rendering engine",
+        "server/utils/tradesync.ts": "TradeSync API client for pushing trade signals",
+        "server/utils/validation.ts": "Request validation utilities",
+        "shared/schema.ts": "Database schema, Zod validators, and TypeScript types",
+        "shared/template-definitions.ts": "30 Discord embed template definitions",
+        "shared/template-render.ts": "Template rendering logic for Discord embeds",
+        "client/src/App.tsx": "Root React component with routing and layout",
+        "client/src/main.tsx": "React application entry point",
+        "client/src/pages/dashboard.tsx": "Dashboard with stats and leaderboard",
+        "client/src/pages/send-signal.tsx": "Send Signal form with live Discord preview",
+        "client/src/pages/send-ta.tsx": "Send Technical Analysis page",
+        "client/src/pages/position-management.tsx": "Position tracking with partial/full exit modals",
+        "client/src/pages/signal-history.tsx": "Signal history browser with search and filtering",
+        "client/src/pages/trade-plans.tsx": "Trade plan management (take profit levels, stop loss)",
+        "client/src/pages/discord-templates.tsx": "Discord template editor (admin)",
+        "client/src/pages/user-management.tsx": "User CRUD management (admin)",
+        "client/src/pages/login.tsx": "Login page",
+        "client/src/pages/not-found.tsx": "404 page",
+        "client/src/pages/system-audit.tsx": "System audit and codebase status page",
+        "client/src/components/app-sidebar.tsx": "Main navigation sidebar",
+        "client/src/components/signal-card.tsx": "Signal display card component",
+        "client/src/components/stat-card.tsx": "Dashboard stat card component",
+        "client/src/components/empty-state.tsx": "Empty state placeholder component",
+        "client/src/components/theme-provider.tsx": "Dark/light theme provider",
+        "client/src/components/take-profit-level-form.tsx": "Take profit level form component",
+        "client/src/hooks/use-auth.ts": "Authentication React hook",
+        "client/src/hooks/use-signals.ts": "Signal data fetching hooks",
+        "client/src/hooks/use-toast.ts": "Toast notification hook",
+        "client/src/lib/queryClient.ts": "TanStack Query client configuration",
+        "client/src/lib/constants.ts": "Application constants",
+        "client/src/lib/utils.ts": "Utility functions (cn, etc.)",
+        "drizzle.config.ts": "Drizzle ORM configuration",
+        "vite.config.ts": "Vite bundler configuration",
+        "tailwind.config.ts": "Tailwind CSS configuration",
+        "package.json": "Project dependencies and scripts",
+      };
+
+      function categorize(filePath: string): string {
+        if (filePath.startsWith("server/utils/")) return "Server Utilities";
+        if (filePath.startsWith("server/")) return "Server Core";
+        if (filePath.startsWith("shared/")) return "Shared / Schema";
+        if (filePath.startsWith("client/src/pages/")) return "Client Pages";
+        if (filePath.startsWith("client/src/components/") && !filePath.includes("/ui/")) return "Client Components";
+        if (filePath.startsWith("client/src/hooks/") || filePath.startsWith("client/src/lib/")) return "Client Hooks & Libs";
+        return "Config";
+      }
+
+      function countLines(fullPath: string): number {
+        try {
+          const content = fs.readFileSync(fullPath, "utf-8");
+          return content.split("\n").length;
+        } catch {
+          return 0;
+        }
+      }
+
+      function getModTime(fullPath: string): string {
+        try {
+          const stat = fs.statSync(fullPath);
+          return stat.mtime.toISOString();
+        } catch {
+          return new Date().toISOString();
+        }
+      }
+
+      const sourceFiles = Object.keys(fileDescriptions);
+      for (const relPath of sourceFiles) {
+        const fullPath = path.join(projectRoot, relPath);
+        if (!fs.existsSync(fullPath)) continue;
+        const cat = categorize(relPath);
+        if (categories[cat]) {
+          categories[cat].files.push({
+            path: relPath,
+            description: fileDescriptions[relPath] || relPath,
+            lines: countLines(fullPath),
+            lastModified: getModTime(fullPath),
+          });
+        }
+      }
+
+      const totalFiles = Object.values(categories).reduce((s, c) => s + c.files.length, 0);
+      const totalLines = Object.values(categories).reduce((s, c) => s + c.files.reduce((ls, f) => ls + f.lines, 0), 0);
+
+      const allFiles = Object.values(categories).flatMap(c => c.files);
+      const lastUpdated = allFiles.length > 0
+        ? allFiles.reduce((latest, f) => f.lastModified > latest ? f.lastModified : latest, allFiles[0].lastModified)
+        : new Date().toISOString();
+
+      res.json({
+        projectName: "Crowned Trader",
+        version: "1.0.0",
+        lastUpdated,
+        totalFiles,
+        totalLines,
+        categories,
+        techStack: [
+          { name: "Node.js", category: "Runtime" },
+          { name: "Express", category: "Backend Framework" },
+          { name: "PostgreSQL", category: "Database" },
+          { name: "Drizzle ORM", category: "ORM" },
+          { name: "React 18", category: "Frontend Framework" },
+          { name: "TypeScript", category: "Language" },
+          { name: "Vite", category: "Build Tool" },
+          { name: "Tailwind CSS", category: "Styling" },
+          { name: "Shadcn/ui", category: "UI Components" },
+          { name: "TanStack Query", category: "Data Fetching" },
+          { name: "Wouter", category: "Routing" },
+          { name: "Passport.js", category: "Authentication" },
+          { name: "Zod", category: "Validation" },
+          { name: "Polygon.io API", category: "Market Data" },
+          { name: "Discord Webhooks", category: "Notifications" },
+          { name: "TradeSync API", category: "Trade Execution" },
+        ],
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

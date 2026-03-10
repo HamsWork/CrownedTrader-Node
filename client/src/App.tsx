@@ -12,9 +12,11 @@ import Dashboard from "@/pages/dashboard";
 import SendSignal from "@/pages/send-signal";
 import SendTA from "@/pages/send-ta";
 import PositionManagement from "@/pages/position-management";
+import SignalHistory from "@/pages/signal-history";
 import DiscordTemplatesPage from "@/pages/discord-templates";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
 import TradePlansPage from "@/pages/trade-plans";
+import SystemAudit from "@/pages/system-audit";
 import LoginPage from "@/pages/login";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SafeUser } from "@shared/schema";
@@ -30,10 +32,12 @@ function Router() {
       <Route path="/send-ta" component={SendTA} />
       <Route path="/trade-plans" component={TradePlansPage} />
       <Route path="/positions" component={PositionManagement} />
+      <Route path="/history" component={SignalHistory} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}
       {isAdmin && <Route path="/users" component={UserManagement} />}
       {isAdmin && <Route path="/users/create" component={CreateUserPage} />}
       {isAdmin && <Route path="/users/:id/edit">{(params) => <EditUserPage userId={Number(params.id)} />}</Route>}
+      {isAdmin && <Route path="/audit" component={SystemAudit} />}
       <Route component={NotFound} />
     </Switch>
   );
