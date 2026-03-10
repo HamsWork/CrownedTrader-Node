@@ -390,34 +390,50 @@ function TakeProfitLevelForm({
       </div>
 
       {level.raiseStopLossTo === "Custom Level" && (
-        <>
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Level %</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={level.customRaiseSLValue || ""}
-              onChange={(e) => onChange({ ...level, customRaiseSLValue: e.target.value })}
-              placeholder={isUnderlyingBased ? "e.g. 182" : "e.g. 5"}
-              className="text-sm"
-              data-testid={`input-custom-sl-pct-${index}`}
-            />
+            <Label className="text-xs text-muted-foreground">{isUnderlyingBased ? "Price" : "Level %"}</Label>
+            <div className="flex items-center gap-1">
+              {isUnderlyingBased && <span className="text-xs text-muted-foreground shrink-0">$</span>}
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={level.customRaiseSLValue || ""}
+                onChange={(e) => onChange({ ...level, customRaiseSLValue: e.target.value })}
+                placeholder={isUnderlyingBased ? "e.g. 182" : "e.g. 5"}
+                className="text-sm"
+                data-testid={`input-custom-sl-pct-${index}`}
+              />
+              {!isUnderlyingBased && <span className="text-xs text-muted-foreground shrink-0">%</span>}
+            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Price</Label>
-            <Input
-              type="text"
-              readOnly
-              value={level.customRaiseSLValue
-                ? (isUnderlyingBased
-                  ? `$${parseFloat(level.customRaiseSLValue).toFixed(2)}`
-                  : `$${(entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2)}`)
-                : ""}
-              className="text-sm bg-muted/50"
-              data-testid={`input-custom-sl-price-${index}`}
-            />
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground shrink-0">$</span>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={level.customRaiseSLValue
+                  ? (isUnderlyingBased
+                    ? parseFloat(level.customRaiseSLValue).toFixed(2)
+                    : (entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2))
+                  : ""}
+                onChange={(e) => {
+                  const newPrice = parseFloat(e.target.value) || 0;
+                  if (isUnderlyingBased) {
+                    onChange({ ...level, customRaiseSLValue: e.target.value });
+                  } else {
+                    const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
+                    onChange({ ...level, customRaiseSLValue: newPct.toFixed(2) });
+                  }
+                }}
+                className="text-sm"
+                data-testid={`input-custom-sl-price-${index}`}
+              />
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       <div className="space-y-1">
