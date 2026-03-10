@@ -320,7 +320,7 @@ function PlanFormModal({
   const { toast } = useToast();
 
   const [name, setName] = useState(editingPlan?.name || "");
-  const [targetType, setTargetType] = useState(editingPlan?.targetType || "Underlying Price Based");
+  const [targetType, setTargetType] = useState(editingPlan?.targetType || "Symbol Price Based");
   const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct || "10");
   const [levels, setLevels] = useState<TakeProfitLevel[]>(
     editingPlan?.takeProfitLevels?.length ? editingPlan.takeProfitLevels : [...DEFAULT_LEVELS]
