@@ -235,6 +235,7 @@ function TakeProfitLevelForm({
   entryPrice,
   canRemove,
   isUnderlyingBased,
+  defaultCustomSLValue,
   onChange,
   onRemove,
 }: {
@@ -243,6 +244,7 @@ function TakeProfitLevelForm({
   entryPrice: number;
   canRemove: boolean;
   isUnderlyingBased: boolean;
+  defaultCustomSLValue: string;
   onChange: (updated: TakeProfitLevel) => void;
   onRemove: () => void;
 }) {
@@ -402,7 +404,7 @@ function TakeProfitLevelForm({
           <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
           <Select
             value={level.raiseStopLossTo}
-            onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || "") : "" })}
+            onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || defaultCustomSLValue) : "" })}
           >
             <SelectTrigger className="text-sm" data-testid={`select-raise-sl-${index}`}>
               <SelectValue />
@@ -539,6 +541,7 @@ function PlanFormModal({
     : (editingPlan?.targetType === "Underlying Price Based" ? [...DEFAULT_LEVELS_UNDERLYING] : [...DEFAULT_LEVELS_SYMBOL]);
   const [levels, setLevels] = useState<TakeProfitLevel[]>(defaultLevels);
   const ep = 5;
+  const underlyingEntry = 180;
 
   function handleTargetTypeChange(newType: string) {
     const wasUnderlying = targetType === "Underlying Price Based";
@@ -681,7 +684,7 @@ function PlanFormModal({
                 </Select>
                 {targetType === "Underlying Price Based" && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Default prices based on $180 entry
+                    {`Default prices based on $${underlyingEntry} entry`}
                   </p>
                 )}
                 {targetType === "Symbol Price Based" && (
@@ -709,6 +712,11 @@ function PlanFormModal({
                   entryPrice={ep}
                   canRemove={i > 0}
                   isUnderlyingBased={targetType === "Underlying Price Based"}
+                  defaultCustomSLValue={
+                    targetType === "Underlying Price Based"
+                      ? (i === 0 ? underlyingEntry.toFixed(2) : levels[i - 1].levelPct.toFixed(2))
+                      : (i === 0 ? "0" : levels[i - 1].levelPct.toFixed(2))
+                  }
                   onChange={(updated) => handleLevelChange(i, updated)}
                   onRemove={() => removeLevel(i)}
                 />
