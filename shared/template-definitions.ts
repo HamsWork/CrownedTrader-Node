@@ -88,7 +88,7 @@ const CATEGORY_CONFIGS: Record<Category, {
     closedFields: [["Ticker", "{{ticker}}"], ["Contract", "{{contract}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"]],
     closedTitle: "✖ Trade Closed — {{ticker}}",
     closedDesc: "Trade manually closed at ${{exit_price}}",
-    footer: "Crowned Trader | Options",
+    footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   Shares: {
     entryVars: ["ticker", "action", "entry_price", "quantity", "stop_loss", "take_profit"],
@@ -111,7 +111,7 @@ const CATEGORY_CONFIGS: Record<Category, {
     closedFields: [["Ticker", "{{ticker}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
     closedTitle: "✖ Trade Closed — {{ticker}}",
     closedDesc: "Trade manually closed at ${{exit_price}}",
-    footer: "Crowned Trader | Shares",
+    footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   LETF: {
     entryVars: ["ticker", "leverage", "direction", "entry_price", "stop_loss", "take_profit"],
@@ -134,7 +134,7 @@ const CATEGORY_CONFIGS: Record<Category, {
     closedFields: [["ETF", "{{ticker}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
     closedTitle: "✖ Trade Closed — {{ticker}}",
     closedDesc: "Trade manually closed at ${{exit_price}}",
-    footer: "Crowned Trader | LETF",
+    footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   "LETF Option": {
     entryVars: ["ticker", "contract", "strike", "expiration", "direction", "leverage", "entry_price", "stop_loss"],
@@ -157,7 +157,7 @@ const CATEGORY_CONFIGS: Record<Category, {
     closedFields: [["ETF", "{{ticker}}"], ["Contract", "{{contract}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"]],
     closedTitle: "✖ Trade Closed — {{ticker}}",
     closedDesc: "Trade manually closed at ${{exit_price}}",
-    footer: "Crowned Trader | LETF Options",
+    footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   Crypto: {
     entryVars: ["coin", "pair", "action", "entry_price", "stop_loss", "take_profit"],
@@ -180,7 +180,7 @@ const CATEGORY_CONFIGS: Record<Category, {
     closedFields: [["Coin", "{{coin}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
     closedTitle: "✖ Trade Closed — {{coin}}",
     closedDesc: "Trade manually closed at ${{exit_price}}",
-    footer: "Crowned Trader | Crypto",
+    footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
 };
 
