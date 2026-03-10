@@ -436,7 +436,7 @@ export async function registerRoutes(
         fetch(`https://api.polygon.io/v3/reference/tickers?search=${searchParam}&market=crypto&active=true&limit=3&apiKey=${apiKey}`),
       ]);
       const mapResults = (data: any) => (data.results || []).map((t: any) => ({
-        ticker: t.ticker,
+        ticker: t.market === "crypto" ? t.ticker.replace(/^X:/, "") : t.ticker,
         name: t.name,
         market: t.market,
         type: t.type,
@@ -467,7 +467,9 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Polygon API key not configured" });
     }
     try {
-      const url = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(ticker)}?apiKey=${apiKey}`;
+      const isCrypto = ticker.endsWith("USD") || ticker.endsWith("USDT");
+      const polygonTicker = isCrypto && !ticker.startsWith("X:") ? `X:${ticker}` : ticker;
+      const url = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(polygonTicker)}?apiKey=${apiKey}`;
       const response = await fetch(url);
       if (!response.ok) {
         return res.status(502).json({ message: "Polygon API error" });
