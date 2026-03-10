@@ -227,7 +227,7 @@ export async function registerRoutes(
               description: `**${data.ticker || ""}** — ${data.trade_type || "Scalp"}\nEntry: $${entry.toFixed(2)}`,
               color: 0x22c55e,
               fields: [] as Array<{name: string; value: string; inline?: boolean}>,
-              footer: { text: "Crowned Trader" },
+              footer: { text: "Disclaimer: Not financial advice. Trade at your own risk." },
             };
             if (data.is_shares !== "true") {
               embed.fields.push(
@@ -357,7 +357,7 @@ export async function registerRoutes(
       const taEmbed: DiscordEmbed = {
         color: 0x5865F2,
         timestamp: new Date().toISOString(),
-        footer: { text: "Crowned Trader" },
+        footer: { text: "Disclaimer: Not financial advice. Trade at your own risk." },
       };
       if (description) {
         taEmbed.description = description;

@@ -62,7 +62,7 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
                 )}
 
                 <div className="flex items-center gap-1 pt-1">
-                  <span className="text-[10px] text-[#72767d]">Crowned Trader</span>
+                  <span className="text-[10px] text-[#72767d]">Disclaimer: Not financial advice. Trade at your own risk.</span>
                   <span className="text-[10px] text-[#72767d]">•</span>
                   <span className="text-[10px] text-[#72767d]">{dateStr}</span>
                 </div>
