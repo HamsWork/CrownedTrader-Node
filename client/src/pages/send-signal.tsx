@@ -194,14 +194,23 @@ interface TradeForm {
   stockPrice: string;
   entryPrice: string;
   tradePlanId: string;
+  customStopLossPct: string;
+  customLevels: Array<{ levelPct: string; takeOffPct: string }>;
 }
 
 function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradePlan[] }) {
-  const selectedPlan = (tradePlans || []).find(p => p.id.toString() === form.tradePlanId);
+  const isCustom = form.tradePlanId === "live-custom";
+  const selectedPlan = isCustom ? null : (tradePlans || []).find(p => p.id.toString() === form.tradePlanId);
   const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
-  const levels = selectedPlan?.takeProfitLevels || [];
-  const slPct = parseFloat(selectedPlan?.stopLossPct || "10");
+
+  const levels = isCustom
+    ? form.customLevels.map(l => ({ levelPct: parseFloat(l.levelPct) || 0, takeOffPct: parseFloat(l.takeOffPct) || 0, raiseStopLossTo: "Off", trailingStop: "Off" }))
+    : (selectedPlan?.takeProfitLevels || []);
+  const slPct = isCustom
+    ? (parseFloat(form.customStopLossPct) || 10)
+    : parseFloat(selectedPlan?.stopLossPct || "10");
+  const hasPlan = isCustom || !!selectedPlan;
 
   return (
     <Card className="sticky top-20" data-testid="card-live-preview">
@@ -261,11 +270,11 @@ function LivePreview({ form, tradePlans }: { form: TradeForm; tradePlans: TradeP
               </div>
             )}
 
-            {selectedPlan ? (
+            {hasPlan ? (
               <>
                 <div>
                   <p className="font-bold text-white flex items-center gap-1.5">
-                    <span>📋</span> Trade Plan — {selectedPlan.name}
+                    <span>📋</span> Trade Plan — {isCustom ? "Live Custom" : selectedPlan?.name}
                   </p>
                   <p className="mt-1">
                     <span className="text-[#72767d]">🎯</span>{" "}
@@ -345,6 +354,12 @@ export default function SendSignal() {
     stockPrice: "",
     entryPrice: "",
     tradePlanId: "",
+    customStopLossPct: "10",
+    customLevels: [
+      { levelPct: "10", takeOffPct: "50" },
+      { levelPct: "20", takeOffPct: "50" },
+      { levelPct: "30", takeOffPct: "100" },
+    ],
   });
 
   useEffect(() => {
@@ -381,9 +396,14 @@ export default function SendSignal() {
       return;
     }
 
-    const selectedPlan = tradePlans.find(p => p.id.toString() === form.tradePlanId);
-    const levels = selectedPlan?.takeProfitLevels || [];
-    const slPct = parseFloat(selectedPlan?.stopLossPct || "10");
+    const isCustom = form.tradePlanId === "live-custom";
+    const selectedPlan = isCustom ? null : tradePlans.find(p => p.id.toString() === form.tradePlanId);
+    const levels = isCustom
+      ? form.customLevels.map(l => ({ levelPct: parseFloat(l.levelPct) || 0, takeOffPct: parseFloat(l.takeOffPct) || 0 }))
+      : (selectedPlan?.takeProfitLevels || []);
+    const slPct = isCustom
+      ? (parseFloat(form.customStopLossPct) || 10)
+      : parseFloat(selectedPlan?.stopLossPct || "10");
 
     const signalData: Record<string, string> = {
       ticker: form.ticker,
@@ -627,6 +647,9 @@ export default function SendSignal() {
                       <SelectValue placeholder="Select a trade plan" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="live-custom" data-testid="option-trade-plan-live-custom">
+                        Live Custom
+                      </SelectItem>
                       {tradePlans.map(plan => (
                         <SelectItem key={plan.id} value={plan.id.toString()} data-testid={`option-trade-plan-${plan.id}`}>
                           {plan.name} {plan.isDefault ? "(Default)" : ""}
@@ -634,10 +657,95 @@ export default function SendSignal() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {tradePlans.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No trade plans found. Create one on the Trade Plans page.</p>
+                  {tradePlans.length === 0 && form.tradePlanId !== "live-custom" && (
+                    <p className="text-xs text-muted-foreground">No trade plans found. Create one on the Trade Plans page or use Live Custom.</p>
                   )}
                 </div>
+
+                {form.tradePlanId === "live-custom" && (
+                  <div className="space-y-4 rounded-lg border border-border p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-sm">Custom Trade Plan</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Stop Loss %</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="10"
+                        value={form.customStopLossPct}
+                        onChange={e => update("customStopLossPct", e.target.value)}
+                        data-testid="input-custom-stop-loss"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Take Profit Levels</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setForm(prev => ({
+                            ...prev,
+                            customLevels: [...prev.customLevels, { levelPct: "", takeOffPct: "50" }],
+                          }))}
+                          data-testid="button-add-custom-level"
+                        >
+                          + Add Level
+                        </Button>
+                      </div>
+                      {form.customLevels.map((level, i) => (
+                        <div key={i} className="flex items-end gap-2">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">TP{i + 1} %</Label>
+                            <Input
+                              type="number"
+                              step="1"
+                              placeholder="10"
+                              value={level.levelPct}
+                              onChange={e => {
+                                const newLevels = [...form.customLevels];
+                                newLevels[i] = { ...newLevels[i], levelPct: e.target.value };
+                                setForm(prev => ({ ...prev, customLevels: newLevels }));
+                              }}
+                              data-testid={`input-custom-tp-pct-${i}`}
+                            />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">Take Off %</Label>
+                            <Input
+                              type="number"
+                              step="1"
+                              placeholder="50"
+                              value={level.takeOffPct}
+                              onChange={e => {
+                                const newLevels = [...form.customLevels];
+                                newLevels[i] = { ...newLevels[i], takeOffPct: e.target.value };
+                                setForm(prev => ({ ...prev, customLevels: newLevels }));
+                              }}
+                              data-testid={`input-custom-tp-takeoff-${i}`}
+                            />
+                          </div>
+                          {form.customLevels.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => {
+                                const newLevels = form.customLevels.filter((_, j) => j !== i);
+                                setForm(prev => ({ ...prev, customLevels: newLevels }));
+                              }}
+                              data-testid={`button-remove-custom-level-${i}`}
+                            >
+                              ✕
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <Button
                   className="w-full"
