@@ -320,6 +320,73 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/ticker-details/:ticker", requireAuth, async (req, res) => {
+    const ticker = req.params.ticker.toUpperCase();
+    const apiKey = process.env.POLYGON_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Polygon API key not configured" });
+    }
+    try {
+      const url = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(ticker)}?apiKey=${apiKey}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(502).json({ message: "Polygon API error" });
+      }
+      const data = await response.json() as any;
+      const r = data.results || {};
+
+      const name = r.name || "";
+      const market = r.market || "";
+      const tickerType = r.type || "";
+      const description = r.description || "";
+      const nameLower = name.toLowerCase();
+      const descLower = description.toLowerCase();
+
+      let category = "Stock";
+      let leverage = "";
+      let underlying = "";
+
+      if (market === "crypto") {
+        category = "Crypto";
+      } else if (tickerType === "ETF" || tickerType === "ETN") {
+        const leverageMatch = nameLower.match(/(\d+)x\b/) || descLower.match(/(\d+)x\b/);
+        const leverageWords = ["ultra", "leveraged", "direxion", "proshares"];
+        const isLeveraged = leverageWords.some(w => nameLower.includes(w) || descLower.includes(w)) || leverageMatch;
+
+        if (isLeveraged) {
+          category = "LETF";
+          if (leverageMatch) {
+            leverage = leverageMatch[1] + "x";
+          } else if (nameLower.includes("ultra") && !nameLower.includes("ultrashort")) {
+            leverage = "2x";
+          } else if (nameLower.includes("ultrashort")) {
+            leverage = "-2x";
+          }
+
+          const trackingMatch = descLower.match(/(?:tracks?|based on|seeks.*(?:results|return).*of)\s+(?:the\s+)?([A-Za-z0-9&\s]+?)(?:\s+index|\s+price|\.|,)/i);
+          if (trackingMatch) {
+            underlying = trackingMatch[1].trim();
+          }
+        } else {
+          category = "ETF";
+        }
+      }
+
+      res.json({
+        ticker: r.ticker || ticker,
+        name,
+        market,
+        type: tickerType,
+        category,
+        leverage,
+        underlying,
+        description: description.slice(0, 200),
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch ticker details" });
+    }
+  });
+
   app.get("/api/stats", requireAuth, async (_req, res) => {
     const [allSignals, allTypes] = await Promise.all([
       storage.getSignals(),

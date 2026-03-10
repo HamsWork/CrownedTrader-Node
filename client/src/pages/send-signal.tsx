@@ -27,12 +27,31 @@ interface TickerResult {
   type: string;
 }
 
+interface TickerDetails {
+  ticker: string;
+  name: string;
+  category: string;
+  leverage: string;
+  underlying: string;
+}
+
+const CATEGORY_BADGES: Record<string, { label: string; color: string }> = {
+  Stock: { label: "Stock", color: "bg-blue-500/20 text-blue-400" },
+  ETF: { label: "ETF", color: "bg-cyan-500/20 text-cyan-400" },
+  LETF: { label: "LETF", color: "bg-orange-500/20 text-orange-400" },
+  Crypto: { label: "Crypto", color: "bg-purple-500/20 text-purple-400" },
+};
+
 function TickerAutocomplete({
   value,
   onChange,
+  tickerDetails,
+  onTickerDetails,
 }: {
   value: string;
   onChange: (ticker: string) => void;
+  tickerDetails: TickerDetails | null;
+  onTickerDetails: (details: TickerDetails | null) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<TickerResult[]>([]);
@@ -75,10 +94,21 @@ function TickerAutocomplete({
     }
   }, []);
 
+  async function fetchDetails(ticker: string) {
+    try {
+      const res = await fetch(`/api/ticker-details/${encodeURIComponent(ticker)}`);
+      if (res.ok) {
+        const data = await res.json();
+        onTickerDetails(data);
+      }
+    } catch {}
+  }
+
   function handleInputChange(val: string) {
     const upper = val.toUpperCase();
     setQuery(upper);
     onChange(upper);
+    onTickerDetails(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchTickers(upper), 300);
   }
@@ -88,14 +118,17 @@ function TickerAutocomplete({
     onChange(ticker);
     setIsOpen(false);
     setResults([]);
+    fetchDetails(ticker);
   }
+
+  const badge = tickerDetails ? CATEGORY_BADGES[tickerDetails.category] : null;
 
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search ticker (e.g., AAPL, TSLA)"
+          placeholder="Search ticker (e.g., AAPL, TQQQ, BTCUSD)"
           value={query}
           onChange={e => handleInputChange(e.target.value)}
           onFocus={() => { if (results.length > 0) setIsOpen(true); }}
@@ -123,6 +156,20 @@ function TickerAutocomplete({
                 <span className="text-[10px] text-muted-foreground uppercase shrink-0 ml-2">{r.market}</span>
               </button>
             ))
+          )}
+        </div>
+      )}
+      {tickerDetails && badge && (
+        <div className="mt-2 flex items-center gap-2 flex-wrap" data-testid="ticker-details-hint">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.color}`}>
+            {badge.label}
+          </span>
+          <span className="text-xs text-muted-foreground">{tickerDetails.name}</span>
+          {tickerDetails.category === "LETF" && (
+            <span className="text-xs text-muted-foreground">
+              {tickerDetails.leverage && `• ${tickerDetails.leverage} leverage`}
+              {tickerDetails.underlying && ` • Underlying: ${tickerDetails.underlying}`}
+            </span>
           )}
         </div>
       )}
@@ -267,6 +314,7 @@ export default function SendSignal() {
   const { toast } = useToast();
 
   const userChannels = currentUser?.discordChannels || [];
+  const [tickerDetails, setTickerDetails] = useState<TickerDetails | null>(null);
 
   const [form, setForm] = useState<TradeForm>({
     channel: userChannels.length > 0 ? userChannels[0].name : "",
@@ -439,6 +487,8 @@ export default function SendSignal() {
                   <TickerAutocomplete
                     value={form.ticker}
                     onChange={(ticker) => update("ticker", ticker)}
+                    tickerDetails={tickerDetails}
+                    onTickerDetails={setTickerDetails}
                   />
                 </div>
 
