@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { BarChart3, Send, CheckCircle, Trophy, Crown } from "lucide-react";
+import { Trophy, Crown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useStats } from "@/hooks/use-signals";
-import { StatCard } from "@/components/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type LeaderboardTrader = {
@@ -198,25 +196,6 @@ function Leaderboard() {
 }
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useStats();
-
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 space-y-6">
-        <div>
-          <Skeleton className="h-8 w-48 mb-2" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-28" />
-          ))}
-        </div>
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div>
@@ -226,30 +205,6 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Overview of your trading signals
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          title="Total Signals"
-          value={stats?.totalSignals ?? 0}
-          icon={Send}
-          description="Signals sent"
-          testId="stat-total-signals"
-        />
-        <StatCard
-          title="Signal Types"
-          value={stats?.totalSignalTypes ?? 0}
-          icon={BarChart3}
-          description="Configured types"
-          testId="stat-signal-types"
-        />
-        <StatCard
-          title="Sent to Discord"
-          value={stats?.sentToDiscord ?? 0}
-          icon={CheckCircle}
-          description="Successfully delivered"
-          testId="stat-sent-discord"
-        />
       </div>
 
       <Leaderboard />
