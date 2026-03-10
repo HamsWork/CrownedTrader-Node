@@ -13,7 +13,7 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
   mediaPreviewUrl: string | null;
   mediaType: "image" | "video" | null;
 }) {
-  const description = commentary.trim() || "\u2014";
+  const description = commentary.trim();
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const dateStr = `Today at ${timeStr}`;
@@ -35,10 +35,11 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
             <div className="flex gap-1">
               <div className="w-1 rounded-full bg-[#5865F2] shrink-0" />
               <div className="flex-1 pl-3 space-y-2">
-                <p className="font-bold text-white" data-testid="text-ta-preview-title-embed">Technical Analysis</p>
-                <div className="whitespace-pre-wrap break-words leading-relaxed text-[#dcddde]" data-testid="text-ta-preview-commentary">
-                  {description}
-                </div>
+                {description && (
+                  <div className="whitespace-pre-wrap break-words leading-relaxed text-[#dcddde]" data-testid="text-ta-preview-commentary">
+                    {description}
+                  </div>
+                )}
 
                 {mediaPreviewUrl && mediaType === "image" && (
                   <div className="rounded overflow-hidden mt-2" data-testid="preview-ta-image">

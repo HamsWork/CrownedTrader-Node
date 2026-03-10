@@ -350,17 +350,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Channel not found or missing webhook URL" });
       }
 
-      const description = (commentary || "").trim() || "\u2014";
+      const description = (commentary || "").trim();
       const fileName = file ? (file.originalname || "ta_media").trim() : "";
       const isImage = file ? (file.mimetype || "").startsWith("image/") : false;
 
       const taEmbed: DiscordEmbed = {
-        title: "Technical Analysis",
-        description,
         color: 0x5865F2,
         timestamp: new Date().toISOString(),
         footer: { text: "Crowned Trader" },
       };
+      if (description) {
+        taEmbed.description = description;
+      }
 
       if (file && isImage) {
         taEmbed.image = { url: `attachment://${fileName}` };
