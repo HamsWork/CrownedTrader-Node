@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -218,7 +218,15 @@ function TakeProfitLevelForm({
   onChange: (updated: TakeProfitLevel) => void;
   onRemove: () => void;
 }) {
-  const price = computePrice(entryPrice, level.levelPct);
+  const computedPrice = computePrice(entryPrice, level.levelPct);
+  const [localPrice, setLocalPrice] = useState(computedPrice);
+  const [isPriceEditing, setIsPriceEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isPriceEditing) {
+      setLocalPrice(computedPrice);
+    }
+  }, [computedPrice, isPriceEditing]);
 
   return (
     <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid={`tp-level-${index}`}>
@@ -288,11 +296,14 @@ function TakeProfitLevelForm({
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground shrink-0">$</span>
               <Input
-                type="number"
-                step="0.01"
-                value={price}
-                onChange={(e) => {
-                  const newPrice = parseFloat(e.target.value) || 0;
+                type="text"
+                inputMode="decimal"
+                value={localPrice}
+                onFocus={() => setIsPriceEditing(true)}
+                onChange={(e) => setLocalPrice(e.target.value)}
+                onBlur={() => {
+                  setIsPriceEditing(false);
+                  const newPrice = parseFloat(localPrice) || 0;
                   const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
                   onChange({ ...level, levelPct: parseFloat(newPct.toFixed(2)) });
                 }}
@@ -373,6 +384,8 @@ function PlanFormModal({
   const [name, setName] = useState(editingPlan?.name || "");
   const [targetType, setTargetType] = useState(editingPlan?.targetType || "Symbol Price Based");
   const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct || "10");
+  const [localSlPrice, setLocalSlPrice] = useState("");
+  const [isSlPriceEditing, setIsSlPriceEditing] = useState(false);
   const defaultLevels = editingPlan?.takeProfitLevels?.length
     ? editingPlan.takeProfitLevels
     : (editingPlan?.targetType === "Underlying Price Based" ? [...DEFAULT_LEVELS_UNDERLYING] : [...DEFAULT_LEVELS_SYMBOL]);
@@ -440,7 +453,14 @@ function PlanFormModal({
   }
 
   const isUnderlying = targetType === "Underlying Price Based";
-  const slPrice = isUnderlying ? stopLossPct : (ep * (1 - slPct / 100)).toFixed(2);
+  const computedSlPrice = isUnderlying ? stopLossPct : (ep * (1 - slPct / 100)).toFixed(2);
+  const slPrice = isSlPriceEditing ? localSlPrice : computedSlPrice;
+
+  useEffect(() => {
+    if (!isSlPriceEditing) {
+      setLocalSlPrice(computedSlPrice);
+    }
+  }, [computedSlPrice, isSlPriceEditing]);
   const targetsStr = isUnderlying
     ? levels.map((l) => `$${l.levelPct.toFixed(2)}`).join(", ")
     : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(1)}%)`).join(", ");
@@ -569,11 +589,14 @@ function PlanFormModal({
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-muted-foreground shrink-0">$</span>
                       <Input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={slPrice}
-                        onChange={(e) => {
-                          const newPrice = parseFloat(e.target.value) || 0;
+                        onFocus={() => setIsSlPriceEditing(true)}
+                        onChange={(e) => setLocalSlPrice(e.target.value)}
+                        onBlur={() => {
+                          setIsSlPriceEditing(false);
+                          const newPrice = parseFloat(localSlPrice) || 0;
                           const newPct = ep > 0 ? ((ep - newPrice) / ep) * 100 : 0;
                           setStopLossPct(Math.max(0, parseFloat(newPct.toFixed(2))).toString());
                         }}
