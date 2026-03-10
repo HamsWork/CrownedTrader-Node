@@ -574,17 +574,6 @@ export default function SendSignal() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Option Price</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={form.optionPrice}
-                        onChange={e => update("optionPrice", e.target.value)}
-                        data-testid="input-option-price"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-5 rounded-lg border border-border p-4">
@@ -621,18 +610,6 @@ export default function SendSignal() {
                     </div>
                   </div>
                 )}
-
-                <div className="space-y-2">
-                  <Label className="font-semibold text-sm">Stock Price</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.stockPrice}
-                    onChange={e => update("stockPrice", e.target.value)}
-                    data-testid="input-stock-price"
-                  />
-                </div>
 
                 <div className="space-y-3 rounded-lg border border-border p-4">
                   <span className="font-semibold text-sm">Risk Management</span>
