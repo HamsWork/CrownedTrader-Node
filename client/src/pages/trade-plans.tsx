@@ -34,15 +34,15 @@ const RAISE_SL_OPTIONS = ["Off", "Break even", "Custom Level"];
 const TRAILING_STOP_OPTIONS = ["Off", "On"];
 
 const DEFAULT_LEVELS_SYMBOL: TakeProfitLevel[] = [
-  { levelPct: 10, takeOffPct: 50, raiseStopLossTo: "Break even", customRaiseSLValue: "", trailingStop: "Off" },
-  { levelPct: 20, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off" },
-  { levelPct: 30, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off" },
+  { levelPct: 10, takeOffPct: 50, raiseStopLossTo: "Break even", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
+  { levelPct: 20, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
+  { levelPct: 30, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
 ];
 
 const DEFAULT_LEVELS_UNDERLYING: TakeProfitLevel[] = [
-  { levelPct: 185, takeOffPct: 50, raiseStopLossTo: "Break even", customRaiseSLValue: "", trailingStop: "Off" },
-  { levelPct: 190, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off" },
-  { levelPct: 195, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off" },
+  { levelPct: 185, takeOffPct: 50, raiseStopLossTo: "Break even", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
+  { levelPct: 190, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
+  { levelPct: 195, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
 ];
 
 function computePrice(entryPrice: number, levelPct: number) {
@@ -90,7 +90,7 @@ function PlanPreview({
             : ` and raise stop loss to +${l.customRaiseSLValue}%`;
         }
         if (l.trailingStop === "On") {
-          desc += " with trailing stop";
+          desc += l.trailingStopPct ? ` with ${l.trailingStopPct}% trailing stop` : " with trailing stop";
         }
         desc += ".";
         return (
@@ -372,86 +372,86 @@ function TakeProfitLevelForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
-          <Select
-            value={level.raiseStopLossTo}
-            onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || "") : "" })}
-          >
-            <SelectTrigger className="text-sm" data-testid={`select-raise-sl-${index}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RAISE_SL_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Trailing Stop:</Label>
-          <Select
-            value={level.trailingStop}
-            onValueChange={(v) => onChange({ ...level, trailingStop: v })}
-          >
-            <SelectTrigger className="text-sm" data-testid={`select-trailing-stop-${index}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TRAILING_STOP_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
+        <Select
+          value={level.raiseStopLossTo}
+          onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || "") : "" })}
+        >
+          <SelectTrigger className="text-sm" data-testid={`select-raise-sl-${index}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RAISE_SL_OPTIONS.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {level.raiseStopLossTo === "Custom Level" && (
+        <>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Level %</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={level.customRaiseSLValue || ""}
+              onChange={(e) => onChange({ ...level, customRaiseSLValue: e.target.value })}
+              placeholder={isUnderlyingBased ? "e.g. 182" : "e.g. 5"}
+              className="text-sm"
+              data-testid={`input-custom-sl-pct-${index}`}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Price</Label>
+            <Input
+              type="text"
+              readOnly
+              value={level.customRaiseSLValue
+                ? (isUnderlyingBased
+                  ? `$${parseFloat(level.customRaiseSLValue).toFixed(2)}`
+                  : `$${(entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2)}`)
+                : ""}
+              className="text-sm bg-muted/50"
+              data-testid={`input-custom-sl-price-${index}`}
+            />
+          </div>
+        </>
+      )}
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Trailing Stop:</Label>
+        <Select
+          value={level.trailingStop}
+          onValueChange={(v) => onChange({ ...level, trailingStop: v, trailingStopPct: v === "On" ? (level.trailingStopPct || "") : "" })}
+        >
+          <SelectTrigger className="text-sm" data-testid={`select-trailing-stop-${index}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TRAILING_STOP_OPTIONS.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {level.trailingStop === "On" && (
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">
-            {isUnderlyingBased ? "Custom SL Price" : "Custom SL % / Price"}
-          </Label>
-          {isUnderlyingBased ? (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground shrink-0">$</span>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={level.customRaiseSLValue || ""}
-                onChange={(e) => onChange({ ...level, customRaiseSLValue: e.target.value })}
-                placeholder="e.g. 182"
-                className="text-sm"
-                data-testid={`input-custom-sl-${index}`}
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-1">
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={level.customRaiseSLValue || ""}
-                  onChange={(e) => onChange({ ...level, customRaiseSLValue: e.target.value })}
-                  placeholder="e.g. 5"
-                  className="text-sm"
-                  data-testid={`input-custom-sl-pct-${index}`}
-                />
-                <span className="text-xs text-muted-foreground shrink-0">%</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground shrink-0">$</span>
-                <Input
-                  type="text"
-                  readOnly
-                  value={level.customRaiseSLValue ? (entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2) : ""}
-                  className="text-sm bg-muted/50"
-                  data-testid={`input-custom-sl-price-${index}`}
-                />
-              </div>
-            </div>
-          )}
+          <Label className="text-xs text-muted-foreground">Trailing Stop Percent</Label>
+          <div className="flex items-center gap-1">
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={level.trailingStopPct || ""}
+              onChange={(e) => onChange({ ...level, trailingStopPct: e.target.value })}
+              placeholder="e.g. 5"
+              className="text-sm"
+              data-testid={`input-trailing-stop-pct-${index}`}
+            />
+            <span className="text-xs text-muted-foreground shrink-0">%</span>
+          </div>
         </div>
       )}
     </div>
@@ -509,7 +509,7 @@ function PlanFormModal({
     const increment = targetType === "Underlying Price Based" ? 5 : 10;
     setLevels((prev) => [
       ...prev,
-      { levelPct: lastPct + increment, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off" },
+      { levelPct: lastPct + increment, takeOffPct: 50, raiseStopLossTo: "Off", customRaiseSLValue: "", trailingStop: "Off", trailingStopPct: "" },
     ]);
   }
 
@@ -769,7 +769,7 @@ function PlanFormModal({
                             : ` and raise stop loss to +${l.customRaiseSLValue}%`;
                         }
                         if (l.trailingStop === "On") {
-                          desc += " with trailing stop";
+                          desc += l.trailingStopPct ? ` with ${l.trailingStopPct}% trailing stop` : " with trailing stop";
                         }
                         desc += ".";
                         return (
