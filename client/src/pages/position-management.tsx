@@ -5,187 +5,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, Search, X, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatDistanceToNow } from "date-fns";
-import type { Signal, SignalType } from "@shared/schema";
+import { format } from "date-fns";
+import type { Signal } from "@shared/schema";
 
-function getPnl(entry: number, close: number, direction: string): { pct: number; dollar: number } {
-  if (!entry || !close) return { pct: 0, dollar: 0 };
-  const diff = direction === "Short" ? entry - close : close - entry;
-  return { pct: (diff / entry) * 100, dollar: diff };
+function formatDate(d: Date | string | null) {
+  if (!d) return "—";
+  return format(new Date(d), "MMM dd, yyyy HH:mm");
 }
 
-function PositionCard({
-  signal,
-  signalType,
-  onClose,
-  onReopen,
-}: {
-  signal: Signal;
-  signalType?: SignalType;
-  onClose: (s: Signal) => void;
-  onReopen: (s: Signal) => void;
-}) {
-  const data = (signal.data ?? {}) as Record<string, string>;
-  const color = signalType?.color ?? "#3B82F6";
-  const ticker = data.ticker || "—";
-  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-  const isOption = data.is_option === "true";
-  const direction = data.direction || "Long";
-  const tradeType = data.trade_type || "Scalp";
-  const optionType = data.option_type || "";
-  const strike = data.strike || "";
-  const expiration = data.expiration || "";
-  const stopLoss = data.stop_loss_pct || "";
-  const isOpen = signal.status === "open";
-  const closePrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
-  const pnl = closePrice ? getPnl(entryPrice, closePrice, direction) : null;
-
-  return (
-    <Card
-      className={`transition-all ${isOpen ? "border-l-4" : "opacity-75"}`}
-      style={isOpen ? { borderLeftColor: color } : {}}
-      data-testid={`card-position-${signal.id}`}
-    >
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-base" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
-          <Badge
-            variant={isOpen ? "default" : "secondary"}
-            className={isOpen ? "bg-green-500/20 text-green-400 hover:bg-green-500/20" : "bg-muted text-muted-foreground"}
-            data-testid={`badge-status-${signal.id}`}
-          >
-            {isOpen ? "Open" : "Closed"}
-          </Badge>
-          <Badge variant="outline" data-testid={`badge-type-${signal.id}`}>
-            {tradeType}
-          </Badge>
-          {isOption && (
-            <Badge variant="outline" className="text-blue-400 border-blue-400/30">
-              {optionType} {strike} {expiration}
-            </Badge>
-          )}
-          {!isOption && (
-            <Badge variant="outline" className="text-purple-400 border-purple-400/30">
-              {data.instrument_type === "Crypto" ? "Crypto" : "Shares"} {direction}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {signal.sentToDiscord ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : signal.discordChannelName ? (
-            <XCircle className="h-4 w-4 text-red-500" />
-          ) : (
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          )}
-          <span className="text-xs text-muted-foreground">
-            {signal.createdAt
-              ? formatDistanceToNow(new Date(signal.createdAt), { addSuffix: true })
-              : "just now"}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-            <p className="text-xs text-muted-foreground font-medium">Entry Price</p>
-            <p className="text-sm font-semibold text-green-400" data-testid={`text-entry-${signal.id}`}>
-              {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
-            </p>
-          </div>
-          <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-            <p className="text-xs text-muted-foreground font-medium">Stop Loss</p>
-            <p className="text-sm font-semibold text-red-400" data-testid={`text-sl-${signal.id}`}>
-              {stopLoss ? `-${stopLoss}%` : "—"}
-            </p>
-          </div>
-          {closePrice !== null && (
-            <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground font-medium">Close Price</p>
-              <p className="text-sm font-semibold" data-testid={`text-close-${signal.id}`}>
-                ${closePrice.toFixed(2)}
-              </p>
-            </div>
-          )}
-          {pnl && (
-            <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground font-medium">P&L</p>
-              <div className="flex items-center gap-1">
-                {pnl.pct >= 0 ? (
-                  <ArrowUpRight className="h-3.5 w-3.5 text-green-400" />
-                ) : (
-                  <ArrowDownRight className="h-3.5 w-3.5 text-red-400" />
-                )}
-                <p
-                  className={`text-sm font-semibold ${pnl.pct >= 0 ? "text-green-400" : "text-red-400"}`}
-                  data-testid={`text-pnl-${signal.id}`}
-                >
-                  {pnl.pct >= 0 ? "+" : ""}{pnl.pct.toFixed(2)}%
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {data.take_profit_levels && (() => {
-          try {
-            const levels = JSON.parse(data.take_profit_levels) as Array<{ levelPct: number; takeOffPct: number }>;
-            if (levels.length === 0) return null;
-            return (
-              <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-                <p className="text-xs text-muted-foreground font-medium mb-1">Take Profit Levels</p>
-                <div className="flex flex-wrap gap-2">
-                  {levels.map((l, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
-                      TP{i + 1}: +{l.levelPct}% ({l.takeOffPct}% off)
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            );
-          } catch { return null; }
-        })()}
-
-        {signal.closeNote && (
-          <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-            <p className="text-xs text-muted-foreground font-medium">Close Note</p>
-            <p className="text-sm" data-testid={`text-note-${signal.id}`}>{signal.closeNote}</p>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 pt-1">
-          {isOpen ? (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onClose(signal)}
-              data-testid={`button-close-${signal.id}`}
-            >
-              <X className="h-3.5 w-3.5 mr-1" />
-              Close Position
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onReopen(signal)}
-              data-testid={`button-reopen-${signal.id}`}
-            >
-              Reopen
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+function getPnlPct(entry: number, mark: number, direction: string): number {
+  if (!entry || !mark) return 0;
+  const diff = direction === "Short" ? entry - mark : mark - entry;
+  return (diff / entry) * 100;
 }
 
 export default function PositionManagement() {
@@ -194,12 +32,11 @@ export default function PositionManagement() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("open");
   const [closeDialog, setCloseDialog] = useState<Signal | null>(null);
+  const [isPartialExit, setIsPartialExit] = useState(false);
   const [closePrice, setClosePrice] = useState("");
   const [closeNote, setCloseNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
-  const typesMap = new Map(signalTypes?.map(st => [st.id, st]) ?? []);
 
   const filtered = signals?.filter(signal => {
     const data = (signal.data ?? {}) as Record<string, string>;
@@ -218,17 +55,18 @@ export default function PositionManagement() {
     setIsSubmitting(true);
     try {
       await apiRequest("PATCH", `/api/signals/${closeDialog.id}/status`, {
-        status: "closed",
+        status: isPartialExit ? "open" : "closed",
         closePrice: closePrice || undefined,
-        closeNote: closeNote || undefined,
+        closeNote: closeNote ? (isPartialExit ? `[Partial Exit] ${closeNote}` : closeNote) : (isPartialExit ? "[Partial Exit]" : undefined),
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
-      toast({ title: "Position closed" });
+      toast({ title: isPartialExit ? "Partial exit recorded" : "Position closed" });
       setCloseDialog(null);
       setClosePrice("");
       setCloseNote("");
+      setIsPartialExit(false);
     } catch (err: any) {
-      toast({ title: "Failed to close position", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to update position", description: err.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -244,6 +82,15 @@ export default function PositionManagement() {
     }
   }
 
+  function openExitDialog(signal: Signal, partial: boolean) {
+    const data = (signal.data ?? {}) as Record<string, string>;
+    const entry = data.entry_price || data.option_price || "";
+    setClosePrice(entry);
+    setCloseNote("");
+    setIsPartialExit(partial);
+    setCloseDialog(signal);
+  }
+
   if (signalsLoading || typesLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -252,11 +99,7 @@ export default function PositionManagement() {
           <Skeleton className="h-9 flex-1" />
           <Skeleton className="h-9 w-48" />
         </div>
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-40" />
-          ))}
-        </div>
+        <Skeleton className="h-96" />
       </div>
     );
   }
@@ -317,35 +160,191 @@ export default function PositionManagement() {
           testId="empty-positions"
         />
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground" data-testid="text-position-count">
-            {filtered.length} position{filtered.length !== 1 ? "s" : ""}
-          </p>
-          {filtered.map(signal => (
-            <PositionCard
-              key={signal.id}
-              signal={signal}
-              signalType={typesMap.get(signal.signalTypeId!)}
-              onClose={(s) => {
-                const data = (s.data ?? {}) as Record<string, string>;
-                const entry = data.entry_price || data.option_price || "";
-                setClosePrice(entry);
-                setCloseDialog(s);
-              }}
-              onReopen={handleReopen}
-            />
-          ))}
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-positions">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Symbol</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">QTY</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Closed</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Entry</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Mark</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">P/L %</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Realized P/L %</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Opened</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Track Mode</th>
+                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase text-muted-foreground"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(signal => {
+                  const data = (signal.data ?? {}) as Record<string, string>;
+                  const ticker = data.ticker || "—";
+                  const isOption = data.is_option === "true";
+                  const optionType = data.option_type || "";
+                  const strike = data.strike || "";
+                  const expiration = data.expiration || "";
+                  const direction = data.direction || "Long";
+                  const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
+                  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+                  const markPrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
+                  const isOpen = signal.status === "open";
+                  const tracking = data.trade_tracking || "Manual";
+                  const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+                  const realizedPnl = !isOpen && markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+
+                  let contractLine = "";
+                  if (isOption) {
+                    contractLine = `${optionType} ${strike} - ${expiration}`;
+                  } else if (instrumentType === "Crypto") {
+                    contractLine = "Crypto";
+                  } else {
+                    contractLine = "Shares";
+                  }
+
+                  return (
+                    <tr
+                      key={signal.id}
+                      className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
+                      data-testid={`row-position-${signal.id}`}
+                    >
+                      <td className="px-4 py-3">
+                        <div>
+                          <span className="font-bold text-sm" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid={`text-qty-${signal.id}`}>
+                        100
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-closed-qty-${signal.id}`}>
+                        {isOpen ? "—" : "100"}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium" data-testid={`text-entry-${signal.id}`}>
+                        {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid={`text-mark-${signal.id}`}>
+                        {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={isOpen
+                            ? "bg-green-500/10 text-green-400 border-green-500/30"
+                            : "bg-muted text-muted-foreground border-border"
+                          }
+                          data-testid={`badge-status-${signal.id}`}
+                        >
+                          {isOpen ? "Opened" : "Closed"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-sm font-medium ${
+                            markPrice
+                              ? pnlPct >= 0 ? "text-green-400" : "text-red-400"
+                              : "text-muted-foreground"
+                          }`}
+                          data-testid={`text-pnl-${signal.id}`}
+                        >
+                          {markPrice
+                            ? `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
+                            : "—"
+                          }
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-sm font-medium ${
+                            !isOpen && markPrice
+                              ? realizedPnl >= 0 ? "text-green-400" : "text-red-400"
+                              : "text-green-400"
+                          }`}
+                          data-testid={`text-realized-pnl-${signal.id}`}
+                        >
+                          {!isOpen && markPrice
+                            ? `${realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(1)}%`
+                            : "+0.0%"
+                          }
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap" data-testid={`text-opened-${signal.id}`}>
+                        {formatDate(signal.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid={`text-tracking-${signal.id}`}>
+                        {tracking === "Automatic" ? "Auto" : "Manual"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          {isOpen ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-3"
+                                onClick={() => openExitDialog(signal, true)}
+                                data-testid={`button-partial-exit-${signal.id}`}
+                              >
+                                Partial Exit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="text-xs h-7 px-3"
+                                onClick={() => openExitDialog(signal, false)}
+                                data-testid={`button-full-exit-${signal.id}`}
+                              >
+                                Full Exit
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 px-3"
+                              onClick={() => handleReopen(signal)}
+                              data-testid={`button-reopen-${signal.id}`}
+                            >
+                              Reopen
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      <Dialog open={!!closeDialog} onOpenChange={(open) => { if (!open) setCloseDialog(null); }}>
+      <Dialog open={!!closeDialog} onOpenChange={(open) => { if (!open) { setCloseDialog(null); setIsPartialExit(false); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle data-testid="text-close-dialog-title">Close Position</DialogTitle>
+            <DialogTitle data-testid="text-close-dialog-title">
+              {isPartialExit ? "Partial Exit" : "Full Exit — Close Position"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {closeDialog && (() => {
+              const data = (closeDialog.data ?? {}) as Record<string, string>;
+              const ticker = data.ticker || "—";
+              const isOpt = data.is_option === "true";
+              const contractLine = isOpt
+                ? `${data.option_type || ""} ${data.strike || ""} - ${data.expiration || ""}`
+                : (data.instrument_type === "Crypto" ? "Crypto" : "Shares");
+              return (
+                <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
+                  <span className="font-bold text-sm">{ticker}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{contractLine}</span>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
-              <Label>Close Price</Label>
+              <Label>Exit Price</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -362,7 +361,7 @@ export default function PositionManagement() {
             <div className="space-y-2">
               <Label>Note (optional)</Label>
               <Textarea
-                placeholder="Reason for closing, observations..."
+                placeholder="Reason for exit, observations..."
                 value={closeNote}
                 onChange={(e) => setCloseNote(e.target.value)}
                 rows={3}
@@ -371,16 +370,16 @@ export default function PositionManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCloseDialog(null)} data-testid="button-cancel-close">
+            <Button variant="outline" onClick={() => { setCloseDialog(null); setIsPartialExit(false); }} data-testid="button-cancel-close">
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant={isPartialExit ? "default" : "destructive"}
               onClick={handleClose}
               disabled={isSubmitting}
               data-testid="button-confirm-close"
             >
-              {isSubmitting ? "Closing..." : "Close Position"}
+              {isSubmitting ? "Processing..." : isPartialExit ? "Record Partial Exit" : "Close Position"}
             </Button>
           </DialogFooter>
         </DialogContent>
