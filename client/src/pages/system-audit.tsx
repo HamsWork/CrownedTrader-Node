@@ -48,10 +48,10 @@ export default function SystemAudit() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
@@ -63,19 +63,19 @@ export default function SystemAudit() {
 
   if (!data) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <p className="text-muted-foreground">Failed to load audit data. Admin access required.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
           System Audit
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Complete codebase overview, file descriptions, and last updated status
         </p>
       </div>
@@ -136,14 +136,14 @@ export default function SystemAudit() {
                 </div>
                 <span className="text-xs text-muted-foreground">{catLines.toLocaleString()} lines</span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" data-testid={`table-${catName.toLowerCase().replace(/[\s/]/g, "-")}`}>
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]" data-testid={`table-${catName.toLowerCase().replace(/[\s/]/g, "-")}`}>
                   <thead>
                     <tr className="border-b border-border bg-muted/10">
-                      <th className="text-left px-4 py-2 font-medium text-xs uppercase text-muted-foreground">File</th>
-                      <th className="text-left px-4 py-2 font-medium text-xs uppercase text-muted-foreground">Description</th>
-                      <th className="text-right px-4 py-2 font-medium text-xs uppercase text-muted-foreground w-20">Lines</th>
-                      <th className="text-right px-4 py-2 font-medium text-xs uppercase text-muted-foreground w-40">Last Modified</th>
+                      <th className="text-left px-3 sm:px-4 py-2 font-medium text-xs uppercase text-muted-foreground">File</th>
+                      <th className="text-left px-3 sm:px-4 py-2 font-medium text-xs uppercase text-muted-foreground">Description</th>
+                      <th className="text-right px-3 sm:px-4 py-2 font-medium text-xs uppercase text-muted-foreground w-20">Lines</th>
+                      <th className="text-right px-3 sm:px-4 py-2 font-medium text-xs uppercase text-muted-foreground w-40">Last Modified</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,19 +155,19 @@ export default function SystemAudit() {
                         className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
                         data-testid={`row-file-${file.path.replace(/[/.]/g, "-")}`}
                       >
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 sm:px-4 py-2.5">
                           <code className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded">{file.path}</code>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 sm:px-4 py-2.5">
                           <div className="text-sm text-muted-foreground">{file.description}</div>
                           <div className="text-[11px] text-muted-foreground/70 mt-0.5 italic" data-testid={`text-update-note-${file.path.replace(/[/.]/g, "-")}`}>
                             Last updated: {file.lastUpdateNote}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-right text-xs font-mono text-muted-foreground">
+                        <td className="px-3 sm:px-4 py-2.5 text-right text-xs font-mono text-muted-foreground">
                           {file.lines}
                         </td>
-                        <td className="px-4 py-2.5 text-right">
+                        <td className="px-3 sm:px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
                             {format(new Date(file.lastModified), "MMM dd, HH:mm")}
@@ -177,6 +177,30 @@ export default function SystemAudit() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="sm:hidden divide-y divide-border">
+                {cat.files
+                  .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
+                  .map((file) => (
+                  <div
+                    key={file.path}
+                    className="px-3 py-3 space-y-1.5"
+                    data-testid={`row-file-mobile-${file.path.replace(/[/.]/g, "-")}`}
+                  >
+                    <code className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded break-all">{file.path}</code>
+                    <div className="text-xs text-muted-foreground">{file.description}</div>
+                    <div className="text-[11px] text-muted-foreground/70 italic">
+                      Last updated: {file.lastUpdateNote}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="font-mono">{file.lines} lines</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(file.lastModified), "MMM dd, HH:mm")}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           );

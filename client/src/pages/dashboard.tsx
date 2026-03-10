@@ -65,12 +65,12 @@ function Leaderboard() {
             Crowned Traders
           </h2>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {periods.map(p => (
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md border transition-colors ${
                 period === p.value
                   ? "bg-foreground text-background border-foreground"
                   : "bg-transparent text-muted-foreground border-border hover:text-foreground hover:border-foreground/50"
@@ -96,7 +96,7 @@ function Leaderboard() {
         </div>
       ) : data ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-5 gap-px bg-border rounded-lg overflow-hidden border border-border">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden border border-border">
             {[
               { label: "Trades", value: data.totals.trades.toString(), color: "text-foreground" },
               { label: "Wins", value: data.totals.wins.toString(), color: "text-green-400" },
@@ -115,16 +115,16 @@ function Leaderboard() {
 
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="table-leaderboard">
+              <table className="w-full text-sm min-w-[600px]" data-testid="table-leaderboard">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-12">Rank</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Crowned Trader</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Trades</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Wins</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Losses</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Avg. P/L</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Win Rate</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground w-12">Rank</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Crowned Trader</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Trades</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Wins</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Losses</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Avg. P/L</th>
+                    <th className="text-left px-3 sm:px-4 py-3 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground">Win Rate</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,7 +141,7 @@ function Leaderboard() {
                         className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
                         data-testid={`row-trader-${trader.userId}`}
                       >
-                        <td className="px-4 py-3 font-bold text-sm" data-testid={`text-rank-${trader.userId}`}>
+                        <td className="px-3 sm:px-4 py-3 font-bold text-sm" data-testid={`text-rank-${trader.userId}`}>
                           <div className="flex items-center gap-1">
                             {idx === 0 && data.traders.length > 1 && (
                               <Crown className="h-3.5 w-3.5 text-yellow-400" />
@@ -149,7 +149,7 @@ function Leaderboard() {
                             {idx + 1}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <div>
                             <div className="font-bold text-sm" data-testid={`text-trader-name-${trader.userId}`}>
                               {trader.username}
@@ -157,18 +157,18 @@ function Leaderboard() {
                             <div className="text-xs text-muted-foreground">@{trader.username}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm" data-testid={`text-trades-${trader.userId}`}>
+                        <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-trades-${trader.userId}`}>
                           {trader.trades}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <span className="text-sm font-medium text-green-400" data-testid={`text-wins-${trader.userId}`}>
                             {trader.wins}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm" data-testid={`text-losses-${trader.userId}`}>
+                        <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-losses-${trader.userId}`}>
                           {trader.losses}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <span
                             className={`text-sm font-medium ${trader.avgPnl >= 0 ? "text-green-400" : "text-red-400"}`}
                             data-testid={`text-avg-pnl-${trader.userId}`}
@@ -176,7 +176,7 @@ function Leaderboard() {
                             {trader.avgPnl >= 0 ? "" : ""}{trader.avgPnl.toFixed(2)}%
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 sm:px-4 py-3">
                           <span
                             className={`text-sm font-medium ${trader.winRate >= 50 ? "text-green-400" : "text-red-400"}`}
                             data-testid={`text-win-rate-${trader.userId}`}
@@ -202,7 +202,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div>
           <Skeleton className="h-8 w-48 mb-2" />
           <Skeleton className="h-4 w-72" />
@@ -218,12 +218,12 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
           Dashboard
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Overview of your trading signals
         </p>
       </div>

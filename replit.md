@@ -133,6 +133,19 @@ shared/
 - `GET /api/best-option` - Auto-select best option contract via Polygon API (auth, params: underlying, side, tradeType, underlyingPrice)
 - `GET /api/stats` - Dashboard stats (auth)
 
+## Responsive Design
+
+All pages use consistent responsive patterns:
+- Outer padding: `p-4 sm:p-6` on all page containers (including loading/error states)
+- Headings: `text-xl sm:text-2xl` for page titles, `text-xs sm:text-sm` for subtitles
+- Table cells: `px-3 sm:px-4` for responsive cell padding
+- Wide tables: `min-w-[...]` with `overflow-x-auto` wrapper for horizontal scroll
+- Dialogs/modals: `w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto`
+- Button groups: `flex-wrap` for wrapping on small screens
+- System Audit: Mobile card view (`sm:hidden` cards, `hidden sm:block` table)
+- Position Management tabs: Shortened labels on mobile (`Open` vs `Open Positions`)
+- Stats grids: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5` (dashboard), `grid-cols-3` (signal history)
+
 ## Design Choices
 
 - No separate `discord_channels` table — channels are stored as JSONB on the user record

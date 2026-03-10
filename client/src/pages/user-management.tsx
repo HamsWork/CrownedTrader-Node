@@ -170,13 +170,13 @@ export function CreateUserPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/users")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Create User</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">Create User</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Add a new user account with Discord channel webhooks</p>
         </div>
       </div>
@@ -326,7 +326,7 @@ export function EditUserPage({ userId }: { userId: number }) {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48" />
         <Skeleton className="h-32" />
@@ -336,25 +336,25 @@ export function EditUserPage({ userId }: { userId: number }) {
 
   if (!user) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/users")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">User not found</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">User not found</h1>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/users")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Edit User</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">Edit User</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Editing <span className="font-medium text-foreground">{user.username}</span>
           </p>
@@ -464,7 +464,7 @@ export default function UserManagement() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64" />
       </div>
@@ -472,13 +472,13 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             User Management
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
             Manage users, roles, and Discord channel webhooks
           </p>
         </div>
@@ -497,13 +497,13 @@ export default function UserManagement() {
       ) : (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full" data-testid="table-users">
+            <table className="w-full min-w-[500px]" data-testid="table-users">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">User</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">Role</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">Channels</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground text-right">Actions</th>
+                  <th className="px-3 sm:px-4 py-3 text-sm font-medium text-muted-foreground">User</th>
+                  <th className="px-3 sm:px-4 py-3 text-sm font-medium text-muted-foreground">Role</th>
+                  <th className="px-3 sm:px-4 py-3 text-sm font-medium text-muted-foreground">Channels</th>
+                  <th className="px-3 sm:px-4 py-3 text-sm font-medium text-muted-foreground text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -561,7 +561,7 @@ function UserRow({
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/50 transition-colors" data-testid={`row-user-${user.id}`}>
-      <td className="px-4 py-3">
+      <td className="px-3 sm:px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted shrink-0">
             {user.role === "admin" ? (
@@ -578,7 +578,7 @@ function UserRow({
           </div>
         </div>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 sm:px-4 py-3">
         <Badge
           variant={user.role === "admin" ? "default" : "secondary"}
           data-testid={`badge-role-${user.id}`}
@@ -586,13 +586,13 @@ function UserRow({
           {user.role}
         </Badge>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 sm:px-4 py-3">
         <span className="text-sm text-muted-foreground flex items-center gap-1" data-testid={`text-channel-count-${user.id}`}>
           <Hash className="h-3.5 w-3.5" />
           {channelCount} channel{channelCount !== 1 ? "s" : ""}
         </span>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 sm:px-4 py-3">
         <div className="flex items-center justify-end gap-1">
           <Button
             variant="outline"

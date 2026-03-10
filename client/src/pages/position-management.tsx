@@ -422,7 +422,7 @@ export default function PositionManagement() {
 
   if (signalsLoading || typesLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="flex gap-3">
           <Skeleton className="h-9 flex-1" />
@@ -436,27 +436,27 @@ export default function PositionManagement() {
   const currentPriceNum = parseFloat(closePrice) || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
           Position Management
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
           Track and manage your trading positions
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center border-b border-border">
+        <div className="flex items-center border-b border-border overflow-x-auto">
           {([
-            { value: "open", label: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
-            { value: "closed", label: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
-            { value: "all", label: "All", count: (openCount + closedCount), icon: Briefcase, color: "text-muted-foreground" },
+            { value: "open", label: "Open", labelFull: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
+            { value: "closed", label: "Closed", labelFull: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
+            { value: "all", label: "All", labelFull: "All", count: (openCount + closedCount), icon: Briefcase, color: "text-muted-foreground" },
           ] as const).map((tab) => (
             <button
               key={tab.value}
               onClick={() => setStatusFilter(tab.value)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
                 statusFilter === tab.value
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
@@ -464,7 +464,8 @@ export default function PositionManagement() {
               data-testid={`tab-${tab.value}`}
             >
               <tab.icon className={`h-3.5 w-3.5 ${statusFilter === tab.value ? tab.color : ""}`} />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.labelFull}</span>
+              <span className="sm:hidden">{tab.label}</span>
               <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${
                 statusFilter === tab.value
                   ? "bg-primary/10 text-primary"
@@ -500,20 +501,20 @@ export default function PositionManagement() {
       ) : (
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-positions">
+            <table className="w-full text-sm min-w-[900px]" data-testid="table-positions">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Symbol</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">QTY</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Closed</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Entry</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Mark</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">P/L %</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Realized P/L %</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Opened</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Track Mode</th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase text-muted-foreground"></th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Symbol</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">QTY</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Closed</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Entry</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Mark</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">P/L %</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Realized P/L %</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Opened</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Track Mode</th>
+                  <th className="text-right px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground"></th>
                 </tr>
               </thead>
               <tbody>
@@ -548,25 +549,25 @@ export default function PositionManagement() {
                       className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
                       data-testid={`row-position-${signal.id}`}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <div>
                           <span className="font-bold text-sm" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
                           <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-qty-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-qty-${signal.id}`}>
                         100
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-closed-qty-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground" data-testid={`text-closed-qty-${signal.id}`}>
                         {isOpen ? "—" : "100"}
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium" data-testid={`text-entry-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm font-medium" data-testid={`text-entry-${signal.id}`}>
                         {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
                       </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-mark-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-mark-${signal.id}`}>
                         {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <Badge
                           variant="outline"
                           className={isOpen
@@ -578,7 +579,7 @@ export default function PositionManagement() {
                           {isOpen ? "Opened" : "Closed"}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <span
                           className={`text-sm font-medium ${
                             markPrice
@@ -593,7 +594,7 @@ export default function PositionManagement() {
                           }
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <span
                           className={`text-sm font-medium ${
                             !isOpen && markPrice
@@ -608,13 +609,13 @@ export default function PositionManagement() {
                           }
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap" data-testid={`text-opened-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground whitespace-nowrap" data-testid={`text-opened-${signal.id}`}>
                         {formatDate(signal.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-tracking-${signal.id}`}>
+                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-tracking-${signal.id}`}>
                         {tracking === "Automatic" ? "Auto" : "Manual"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 sm:px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
                           {isOpen ? (
                             tracking === "Automatic" ? (
@@ -673,7 +674,7 @@ export default function PositionManagement() {
       )}
 
       <Dialog open={!!closeDialog} onOpenChange={(open) => { if (!open) resetDialog(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle data-testid="text-close-dialog-title">
               {isPartialExit ? "Partial Exit (Take Profit)" : "Full Exit"}
@@ -734,7 +735,7 @@ export default function PositionManagement() {
             </div>
           ) : closeDialog ? (
             <div className="space-y-4 py-2">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(["take_profit", "stop_loss", "trailing_stop"] as FullExitReason[]).map((r) => {
                   const labels: Record<FullExitReason, string> = {
                     take_profit: "Take Profit",
@@ -745,7 +746,7 @@ export default function PositionManagement() {
                     <button
                       key={r}
                       onClick={() => setFullExitReason(r)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                      className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium border transition-colors ${
                         fullExitReason === r
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"

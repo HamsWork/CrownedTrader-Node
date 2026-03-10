@@ -263,9 +263,9 @@ export default function SignalHistory() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
@@ -276,13 +276,13 @@ export default function SignalHistory() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             Signal History
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
             Complete log of all trading signals
           </p>
         </div>
@@ -298,18 +298,18 @@ export default function SignalHistory() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg border border-border bg-card text-center py-4">
-          <div className="text-3xl font-bold" data-testid="text-total-sent">{totalSent}</div>
-          <div className="text-xs text-muted-foreground mt-1">Total Sent</div>
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-lg border border-border bg-card text-center py-3 sm:py-4">
+          <div className="text-2xl sm:text-3xl font-bold" data-testid="text-total-sent">{totalSent}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Total Sent</div>
         </div>
-        <div className="rounded-lg border border-border bg-card text-center py-4">
-          <div className="text-3xl font-bold text-green-400" data-testid="text-success-count">{successCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">Success</div>
+        <div className="rounded-lg border border-border bg-card text-center py-3 sm:py-4">
+          <div className="text-2xl sm:text-3xl font-bold text-green-400" data-testid="text-success-count">{successCount}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Success</div>
         </div>
-        <div className="rounded-lg border border-border bg-card text-center py-4">
-          <div className="text-3xl font-bold text-red-400" data-testid="text-failed-count">{failedCount}</div>
-          <div className="text-xs text-muted-foreground mt-1">Failed</div>
+        <div className="rounded-lg border border-border bg-card text-center py-3 sm:py-4">
+          <div className="text-2xl sm:text-3xl font-bold text-red-400" data-testid="text-failed-count">{failedCount}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Failed</div>
         </div>
       </div>
 
