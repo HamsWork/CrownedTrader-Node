@@ -73,31 +73,25 @@ export async function sendFileToDiscord(
 ): Promise<boolean> {
   try {
     const fs = await import("fs");
-    const path = await import("path");
     const fileBuffer = fs.readFileSync(filePath);
 
-    const boundary = "----FormBoundary" + Math.random().toString(36).slice(2);
-    const parts: Buffer[] = [];
-
+    const formData = new FormData();
     if (content) {
-      parts.push(Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="content"\r\n\r\n${content}\r\n`
-      ));
+      formData.append("content", content);
     }
-
-    parts.push(Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
-    ));
-    parts.push(fileBuffer);
-    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
-
-    const body = Buffer.concat(parts);
+    const blob = new Blob([fileBuffer]);
+    formData.append("file", blob, fileName);
 
     const res = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
-      body: body,
+      body: formData,
     });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "");
+      console.error("Discord file webhook response error:", res.status, errorText);
+    }
+
     return res.ok;
   } catch (err) {
     console.error("Discord file webhook error:", err);
