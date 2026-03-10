@@ -1,4 +1,4 @@
-import { LayoutDashboard, Send, History, MessageSquare, Users, LogOut, Crown, ClipboardList, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Send, Briefcase, MessageSquare, Users, LogOut, Crown, ClipboardList, TrendingUp } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import {
   Sidebar,
@@ -21,7 +21,7 @@ const navItems = [
   { title: "Send Signal", url: "/send", icon: Send, adminOnly: false },
   { title: "Send TA", url: "/send-ta", icon: TrendingUp, adminOnly: false },
   { title: "Trade Plans", url: "/trade-plans", icon: ClipboardList, adminOnly: false },
-  { title: "History", url: "/history", icon: History, adminOnly: false },
+  { title: "Position Management", url: "/positions", icon: Briefcase, adminOnly: false },
 ];
 
 const adminItems = [

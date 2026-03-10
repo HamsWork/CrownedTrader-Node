@@ -11,7 +11,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import SendSignal from "@/pages/send-signal";
 import SendTA from "@/pages/send-ta";
-import SignalHistory from "@/pages/signal-history";
+import PositionManagement from "@/pages/position-management";
 import DiscordTemplatesPage from "@/pages/discord-templates";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
 import TradePlansPage from "@/pages/trade-plans";
@@ -29,7 +29,7 @@ function Router() {
       <Route path="/send" component={SendSignal} />
       <Route path="/send-ta" component={SendTA} />
       <Route path="/trade-plans" component={TradePlansPage} />
-      <Route path="/history" component={SignalHistory} />
+      <Route path="/positions" component={PositionManagement} />
       {isAdmin && <Route path="/discord-templates" component={DiscordTemplatesPage} />}
       {isAdmin && <Route path="/users" component={UserManagement} />}
       {isAdmin && <Route path="/users/create" component={CreateUserPage} />}

@@ -187,6 +187,18 @@ export async function registerRoutes(
     res.json(sigs);
   });
 
+  app.patch("/api/signals/:id/status", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
+    const { status, closePrice, closeNote } = req.body;
+    if (!status || !["open", "closed"].includes(status)) {
+      return res.status(400).json({ message: "Status must be 'open' or 'closed'" });
+    }
+    const updated = await storage.updateSignalStatus(id, status, closePrice, closeNote);
+    if (!updated) return res.status(404).json({ message: "Signal not found" });
+    res.json(updated);
+  });
+
   app.post("/api/signals", requireAuth, upload.single("chartMedia"), async (req, res) => {
     let body = req.body;
     if (typeof body.data === "string") {

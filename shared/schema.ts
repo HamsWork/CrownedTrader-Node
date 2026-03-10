@@ -80,6 +80,10 @@ export const signals = pgTable("signals", {
   data: jsonb("data").$type<Record<string, string>>().default({}).notNull(),
   discordChannelName: text("discord_channel_name"),
   sentToDiscord: boolean("sent_to_discord").notNull().default(false),
+  status: text("status").notNull().default("open"),
+  closedAt: timestamp("closed_at"),
+  closePrice: text("close_price"),
+  closeNote: text("close_note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

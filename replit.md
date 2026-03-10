@@ -30,7 +30,7 @@ client/src/
     send-signal.tsx        - Unified trade entry form with live Discord preview
     send-ta.tsx            - Technical Analysis post with media upload and Discord preview
     trade-plans.tsx        - Trade plan tracking with target/stop-loss management
-    signal-history.tsx     - Browsable signal history with search/filter
+    position-management.tsx - Position management with open/close tracking and P&L
     discord-templates.tsx  - Discord Message Templates page (admin-only, category tabs + cards)
     user-management.tsx    - Admin user management (list, create page, edit page)
   hooks/
@@ -84,14 +84,14 @@ shared/
 - **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
   - Channels stored on user record; channel selection uses user's own channels
-- **Signal History**: Search and filter past signals
+- **Position Management**: Track open/closed positions with P&L calculation, close with exit price and notes, reopen positions
 - **Dashboard**: Stats overview (Total Signals, Signal Types, Sent to Discord) with recent signals
 
 ## Database Tables
 
 - `users` - User accounts (id, username, password, role, discordChannels JSONB array of {name, webhookUrl})
 - `signal_types` - Discord message templates (id, name, slug, category, content, variables, titleTemplate, descriptionTemplate, color, fieldsTemplate, footerTemplate, showTitleDefault, showDescriptionDefault)
-- `signals` - Submitted signals (id, signalTypeId (optional), userId, data JSONB, discordChannelName, sentToDiscord, createdAt)
+- `signals` - Submitted signals (id, signalTypeId (optional), userId, data JSONB, discordChannelName, sentToDiscord, status, closedAt, closePrice, closeNote, createdAt)
 - `trade_plans` - Trade plan presets (id, userId, name, targetType, stopLossPct, takeProfitLevels JSONB array of {levelPct, takeOffPct, raiseStopLossTo, trailingStop}, isDefault, createdAt)
 - `session` - Express sessions (created automatically by connect-pg-simple)
 
@@ -123,6 +123,7 @@ shared/
 - `GET/POST /api/signal-types` - Signal types (GET: auth, POST: admin)
 - `PATCH/DELETE /api/signal-types/:id` - Signal type CRUD (admin)
 - `GET/POST /api/signals` - Signals (auth, signalTypeId optional)
+- `PATCH /api/signals/:id/status` - Update signal status (open/closed) with optional closePrice and closeNote
 - `GET /api/trade-plans` - Trade plans (auth, scoped to user; admin sees all)
 - `GET /api/trade-plans/:id` - Single trade plan (auth, owner or admin)
 - `POST /api/trade-plans` - Create trade plan (auth)
