@@ -29,7 +29,7 @@ import { Plus, Trash2, Info, Save, ClipboardList, Send } from "lucide-react";
 import { useLocation } from "wouter";
 import type { TradePlan, TakeProfitLevel } from "@shared/schema";
 
-const TARGET_TYPES = ["Underlying Price Based", "Symbol Price Based"];
+const TARGET_TYPES = ["Symbol Price Based", "Underlying Price Based"];
 const RAISE_SL_OPTIONS = ["Off", "Break even", "Custom Level"];
 const TRAILING_STOP_OPTIONS = ["Off", "On"];
 
