@@ -285,13 +285,21 @@ function TakeProfitLevelForm({
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Price</Label>
-            <Input
-              type="text"
-              value={price}
-              readOnly
-              className="text-sm bg-muted/50"
-              data-testid={`input-price-${index}`}
-            />
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground shrink-0">$</span>
+              <Input
+                type="number"
+                step="0.01"
+                value={price}
+                onChange={(e) => {
+                  const newPrice = parseFloat(e.target.value) || 0;
+                  const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
+                  onChange({ ...level, levelPct: parseFloat(newPct.toFixed(2)) });
+                }}
+                className="text-sm"
+                data-testid={`input-price-${index}`}
+              />
+            </div>
           </div>
           <div className="space-y-1 col-span-2 sm:col-span-1">
             <Label className="text-xs text-muted-foreground">Take Off</Label>
@@ -558,12 +566,21 @@ function PlanFormModal({
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Price</Label>
-                    <Input
-                      type="text"
-                      value={slPrice}
-                      readOnly
-                      className="text-sm bg-muted/50"
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground shrink-0">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={slPrice}
+                        onChange={(e) => {
+                          const newPrice = parseFloat(e.target.value) || 0;
+                          const newPct = ep > 0 ? ((ep - newPrice) / ep) * 100 : 0;
+                          setStopLossPct(Math.max(0, parseFloat(newPct.toFixed(2))).toString());
+                        }}
+                        className="text-sm"
+                        data-testid="input-stop-loss-price"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
