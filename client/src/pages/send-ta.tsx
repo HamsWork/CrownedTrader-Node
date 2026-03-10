@@ -187,17 +187,15 @@ export default function SendTA() {
               </div>
 
               <div className="space-y-2">
-                <Label className="font-semibold text-sm">
-                  Destination Channel <span className="text-destructive">*</span>
-                </Label>
+                <Label className="font-semibold text-sm">Destination Channel</Label>
                 <Select value={channel} onValueChange={setChannel}>
                   <SelectTrigger data-testid="select-ta-channel">
-                    <SelectValue placeholder="Select channel" />
+                    <SelectValue placeholder="Select a channel" />
                   </SelectTrigger>
                   <SelectContent>
-                    {userChannels.map((ch: any) => (
-                      <SelectItem key={ch.name} value={ch.name} data-testid={`option-ta-channel-${ch.name}`}>
-                        💬 {ch.name} {ch.isDefault ? "(Default)" : ""}
+                    {userChannels.map((ch: any, i: number) => (
+                      <SelectItem key={i} value={ch.name} data-testid={`option-ta-channel-${i}`}>
+                        {ch.name} {i === 0 ? "(Default)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
