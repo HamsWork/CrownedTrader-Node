@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useCreateSignal } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
-import { Send, Settings, Rocket, Info } from "lucide-react";
+import { Send, Settings, Rocket, Info, Search } from "lucide-react";
 
 const TRADE_TYPES = ["Scalp", "Swing", "Leap"];
 const TRADE_TRACKING = ["Manual updates", "Automatic"];
@@ -18,6 +18,116 @@ function getDefaultExpiration() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   return d.toISOString().split("T")[0];
+}
+
+interface TickerResult {
+  ticker: string;
+  name: string;
+  market: string;
+  type: string;
+}
+
+function TickerAutocomplete({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (ticker: string) => void;
+}) {
+  const [query, setQuery] = useState(value);
+  const [results, setResults] = useState<TickerResult[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchTickers = useCallback(async (q: string) => {
+    if (q.length < 1) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/ticker-search?q=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data);
+        setIsOpen(data.length > 0);
+      }
+    } catch {
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  function handleInputChange(val: string) {
+    const upper = val.toUpperCase();
+    setQuery(upper);
+    onChange(upper);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchTickers(upper), 300);
+  }
+
+  function selectTicker(ticker: string) {
+    setQuery(ticker);
+    onChange(ticker);
+    setIsOpen(false);
+    setResults([]);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search ticker (e.g., AAPL, TSLA)"
+          value={query}
+          onChange={e => handleInputChange(e.target.value)}
+          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
+          className="pl-9"
+          data-testid="input-ticker"
+        />
+      </div>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-60 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-3 text-sm text-muted-foreground text-center">Searching...</div>
+          ) : (
+            results.map((r) => (
+              <button
+                key={r.ticker}
+                type="button"
+                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer transition-colors"
+                onClick={() => selectTicker(r.ticker)}
+                data-testid={`ticker-option-${r.ticker}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold shrink-0">{r.ticker}</span>
+                  <span className="text-muted-foreground truncate text-xs">{r.name}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground uppercase shrink-0 ml-2">{r.market}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface TradeForm {
@@ -326,11 +436,9 @@ export default function SendSignal() {
                   <Label className="font-semibold text-sm">
                     Ticker <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    placeholder="Search ticker (e.g., AAPL, TSLA, BTCUSD, ETHUSD)"
+                  <TickerAutocomplete
                     value={form.ticker}
-                    onChange={e => update("ticker", e.target.value.toUpperCase())}
-                    data-testid="input-ticker"
+                    onChange={(ticker) => update("ticker", ticker)}
                   />
                 </div>
 

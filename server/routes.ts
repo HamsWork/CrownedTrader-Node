@@ -292,6 +292,34 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.get("/api/ticker-search", requireAuth, async (req, res) => {
+    const query = (req.query.q as string || "").trim();
+    if (!query || query.length < 1) {
+      return res.json([]);
+    }
+    const apiKey = process.env.POLYGON_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Polygon API key not configured" });
+    }
+    try {
+      const url = `https://api.polygon.io/v3/reference/tickers?search=${encodeURIComponent(query)}&active=true&limit=10&apiKey=${apiKey}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(502).json({ message: "Polygon API error" });
+      }
+      const data = await response.json() as any;
+      const results = (data.results || []).map((t: any) => ({
+        ticker: t.ticker,
+        name: t.name,
+        market: t.market,
+        type: t.type,
+      }));
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch tickers" });
+    }
+  });
+
   app.get("/api/stats", requireAuth, async (_req, res) => {
     const [allSignals, allTypes] = await Promise.all([
       storage.getSignals(),
