@@ -231,8 +231,8 @@ function TakeProfitLevelForm({
       </div>
 
       {isUnderlyingBased ? (
-        <div className="flex items-end gap-3">
-          <div className="space-y-1 w-32">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Underlying Price</Label>
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground shrink-0">$</span>
@@ -246,7 +246,7 @@ function TakeProfitLevelForm({
               />
             </div>
           </div>
-          <div className="space-y-1 w-24">
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Take Off</Label>
             <div className="flex items-center gap-1">
               <Input
@@ -493,25 +493,23 @@ function PlanFormModal({
             <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid="section-stop-loss">
               <h4 className="font-semibold text-sm">Stop Loss</h4>
               {targetType === "Underlying Price Based" ? (
-                <div className="flex items-end gap-3">
-                  <div className="space-y-1 w-32">
-                    <Label className="text-xs text-muted-foreground">Underlying Price</Label>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground shrink-0">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={stopLossPct}
-                        onChange={(e) => setStopLossPct(e.target.value)}
-                        className="text-sm"
-                        data-testid="input-stop-loss-pct"
-                      />
-                    </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Underlying Price</Label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground shrink-0">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={stopLossPct}
+                      onChange={(e) => setStopLossPct(e.target.value)}
+                      className="text-sm"
+                      data-testid="input-stop-loss-pct"
+                    />
                   </div>
                 </div>
               ) : (
-                <div className="flex items-end gap-3">
-                  <div className="space-y-1 w-24">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
                     <div className="flex items-center gap-1">
                       <Input
@@ -525,7 +523,7 @@ function PlanFormModal({
                       <span className="text-xs text-muted-foreground shrink-0">%</span>
                     </div>
                   </div>
-                  <div className="space-y-1 w-24">
+                  <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Price</Label>
                     <Input
                       type="text"
