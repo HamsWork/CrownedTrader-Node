@@ -15,14 +15,15 @@ Trading signal dashboard that lets you send trading signals using categorized Di
 ```
 client/src/
   components/
-    app-sidebar.tsx        - Navigation sidebar (role-aware)
-    theme-provider.tsx     - Dark/light mode toggle
-    signal-card.tsx        - Signal display card component
-    stat-card.tsx          - Dashboard stat card
-    empty-state.tsx        - Empty state placeholder
-    discord-templates/     - Discord template utilities
-      index.ts             - Module barrel export
-      template-utils.ts    - Client-side preview rendering (uses shared/template-render)
+    app-sidebar.tsx              - Navigation sidebar (role-aware)
+    theme-provider.tsx           - Dark/light mode toggle
+    signal-card.tsx              - Signal display card component
+    stat-card.tsx                - Dashboard stat card
+    empty-state.tsx              - Empty state placeholder
+    take-profit-level-form.tsx   - Shared TP level form (used by send-signal + trade-plans)
+    discord-templates/           - Discord template utilities
+      index.ts                   - Module barrel export
+      template-utils.ts          - Client-side preview rendering (uses shared/template-render)
   pages/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
@@ -72,7 +73,7 @@ shared/
   - Template cards with Preview and Send Manual buttons
   - Preview dialog shows full Discord embed with sample data
   - Send Manual dialog with form fields, channel selector, and live preview
-- **Signal Submission**: Unified trade entry form (no signal type selector) with live Discord embed preview, trade plan selection
+- **Signal Submission**: Unified trade entry form with live Discord embed preview, collapsible trade plan section with Live Custom (full form matching Edit Trade Plan) or saved presets
 - **Send TA**: Post technical analysis with image/video upload and optional commentary to Discord channels via webhooks; drag & drop media, live Discord preview
 - **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
