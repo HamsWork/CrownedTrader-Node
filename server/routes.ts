@@ -302,19 +302,20 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Polygon API key not configured" });
     }
     try {
-      const url = `https://api.polygon.io/v3/reference/tickers?search=${encodeURIComponent(query)}&active=true&limit=10&apiKey=${apiKey}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        return res.status(502).json({ message: "Polygon API error" });
-      }
-      const data = await response.json() as any;
-      const results = (data.results || []).map((t: any) => ({
+      const searchParam = encodeURIComponent(query);
+      const [stocksRes, cryptoRes] = await Promise.all([
+        fetch(`https://api.polygon.io/v3/reference/tickers?search=${searchParam}&market=stocks&active=true&limit=7&apiKey=${apiKey}`),
+        fetch(`https://api.polygon.io/v3/reference/tickers?search=${searchParam}&market=crypto&active=true&limit=3&apiKey=${apiKey}`),
+      ]);
+      const mapResults = (data: any) => (data.results || []).map((t: any) => ({
         ticker: t.ticker,
         name: t.name,
         market: t.market,
         type: t.type,
       }));
-      res.json(results);
+      const stocks = stocksRes.ok ? mapResults(await stocksRes.json()) : [];
+      const crypto = cryptoRes.ok ? mapResults(await cryptoRes.json()) : [];
+      res.json([...stocks, ...crypto]);
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch tickers" });
     }
