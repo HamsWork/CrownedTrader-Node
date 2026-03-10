@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { BarChart3, Send, CheckCircle, Trophy, Crown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useStats, useSignalTypes } from "@/hooks/use-signals";
+import { useStats } from "@/hooks/use-signals";
 import { StatCard } from "@/components/stat-card";
-import { SignalCard } from "@/components/signal-card";
-import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type LeaderboardTrader = {
   userId: number;
@@ -202,7 +199,6 @@ function Leaderboard() {
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useStats();
-  const { data: signalTypes } = useSignalTypes();
 
   if (isLoading) {
     return (
@@ -211,8 +207,8 @@ export default function Dashboard() {
           <Skeleton className="h-8 w-48 mb-2" />
           <Skeleton className="h-4 w-72" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
@@ -220,8 +216,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const typesMap = new Map(signalTypes?.map(st => [st.id, st]) ?? []);
 
   return (
     <div className="p-6 space-y-6">
@@ -259,32 +253,6 @@ export default function Dashboard() {
       </div>
 
       <Leaderboard />
-
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold">Recent Signals</h2>
-        </CardHeader>
-        <CardContent>
-          {!stats?.recentSignals || stats.recentSignals.length === 0 ? (
-            <EmptyState
-              icon={Send}
-              title="No signals yet"
-              description="Send your first trading signal to see it here."
-              testId="empty-recent-signals"
-            />
-          ) : (
-            <div className="space-y-3">
-              {stats.recentSignals.map((signal) => (
-                <SignalCard
-                  key={signal.id}
-                  signal={signal}
-                  signalType={typesMap.get(signal.signalTypeId)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
