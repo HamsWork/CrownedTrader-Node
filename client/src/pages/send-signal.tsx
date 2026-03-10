@@ -399,7 +399,7 @@ export default function SendSignal() {
 
   const userChannels = currentUser?.discordChannels || [];
   const [tickerDetails, setTickerDetails] = useState<TickerDetails | null>(null);
-  const [tradePlanOpen, setTradePlanOpen] = useState(true);
+  const [tradePlanOpen, setTradePlanOpen] = useState(false);
 
   const [form, setForm] = useState<TradeForm>({
     channel: userChannels.length > 0 ? userChannels[0].name : "",
@@ -935,6 +935,7 @@ export default function SendSignal() {
                           customStopLossPct: "10.00",
                           customLevels: [...DEFAULT_LEVELS_SYMBOL],
                         }));
+                        setTradePlanOpen(true);
                       } else {
                         const plan = tradePlans.find(p => p.id.toString() === v);
                         if (plan) {
@@ -950,6 +951,7 @@ export default function SendSignal() {
                         } else {
                           update("tradePlanId", v);
                         }
+                        setTradePlanOpen(false);
                       }
                     }}>
                       <SelectTrigger data-testid="select-trade-plan">
