@@ -499,177 +499,177 @@ export default function PositionManagement() {
           testId="empty-positions"
         />
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]" data-testid="table-positions">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Symbol</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">QTY</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Closed</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Entry</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Mark</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">P/L %</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Realized P/L %</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Opened</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Track Mode</th>
-                  <th className="text-right px-3 sm:px-4 py-3 font-semibold text-xs uppercase text-muted-foreground"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(signal => {
-                  const data = (signal.data ?? {}) as Record<string, string>;
-                  const ticker = data.ticker || "—";
-                  const isOption = data.is_option === "true";
-                  const optionType = data.option_type || "";
-                  const strike = data.strike || "";
-                  const expiration = data.expiration || "";
-                  const direction = data.direction || "Long";
-                  const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
-                  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-                  const markPrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
-                  const isOpen = signal.status === "open";
-                  const tracking = data.trade_tracking || "Manual";
-                  const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
-                  const realizedPnl = !isOpen && markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="grid-positions">
+          {filtered.map(signal => {
+            const data = (signal.data ?? {}) as Record<string, string>;
+            const ticker = data.ticker || "—";
+            const isOption = data.is_option === "true";
+            const optionType = data.option_type || "";
+            const strike = data.strike || "";
+            const expiration = data.expiration || "";
+            const direction = data.direction || "Long";
+            const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
+            const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+            const markPrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
+            const isOpen = signal.status === "open";
+            const tracking = data.trade_tracking || "Manual";
+            const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+            const realizedPnl = !isOpen && markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+            const tradeType = data.trade_type || "—";
 
-                  let contractLine = "";
-                  if (isOption) {
-                    contractLine = `${optionType} ${strike} - ${expiration}`;
-                  } else if (instrumentType === "Crypto") {
-                    contractLine = "Crypto";
-                  } else {
-                    contractLine = "Shares";
-                  }
+            let contractLine = "";
+            if (isOption) {
+              contractLine = `${optionType} ${strike} — ${expiration}`;
+            } else if (instrumentType === "Crypto") {
+              contractLine = "Crypto";
+            } else {
+              contractLine = instrumentType || "Shares";
+            }
 
-                  return (
-                    <tr
-                      key={signal.id}
-                      className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
-                      data-testid={`row-position-${signal.id}`}
-                    >
-                      <td className="px-3 sm:px-4 py-3">
-                        <div>
-                          <span className="font-bold text-sm" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
-                          <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-qty-${signal.id}`}>
-                        100
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground" data-testid={`text-closed-qty-${signal.id}`}>
-                        {isOpen ? "—" : "100"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm font-medium" data-testid={`text-entry-${signal.id}`}>
-                        {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-mark-${signal.id}`}>
-                        {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={isOpen
-                            ? "bg-green-500/10 text-green-400 border-green-500/30"
-                            : "bg-muted text-muted-foreground border-border"
-                          }
-                          data-testid={`badge-status-${signal.id}`}
-                        >
-                          {isOpen ? "Opened" : "Closed"}
-                        </Badge>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <span
-                          className={`text-sm font-medium ${
-                            markPrice
-                              ? pnlPct >= 0 ? "text-green-400" : "text-red-400"
-                              : "text-muted-foreground"
-                          }`}
-                          data-testid={`text-pnl-${signal.id}`}
-                        >
-                          {markPrice
-                            ? `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
-                            : "—"
-                          }
-                        </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <span
-                          className={`text-sm font-medium ${
-                            !isOpen && markPrice
-                              ? realizedPnl >= 0 ? "text-green-400" : "text-red-400"
-                              : "text-green-400"
-                          }`}
-                          data-testid={`text-realized-pnl-${signal.id}`}
-                        >
-                          {!isOpen && markPrice
-                            ? `${realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(1)}%`
-                            : "+0.0%"
-                          }
-                        </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground whitespace-nowrap" data-testid={`text-opened-${signal.id}`}>
-                        {formatDate(signal.createdAt)}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-sm" data-testid={`text-tracking-${signal.id}`}>
+            return (
+              <div
+                key={signal.id}
+                className="rounded-lg border border-border bg-card overflow-hidden hover:border-border/80 transition-colors"
+                data-testid={`card-position-${signal.id}`}
+              >
+                <div className="px-4 py-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-base" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${isOpen
+                          ? "bg-green-500/10 text-green-400 border-green-500/30"
+                          : "bg-muted text-muted-foreground border-border"
+                        }`}
+                        data-testid={`badge-status-${signal.id}`}
+                      >
+                        {isOpen ? "Open" : "Closed"}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px]">
                         {tracking === "Automatic" ? "Auto" : "Manual"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          {isOpen ? (
-                            tracking === "Automatic" ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-7 px-3"
-                                onClick={() => handleSwitchToManual(signal)}
-                                data-testid={`button-switch-manual-${signal.id}`}
-                              >
-                                <RefreshCw className="h-3 w-3 mr-1" />
-                                Switch to Manual
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7 px-3"
-                                  onClick={() => openExitDialog(signal, true)}
-                                  data-testid={`button-partial-exit-${signal.id}`}
-                                >
-                                  Partial Exit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="text-xs h-7 px-3"
-                                  onClick={() => openExitDialog(signal, false)}
-                                  data-testid={`button-full-exit-${signal.id}`}
-                                >
-                                  Full Exit
-                                </Button>
-                              </>
-                            )
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 px-3"
-                              onClick={() => handleReopen(signal)}
-                              data-testid={`button-reopen-${signal.id}`}
-                            >
-                              Reopen
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div
+                      className={`text-lg font-bold ${
+                        markPrice
+                          ? pnlPct >= 0 ? "text-green-400" : "text-red-400"
+                          : "text-muted-foreground"
+                      }`}
+                      data-testid={`text-pnl-${signal.id}`}
+                    >
+                      {markPrice
+                        ? `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
+                        : "—"
+                      }
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase">P/L</div>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-3">
+                  <div className="grid grid-cols-3 gap-3 py-2 border-t border-border">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Entry</div>
+                      <div className="text-sm font-semibold mt-0.5" data-testid={`text-entry-${signal.id}`}>
+                        {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Mark</div>
+                      <div className="text-sm font-semibold mt-0.5" data-testid={`text-mark-${signal.id}`}>
+                        {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Realized</div>
+                      <div
+                        className={`text-sm font-semibold mt-0.5 ${
+                          !isOpen && markPrice
+                            ? realizedPnl >= 0 ? "text-green-400" : "text-red-400"
+                            : "text-muted-foreground"
+                        }`}
+                        data-testid={`text-realized-pnl-${signal.id}`}
+                      >
+                        {!isOpen && markPrice
+                          ? `${realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(1)}%`
+                          : "—"
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 py-2 border-t border-border">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Type</div>
+                      <div className="text-xs mt-0.5">{tradeType}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Direction</div>
+                      <div className="text-xs mt-0.5">{isOption ? optionType : direction}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Opened</div>
+                      <div className="text-xs mt-0.5" data-testid={`text-opened-${signal.id}`}>
+                        {signal.createdAt ? format(new Date(signal.createdAt), "MMM dd") : "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    {isOpen ? (
+                      tracking === "Automatic" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 flex-1"
+                          onClick={() => handleSwitchToManual(signal)}
+                          data-testid={`button-switch-manual-${signal.id}`}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Switch to Manual
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 flex-1"
+                            onClick={() => openExitDialog(signal, true)}
+                            data-testid={`button-partial-exit-${signal.id}`}
+                          >
+                            Partial Exit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="text-xs h-8 flex-1"
+                            onClick={() => openExitDialog(signal, false)}
+                            data-testid={`button-full-exit-${signal.id}`}
+                          >
+                            Full Exit
+                          </Button>
+                        </>
+                      )
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 flex-1"
+                        onClick={() => handleReopen(signal)}
+                        data-testid={`button-reopen-${signal.id}`}
+                      >
+                        Reopen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
