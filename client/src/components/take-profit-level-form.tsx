@@ -34,6 +34,7 @@ export function TakeProfitLevelForm({
   defaultCustomSLValue,
   onChange,
   onRemove,
+  showPrice = true,
 }: {
   index: number;
   level: TakeProfitLevel;
@@ -43,6 +44,7 @@ export function TakeProfitLevelForm({
   defaultCustomSLValue: string;
   onChange: (updated: TakeProfitLevel) => void;
   onRemove: () => void;
+  showPrice?: boolean;
 }) {
   const computedPriceVal = computePrice(entryPrice, level.levelPct);
   const [localPrice, setLocalPrice] = useState(computedPriceVal);
@@ -130,7 +132,7 @@ export function TakeProfitLevelForm({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className={`grid gap-3 ${showPrice ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Level %</Label>
             <div className="flex items-center gap-1">
@@ -151,28 +153,30 @@ export function TakeProfitLevelForm({
               <span className="text-xs text-muted-foreground shrink-0">%</span>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Price</Label>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground shrink-0">$</span>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={localPrice}
-                onFocus={() => setIsPriceEditing(true)}
-                onChange={(e) => setLocalPrice(e.target.value)}
-                onBlur={() => {
-                  setIsPriceEditing(false);
-                  const newPrice = parseFloat(localPrice) || 0;
-                  const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
-                  onChange({ ...level, levelPct: parseFloat(newPct.toFixed(2)) });
-                }}
-                className="text-sm"
-                data-testid={`input-price-${index}`}
-              />
+          {showPrice && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Price</Label>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground shrink-0">$</span>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={localPrice}
+                  onFocus={() => setIsPriceEditing(true)}
+                  onChange={(e) => setLocalPrice(e.target.value)}
+                  onBlur={() => {
+                    setIsPriceEditing(false);
+                    const newPrice = parseFloat(localPrice) || 0;
+                    const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
+                    onChange({ ...level, levelPct: parseFloat(newPct.toFixed(2)) });
+                  }}
+                  className="text-sm"
+                  data-testid={`input-price-${index}`}
+                />
+              </div>
             </div>
-          </div>
-          <div className="space-y-1 col-span-2 sm:col-span-1">
+          )}
+          <div className={`space-y-1 ${showPrice ? "col-span-2 sm:col-span-1" : ""}`}>
             <Label className="text-xs text-muted-foreground">Take Off</Label>
             <div className="flex items-center gap-1">
               <Input
@@ -231,7 +235,7 @@ export function TakeProfitLevelForm({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid gap-3 ${showPrice ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Level %</Label>
                 <div className="flex items-center gap-1">
@@ -247,26 +251,28 @@ export function TakeProfitLevelForm({
                   <span className="text-xs text-muted-foreground shrink-0">%</span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Price</Label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground shrink-0">$</span>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={level.customRaiseSLValue
-                      ? (entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2)
-                      : ""}
-                    onChange={(e) => {
-                      const newPrice = parseFloat(e.target.value) || 0;
-                      const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
-                      onChange({ ...level, customRaiseSLValue: newPct.toFixed(2) });
-                    }}
-                    className="text-sm"
-                    data-testid={`input-custom-sl-price-${index}`}
-                  />
+              {showPrice && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Price</Label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground shrink-0">$</span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={level.customRaiseSLValue
+                        ? (entryPrice * (1 + parseFloat(level.customRaiseSLValue || "0") / 100)).toFixed(2)
+                        : ""}
+                      onChange={(e) => {
+                        const newPrice = parseFloat(e.target.value) || 0;
+                        const newPct = entryPrice > 0 ? ((newPrice - entryPrice) / entryPrice) * 100 : 0;
+                        onChange({ ...level, customRaiseSLValue: newPct.toFixed(2) });
+                      }}
+                      className="text-sm"
+                      data-testid={`input-custom-sl-price-${index}`}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )
         )}

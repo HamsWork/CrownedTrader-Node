@@ -888,6 +888,7 @@ export default function SendSignal() {
                                   entryPrice={ep}
                                   canRemove={i > 0}
                                   isUnderlyingBased={isUnderlying}
+                                  showPrice={form.isOption}
                                   defaultCustomSLValue={
                                     isUnderlying
                                       ? (i === 0 ? underlyingEntry.toFixed(2) : form.customLevels[i - 1].levelPct.toFixed(2))
@@ -932,7 +933,7 @@ export default function SendSignal() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className={`grid gap-3 ${form.isOption ? "grid-cols-2" : "grid-cols-1"}`}>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
                                   <div className="flex items-center gap-1">
@@ -951,24 +952,26 @@ export default function SendSignal() {
                                     <span className="text-xs text-muted-foreground shrink-0">%</span>
                                   </div>
                                 </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">Price</Label>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-muted-foreground shrink-0">$</span>
-                                    <Input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={(5 * (1 - (parseFloat(form.customStopLossPct) || 10) / 100)).toFixed(2)}
-                                      onChange={e => {
-                                        const newPrice = parseFloat(e.target.value) || 0;
-                                        const newPct = 5 > 0 ? ((5 - newPrice) / 5) * 100 : 0;
-                                        update("customStopLossPct", Math.max(0, parseFloat(newPct.toFixed(2))).toFixed(2));
-                                      }}
-                                      className="text-sm"
-                                      data-testid="input-custom-stop-loss-price"
-                                    />
+                                {form.isOption && (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Price</Label>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-muted-foreground shrink-0">$</span>
+                                      <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={(5 * (1 - (parseFloat(form.customStopLossPct) || 10) / 100)).toFixed(2)}
+                                        onChange={e => {
+                                          const newPrice = parseFloat(e.target.value) || 0;
+                                          const newPct = 5 > 0 ? ((5 - newPrice) / 5) * 100 : 0;
+                                          update("customStopLossPct", Math.max(0, parseFloat(newPct.toFixed(2))).toFixed(2));
+                                        }}
+                                        className="text-sm"
+                                        data-testid="input-custom-stop-loss-price"
+                                      />
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             )}
                           </div>
