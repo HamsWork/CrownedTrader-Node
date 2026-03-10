@@ -60,6 +60,7 @@ function PlanPreview({
 }) {
   const isUnderlying = targetType === "Underlying Price Based";
   const ep = 5;
+  const underlyingEntry = 180;
   const slPctVal = parseFloat(stopLossPct) || 10;
   const targetsStr = levels
     .map((l, i) => isUnderlying ? `TP${i + 1}: $${l.levelPct.toFixed(2)}` : `TP${i + 1}: ${l.levelPct.toFixed(2)}%`)
@@ -70,7 +71,7 @@ function PlanPreview({
     slParts.push(`$${parseFloat(stopLossPct).toFixed(2)}`);
     levels.forEach((l) => {
       if (l.raiseStopLossTo === "Break even") {
-        slParts.push(`$${ep.toFixed(2)}`);
+        slParts.push(`$${underlyingEntry.toFixed(2)}`);
       } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
         slParts.push(`$${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
       }
@@ -108,7 +109,9 @@ function PlanPreview({
         let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(2)}% of `;
         desc += i === 0 ? "position" : "remaining position";
         if (l.raiseStopLossTo === "Break even") {
-          desc += " and raise stop loss to break even";
+          desc += isUnderlying
+            ? ` and raise stop loss to $${underlyingEntry.toFixed(2)} (break even)`
+            : " and raise stop loss to break even";
         } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
           desc += isUnderlying
             ? ` and raise stop loss to $${l.customRaiseSLValue}`
@@ -621,7 +624,7 @@ function PlanFormModal({
     modalSlParts.push(`$${parseFloat(stopLossPct).toFixed(2)}`);
     levels.forEach((l) => {
       if (l.raiseStopLossTo === "Break even") {
-        modalSlParts.push(`$${ep.toFixed(2)}`);
+        modalSlParts.push(`$${underlyingEntry.toFixed(2)}`);
       } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
         modalSlParts.push(`$${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
       }
@@ -842,7 +845,9 @@ function PlanFormModal({
                         let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(2)}% of `;
                         desc += i === 0 ? "position" : "remaining position";
                         if (l.raiseStopLossTo === "Break even") {
-                          desc += " and raise stop loss to break even";
+                          desc += isUnderlying
+                            ? ` and raise stop loss to $${underlyingEntry.toFixed(2)} (break even)`
+                            : " and raise stop loss to break even";
                         } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
                           desc += isUnderlying
                             ? ` and raise stop loss to $${l.customRaiseSLValue}`
