@@ -558,6 +558,9 @@ export default function SendSignal() {
     } else {
       setUnderlyingPrice(null);
     }
+    if (tickerDetails?.category === "Crypto") {
+      setForm(prev => ({ ...prev, isOption: false }));
+    }
   }, [tickerDetails]);
 
   useEffect(() => {
@@ -919,22 +922,24 @@ export default function SendSignal() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between py-2">
-                  <Label className="font-semibold text-sm cursor-pointer" htmlFor="is-option">
-                    Is Option
-                  </Label>
-                  <Switch
-                    id="is-option"
-                    checked={form.isOption}
-                    onCheckedChange={v => update("isOption", v)}
-                    data-testid="switch-is-option"
-                  />
-                </div>
+                {tickerDetails?.category !== "Crypto" && (
+                  <div className="flex items-center justify-between py-2">
+                    <Label className="font-semibold text-sm cursor-pointer" htmlFor="is-option">
+                      Is Option
+                    </Label>
+                    <Switch
+                      id="is-option"
+                      checked={form.isOption}
+                      onCheckedChange={v => update("isOption", v)}
+                      data-testid="switch-is-option"
+                    />
+                  </div>
+                )}
 
                 {form.stockPrice ? (
                   <div className="rounded-md bg-muted/50 border border-border px-3 py-2 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">{tickerDetails?.category === "LETF" ? `${form.ticker} (LETF) Price:` : "Stock Price:"}</span>
+                      <span className="text-xs text-muted-foreground font-medium">{tickerDetails?.category === "LETF" ? `${form.ticker} (LETF) Price:` : tickerDetails?.category === "Crypto" ? "Crypto Price:" : "Stock Price:"}</span>
                       <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
                     </div>
                     {tickerDetails?.category === "LETF" && (
