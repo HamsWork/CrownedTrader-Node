@@ -160,6 +160,157 @@ function PartialExitPreview({
   );
 }
 
+type FullExitReason = "take_profit" | "stop_loss" | "trailing_stop";
+
+function FullExitPreview({
+  signal,
+  currentPrice,
+  reason,
+}: {
+  signal: Signal;
+  currentPrice: number;
+  reason: FullExitReason;
+}) {
+  const data = (signal.data ?? {}) as Record<string, string>;
+  const ticker = data.ticker || "—";
+  const isOption = data.is_option === "true";
+  const optionType = data.option_type || "";
+  const strike = data.strike || "";
+  const expiration = data.expiration || "";
+  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+  const stockPrice = data.stock_price || "";
+  const direction = data.direction || "Long";
+
+  let levels: TakeProfitLevel[] = [];
+  try {
+    levels = JSON.parse(data.take_profit_levels || "[]");
+  } catch {}
+
+  const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, direction) : 0;
+  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, direction) : null;
+  const tpLabel = hitTp ? `TP${hitTp.level}` : "TP1";
+
+  const dateStr = format(new Date(), "EEE MMM dd");
+
+  let titlePrefix = "";
+  let statusText = "";
+  if (reason === "take_profit") {
+    titlePrefix = `Take Profit ${hitTp?.level ?? 1} HIT`;
+    statusText = "Position Closed";
+  } else if (reason === "stop_loss") {
+    titlePrefix = "Stop Loss HIT";
+    statusText = "Stop Loss Triggered — Position Closed";
+  } else {
+    titlePrefix = "Trailing Stop HIT";
+    statusText = "Trailing Stop Triggered — Position Closed";
+  }
+
+  const exitLines: { color: string; text: string }[] = [];
+  if (reason === "take_profit") {
+    exitLines.push({
+      color: "text-green-400",
+      text: `Full Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (+${profitPct > 0 ? profitPct.toFixed(1) : "0.0"}%)`,
+    });
+    if (hitTp && hitTp.index > 0) {
+      for (let i = 0; i < hitTp.index; i++) {
+        const lvl = levels[i];
+        const lvlPrice = (entryPrice * (1 + lvl.levelPct / 100)).toFixed(2);
+        const lvlPnl = lvl.levelPct;
+        exitLines.push({
+          color: "text-orange-400",
+          text: `TP${i + 1} Exit (${lvl.takeOffPct}%) : ${lvlPrice} (+${lvlPnl.toFixed(1)}%)`,
+        });
+      }
+    }
+    exitLines.push({
+      color: "text-green-500",
+      text: `Average exit: $${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (+${profitPct > 0 ? profitPct.toFixed(1) : "0.0"}% blended)`,
+    });
+  } else if (reason === "stop_loss") {
+    const slPct = parseFloat(data.stop_loss_pct || "0");
+    const slPrice = entryPrice > 0 ? (entryPrice * (1 - slPct / 100)).toFixed(2) : "0.00";
+    const lossPct = profitPct < 0 ? profitPct : -slPct;
+    exitLines.push({
+      color: "text-red-400",
+      text: `Stop Loss Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : slPrice} (${lossPct.toFixed(1)}%)`,
+    });
+    exitLines.push({
+      color: "text-red-500",
+      text: `Loss: $${currentPrice > 0 ? currentPrice.toFixed(2) : slPrice} (${lossPct.toFixed(1)}%)`,
+    });
+  } else {
+    exitLines.push({
+      color: "text-yellow-400",
+      text: `Trailing Stop Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(1)}%)`,
+    });
+    exitLines.push({
+      color: "text-green-500",
+      text: `Locked in: $${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(1)}%)`,
+    });
+  }
+
+  return (
+    <div className="rounded-md border-l-4 border-red-500 bg-[#2b2d31] text-[#dcddde] text-[13px] p-4 space-y-3">
+      <div className="font-bold text-white text-base">
+        {ticker} {titlePrefix} — {dateStr}
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-green-400 font-medium">Trade Performance:</div>
+        <div>Ticker: {ticker}{stockPrice ? ` (Stock: $${parseFloat(stockPrice).toFixed(2)})` : ""}</div>
+      </div>
+
+      {isOption && (
+        <div className="grid grid-cols-3 gap-2 text-[13px]">
+          <div>
+            <span className="text-red-400 font-medium">Expiration</span>
+            <div>{expiration || "—"}</div>
+          </div>
+          <div>
+            <span className="text-yellow-400 font-medium">Strike</span>
+            <div>{strike} {optionType}</div>
+          </div>
+          <div>
+            <span className="text-blue-400 font-medium">Price</span>
+            <div>{entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-2 text-[13px]">
+        <div>
+          <span className="text-green-400 font-medium">Entry</span>
+          <div>${entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
+        </div>
+        <div>
+          <span className="text-green-400 font-medium">{reason === "take_profit" ? `${tpLabel} Hit` : "Exit"}</span>
+          <div>${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</div>
+        </div>
+        <div>
+          <span className="text-yellow-400 font-medium">Profit</span>
+          <div>{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</div>
+        </div>
+      </div>
+
+      <div>
+        <span className="text-orange-400 font-medium">Status: </span>
+        <span>{statusText}</span>
+      </div>
+
+      <div className="space-y-1">
+        <div className="font-medium">Strategy Executed:</div>
+        {exitLines.map((line, i) => (
+          <div key={i} className={line.color}>{line.text}</div>
+        ))}
+      </div>
+
+      <div className="text-xs text-muted-foreground italic">
+        Disclaimer: Not financial advice. Trade at your own risk.
+      </div>
+    </div>
+  );
+}
+
 export default function PositionManagement() {
   const { data: signals, isLoading: signalsLoading } = useSignals();
   const { data: signalTypes, isLoading: typesLoading } = useSignalTypes();
@@ -173,10 +324,11 @@ export default function PositionManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+  const [fullExitReason, setFullExitReason] = useState<FullExitReason>("take_profit");
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!closeDialog || !isPartialExit) {
+    if (!closeDialog) {
       setLivePrice(null);
       return;
     }
@@ -197,7 +349,7 @@ export default function PositionManagement() {
       })
       .catch(() => {})
       .finally(() => setIsFetchingPrice(false));
-  }, [closeDialog, isPartialExit]);
+  }, [closeDialog]);
 
   const filtered = signals?.filter(signal => {
     const data = (signal.data ?? {}) as Record<string, string>;
@@ -251,12 +403,11 @@ export default function PositionManagement() {
   }
 
   function openExitDialog(signal: Signal, partial: boolean) {
-    const data = (signal.data ?? {}) as Record<string, string>;
-    const entry = data.entry_price || data.option_price || "";
-    setClosePrice(partial ? "0.00" : entry);
+    setClosePrice("0.00");
     setCloseNote("");
     setIsPartialExit(partial);
     setUseManualPrice(false);
+    setFullExitReason("take_profit");
     setCloseDialog(signal);
   }
 
@@ -267,6 +418,7 @@ export default function PositionManagement() {
     setCloseNote("");
     setUseManualPrice(false);
     setLivePrice(null);
+    setFullExitReason("take_profit");
   }
 
   if (signalsLoading || typesLoading) {
@@ -515,10 +667,10 @@ export default function PositionManagement() {
       )}
 
       <Dialog open={!!closeDialog} onOpenChange={(open) => { if (!open) resetDialog(); }}>
-        <DialogContent className={isPartialExit ? "max-w-lg" : ""}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle data-testid="text-close-dialog-title">
-              {isPartialExit ? "Partial Exit (Take Profit)" : "Full Exit — Close Position"}
+              {isPartialExit ? "Partial Exit (Take Profit)" : "Full Exit"}
             </DialogTitle>
           </DialogHeader>
 
@@ -574,62 +726,82 @@ export default function PositionManagement() {
                 </Button>
               </DialogFooter>
             </div>
-          ) : (
+          ) : closeDialog ? (
             <div className="space-y-4 py-2">
-              {closeDialog && (() => {
-                const data = (closeDialog.data ?? {}) as Record<string, string>;
-                const ticker = data.ticker || "—";
-                const isOpt = data.is_option === "true";
-                const contractLine = isOpt
-                  ? `${data.option_type || ""} ${data.strike || ""} - ${data.expiration || ""}`
-                  : (data.instrument_type === "Crypto" ? "Crypto" : "Shares");
-                return (
-                  <div className="rounded-md bg-muted/50 border border-border px-3 py-2">
-                    <span className="font-bold text-sm">{ticker}</span>
-                    <span className="text-xs text-muted-foreground ml-2">{contractLine}</span>
-                  </div>
-                );
-              })()}
+              <div className="flex gap-2">
+                {(["take_profit", "stop_loss", "trailing_stop"] as FullExitReason[]).map((r) => {
+                  const labels: Record<FullExitReason, string> = {
+                    take_profit: "Take Profit",
+                    stop_loss: "Stop Loss",
+                    trailing_stop: "Trailing Stop",
+                  };
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => setFullExitReason(r)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                        fullExitReason === r
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      }`}
+                      data-testid={`button-exit-reason-${r}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${fullExitReason === r ? "bg-green-400" : "bg-muted-foreground/50"}`} />
+                      {labels[r]}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="space-y-2">
-                <Label>Exit Price</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Exit price"
-                    value={closePrice}
-                    onChange={(e) => setClosePrice(e.target.value)}
-                    className="pl-9"
-                    data-testid="input-close-price"
-                  />
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">Current Price</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={closePrice}
+                      onChange={(e) => setClosePrice(e.target.value)}
+                      disabled={!useManualPrice}
+                      className="text-sm"
+                      data-testid="input-close-price"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={useManualPrice}
+                      onCheckedChange={(v) => {
+                        setUseManualPrice(v);
+                        if (!v && livePrice) {
+                          setClosePrice(livePrice.toString());
+                        }
+                      }}
+                      data-testid="switch-manual-price"
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Use Manual Price</span>
+                  </div>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label>Note (optional)</Label>
-                <Textarea
-                  placeholder="Reason for exit, observations..."
-                  value={closeNote}
-                  onChange={(e) => setCloseNote(e.target.value)}
-                  rows={3}
-                  data-testid="input-close-note"
-                />
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">Discord Preview</Label>
+                <FullExitPreview signal={closeDialog} currentPrice={currentPriceNum} reason={fullExitReason} />
               </div>
-              <DialogFooter>
+
+              <DialogFooter className="flex justify-between sm:justify-between gap-2 pt-2">
                 <Button variant="outline" onClick={resetDialog} data-testid="button-cancel-close">
                   Cancel
                 </Button>
                 <Button
-                  variant="destructive"
                   onClick={handleClose}
                   disabled={isSubmitting}
                   data-testid="button-confirm-close"
                 >
-                  {isSubmitting ? "Processing..." : "Close Position"}
+                  {isSubmitting ? "Processing..." : "Full Exit"}
                 </Button>
               </DialogFooter>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
