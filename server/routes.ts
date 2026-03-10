@@ -443,9 +443,11 @@ export async function registerRoutes(
     }
     try {
       const searchParam = encodeURIComponent(query);
-      const [stocksRes, cryptoRes] = await Promise.all([
+      const cryptoTickerSearch = encodeURIComponent(`X:${query.toUpperCase()}`);
+      const [stocksRes, cryptoRes, cryptoTickerRes] = await Promise.all([
         fetch(`https://api.polygon.io/v3/reference/tickers?search=${searchParam}&market=stocks&active=true&limit=7&apiKey=${apiKey}`),
         fetch(`https://api.polygon.io/v3/reference/tickers?search=${searchParam}&market=crypto&active=true&limit=3&apiKey=${apiKey}`),
+        fetch(`https://api.polygon.io/v3/reference/tickers?ticker.gte=${cryptoTickerSearch}&ticker.lt=${encodeURIComponent(`X:${query.toUpperCase()}Z`)}&market=crypto&active=true&limit=3&apiKey=${apiKey}`),
       ]);
       const mapResults = (data: any) => (data.results || []).map((t: any) => ({
         ticker: t.market === "crypto" ? t.ticker.replace(/^X:/, "") : t.ticker,
@@ -455,7 +457,14 @@ export async function registerRoutes(
       }));
       const stocks = stocksRes.ok ? mapResults(await stocksRes.json()) : [];
       const crypto = cryptoRes.ok ? mapResults(await cryptoRes.json()) : [];
-      const all = [...stocks, ...crypto];
+      const cryptoByTicker = cryptoTickerRes.ok ? mapResults(await cryptoTickerRes.json()) : [];
+      const seenTickers = new Set<string>();
+      const allCrypto = [...cryptoByTicker, ...crypto].filter((t: any) => {
+        if (seenTickers.has(t.ticker)) return false;
+        seenTickers.add(t.ticker);
+        return true;
+      });
+      const all = [...stocks, ...allCrypto];
       const q = query.toUpperCase();
       all.sort((a: any, b: any) => {
         const aExact = a.ticker.toUpperCase() === q ? 0 : 1;
