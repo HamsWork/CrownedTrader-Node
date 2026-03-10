@@ -515,7 +515,7 @@ function PlanFormModal({
   }, [computedSlPrice, isSlPriceEditing]);
   const targetsStr = isUnderlying
     ? levels.map((l) => `$${l.levelPct.toFixed(2)}`).join(", ")
-    : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(1)}%)`).join(", ");
+    : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${parseFloat(l.levelPct.toFixed(2))}%)`).join(", ");
 
   const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${slPrice}(-${slPct}%)`;
   const stopLossParts = [stopLossDisplay];
@@ -710,8 +710,8 @@ function PlanFormModal({
                         <span>🔥</span> Take Profit Plan
                       </p>
                       {levels.map((l, i) => {
-                        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct.toFixed(1)}%`;
-                        let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(1)}% of `;
+                        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${parseFloat(l.levelPct.toFixed(2))}%`;
+                        let desc = `At ${levelLabel} take off ${parseFloat(l.takeOffPct.toFixed(1))}% of `;
                         desc += i === 0 ? "position" : "remaining position";
                         if (l.raiseStopLossTo === "Break even") {
                           desc += " and raise stop loss to break even";
