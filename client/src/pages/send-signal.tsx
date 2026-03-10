@@ -109,12 +109,13 @@ function TickerAutocomplete({
     }
   }, []);
 
-  async function fetchDetails(ticker: string) {
+  async function fetchDetails(ticker: string, market?: string) {
     latestTickerRef.current = ticker;
+    const marketParam = market ? `?market=${encodeURIComponent(market)}` : "";
     try {
       const [detailsRes, priceRes] = await Promise.all([
-        fetch(`/api/ticker-details/${encodeURIComponent(ticker)}`),
-        fetch(`/api/stock-price/${encodeURIComponent(ticker)}`),
+        fetch(`/api/ticker-details/${encodeURIComponent(ticker)}${marketParam}`),
+        fetch(`/api/stock-price/${encodeURIComponent(ticker)}${marketParam}`),
       ]);
       if (latestTickerRef.current !== ticker) return;
       if (detailsRes.ok) {
@@ -146,13 +147,13 @@ function TickerAutocomplete({
     debounceRef.current = setTimeout(() => searchTickers(upper), 300);
   }
 
-  function selectTicker(ticker: string) {
+  function selectTicker(ticker: string, market?: string) {
     const clean = stripCryptoPrefix(ticker);
     setQuery(clean);
     onChange(clean);
     setIsOpen(false);
     setResults([]);
-    fetchDetails(clean);
+    fetchDetails(clean, market);
   }
 
   const badge = tickerDetails ? CATEGORY_BADGES[tickerDetails.category] : null;
@@ -182,7 +183,7 @@ function TickerAutocomplete({
                   key={r.ticker}
                   type="button"
                   className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => selectTicker(r.ticker)}
+                  onClick={() => selectTicker(r.ticker, r.market)}
                   data-testid={`ticker-option-${displayTicker}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">

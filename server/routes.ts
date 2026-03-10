@@ -467,7 +467,8 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Polygon API key not configured" });
     }
     try {
-      const isCrypto = ticker.endsWith("USD") || ticker.endsWith("USDT");
+      const marketHint = (req.query.market as string) || "";
+      const isCrypto = marketHint === "crypto" || ticker.endsWith("USD") || ticker.endsWith("USDT");
       const polygonTicker = isCrypto && !ticker.startsWith("X:") ? `X:${ticker}` : ticker;
       const url = `https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(polygonTicker)}?apiKey=${apiKey}`;
       const response = await fetch(url);
@@ -562,7 +563,8 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Polygon API key not configured" });
     }
     try {
-      const isCrypto = ticker.startsWith("X:") || ticker.endsWith("USD") || ticker.endsWith("USDT");
+      const marketHint = (req.query.market as string) || "";
+      const isCrypto = marketHint === "crypto" || ticker.startsWith("X:") || ticker.endsWith("USD") || ticker.endsWith("USDT");
       const polygonTicker = isCrypto && !ticker.startsWith("X:") ? `X:${ticker}` : ticker;
 
       let price: number | null = null;
