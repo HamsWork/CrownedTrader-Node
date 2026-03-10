@@ -726,25 +726,18 @@ export default function SendSignal() {
 
                   </div>
                 ) : (
-                  <div className="space-y-5 rounded-lg border border-border p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-sm">Shares / Stock</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Direction</Label>
-                      <Select value={form.direction} onValueChange={v => update("direction", v)}>
-                        <SelectTrigger data-testid="select-direction">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DIRECTIONS.map(d => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Direction</Label>
+                    <Select value={form.direction} onValueChange={v => update("direction", v)}>
+                      <SelectTrigger data-testid="select-direction">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DIRECTIONS.map(d => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
