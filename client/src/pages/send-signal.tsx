@@ -10,7 +10,7 @@ import { useCreateSignal } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { Send, Settings, Rocket, Info } from "lucide-react";
 
-const TRADE_TYPES = ["Scalp", "Swing", "Day Trade", "Position"];
+const TRADE_TYPES = ["Scalp", "Swing", "Leap"];
 const TRADE_TRACKING = ["Manual updates", "Automatic"];
 const OPTION_TYPES = ["CALL", "PUT"];
 
