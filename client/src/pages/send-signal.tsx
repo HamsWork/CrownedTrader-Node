@@ -975,6 +975,99 @@ export default function SendSignal() {
                     )}
                   </div>
 
+                  {form.tradePlanId && form.tradePlanId !== "live-custom" && (() => {
+                    const selectedSavedPlan = tradePlans.find(p => p.id.toString() === form.tradePlanId);
+                    if (!selectedSavedPlan) return null;
+                    const isUnderlying = selectedSavedPlan.targetType === "Underlying Price Based";
+                    const ep = 5;
+                    const underlyingEntry = 180;
+                    const slPctVal = parseFloat(selectedSavedPlan.stopLossPct) || 10;
+                    const savedLevels = selectedSavedPlan.takeProfitLevels || [];
+                    const targetsStr = isUnderlying
+                      ? savedLevels.map(l => `$${l.levelPct.toFixed(2)}`).join(", ")
+                      : savedLevels.map(l => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(2)}%)`).join(", ");
+                    const slParts: string[] = [];
+                    if (isUnderlying) {
+                      slParts.push(`$${parseFloat(selectedSavedPlan.stopLossPct).toFixed(2)}`);
+                      savedLevels.forEach(l => {
+                        if (l.raiseStopLossTo === "Break even") slParts.push(`$${underlyingEntry.toFixed(2)}`);
+                        else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) slParts.push(`$${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
+                      });
+                    } else {
+                      slParts.push(`$${(ep * (1 - slPctVal / 100)).toFixed(2)} (-${slPctVal.toFixed(2)}%)`);
+                      savedLevels.forEach(l => {
+                        if (l.raiseStopLossTo === "Break even") slParts.push(`$${ep.toFixed(2)} (0.00%)`);
+                        else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+                          const customPrice = (ep * (1 + parseFloat(l.customRaiseSLValue || "0") / 100)).toFixed(2);
+                          slParts.push(`$${customPrice} (+${l.customRaiseSLValue}%)`);
+                        }
+                      });
+                    }
+                    const stopLossStr = slParts.join(", ");
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between py-2 hover:text-foreground transition-colors"
+                          onClick={() => setTradePlanOpen(!tradePlanOpen)}
+                          data-testid="button-toggle-saved-plan"
+                        >
+                          <span className="text-sm font-semibold">{selectedSavedPlan.name} Details</span>
+                          {tradePlanOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        </button>
+
+                        {tradePlanOpen && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Trade Plan Type</span>
+                              <span className="text-xs font-medium">{selectedSavedPlan.targetType}</span>
+                            </div>
+
+                            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-2" data-testid="section-saved-plan-preview">
+                              <p className="font-semibold flex items-center gap-1.5">
+                                <span>📋</span> Trade Plan
+                              </p>
+                              <p>
+                                <span>🎯</span> Targets: {targetsStr || "—"}
+                              </p>
+                              <p>
+                                <span>🔴</span> Stop Loss: {stopLossStr}
+                              </p>
+
+                              <p className="font-semibold flex items-center gap-1.5 pt-1">
+                                <span>🔥</span> Take Profit Plan
+                              </p>
+                              {savedLevels.map((l, i) => {
+                                const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct.toFixed(2)}%`;
+                                let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(2)}% of `;
+                                desc += i === 0 ? "position" : "remaining position";
+                                if (l.raiseStopLossTo === "Break even") {
+                                  desc += isUnderlying
+                                    ? ` and raise stop loss to $${underlyingEntry.toFixed(2)} (break even)`
+                                    : " and raise stop loss to break even";
+                                } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+                                  desc += isUnderlying
+                                    ? ` and raise stop loss to $${l.customRaiseSLValue}`
+                                    : ` and raise stop loss to +${l.customRaiseSLValue}%`;
+                                }
+                                if (l.trailingStop === "On") {
+                                  desc += l.trailingStopPct ? ` with ${l.trailingStopPct}% trailing stop` : " with trailing stop";
+                                }
+                                desc += ".";
+                                return (
+                                  <p key={i} className="text-muted-foreground leading-relaxed" data-testid={`text-saved-tp-desc-${i}`}>
+                                    Take Profit ({i + 1}): {desc}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
                   {form.tradePlanId === "live-custom" && (
                     <>
                       <button
