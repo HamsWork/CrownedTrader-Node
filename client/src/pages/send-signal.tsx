@@ -58,11 +58,13 @@ function TickerAutocomplete({
   onChange,
   tickerDetails,
   onTickerDetails,
+  onStockPrice,
 }: {
   value: string;
   onChange: (ticker: string) => void;
   tickerDetails: TickerDetails | null;
   onTickerDetails: (details: TickerDetails | null) => void;
+  onStockPrice: (price: number | null) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<TickerResult[]>([]);
@@ -70,6 +72,7 @@ function TickerAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const latestTickerRef = useRef<string>("");
 
   useEffect(() => {
     setQuery(value);
@@ -106,13 +109,26 @@ function TickerAutocomplete({
   }, []);
 
   async function fetchDetails(ticker: string) {
+    latestTickerRef.current = ticker;
     try {
-      const res = await fetch(`/api/ticker-details/${encodeURIComponent(ticker)}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [detailsRes, priceRes] = await Promise.all([
+        fetch(`/api/ticker-details/${encodeURIComponent(ticker)}`),
+        fetch(`/api/stock-price/${encodeURIComponent(ticker)}`),
+      ]);
+      if (latestTickerRef.current !== ticker) return;
+      if (detailsRes.ok) {
+        const data = await detailsRes.json();
         onTickerDetails(data);
       }
-    } catch {}
+      if (priceRes.ok) {
+        const data = await priceRes.json();
+        onStockPrice(data.price);
+      } else {
+        onStockPrice(null);
+      }
+    } catch {
+      if (latestTickerRef.current === ticker) onStockPrice(null);
+    }
   }
 
   function handleInputChange(val: string) {
@@ -120,6 +136,7 @@ function TickerAutocomplete({
     setQuery(upper);
     onChange(upper);
     onTickerDetails(null);
+    onStockPrice(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchTickers(upper), 300);
   }
@@ -415,6 +432,8 @@ export default function SendSignal() {
     riskManagement: "",
   });
 
+  const [isFetchingOption, setIsFetchingOption] = useState(false);
+
   const [isSendingMultipart, setIsSendingMultipart] = useState(false);
   const [chartFile, setChartFile] = useState<File | null>(null);
   const [chartPreviewUrl, setChartPreviewUrl] = useState<string | null>(null);
@@ -455,6 +474,64 @@ export default function SendSignal() {
       setForm(prev => ({ ...prev, tradePlanId: defaultPlan.id.toString() }));
     }
   }, [tradePlans]);
+
+  const bestOptionAbortRef = useRef<AbortController | null>(null);
+  const bestOptionReqIdRef = useRef(0);
+
+  const fetchBestOption = useCallback(async (ticker: string, stockPx: string, optionType: string, tradeType: string) => {
+    const price = parseFloat(stockPx);
+    if (!ticker || !price || price <= 0) return;
+
+    if (bestOptionAbortRef.current) bestOptionAbortRef.current.abort();
+    const controller = new AbortController();
+    bestOptionAbortRef.current = controller;
+    const reqId = ++bestOptionReqIdRef.current;
+
+    setIsFetchingOption(true);
+    try {
+      const params = new URLSearchParams({
+        underlying: ticker,
+        side: optionType.toLowerCase(),
+        tradeType: tradeType.toLowerCase(),
+        underlyingPrice: price.toString(),
+      });
+      const res = await fetch(`/api/best-option?${params}`, { signal: controller.signal });
+      if (reqId !== bestOptionReqIdRef.current) return;
+      if (res.ok) {
+        const data = await res.json();
+        setForm(prev => ({
+          ...prev,
+          expiration: data.expiration || prev.expiration,
+          strike: data.strike?.toString() || prev.strike,
+          optionPrice: data.optionPrice?.toString() || prev.optionPrice,
+        }));
+      }
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error("Best option fetch failed:", e);
+      }
+    } finally {
+      if (reqId === bestOptionReqIdRef.current) {
+        setIsFetchingOption(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (form.isOption && !form.manualContract && form.ticker && parseFloat(form.stockPrice) > 0) {
+      fetchBestOption(form.ticker, form.stockPrice, form.optionType, form.tradeType);
+    } else {
+      if (bestOptionAbortRef.current) bestOptionAbortRef.current.abort();
+      bestOptionReqIdRef.current++;
+      setIsFetchingOption(false);
+    }
+  }, [form.isOption, form.manualContract, form.ticker, form.stockPrice, form.optionType, form.tradeType]);
+
+  useEffect(() => {
+    if (!form.isOption && form.stockPrice && !form.entryPrice) {
+      setForm(prev => ({ ...prev, entryPrice: prev.stockPrice }));
+    }
+  }, [form.isOption, form.stockPrice]);
 
   function update<K extends keyof TradeForm>(key: K, value: TradeForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -655,6 +732,15 @@ export default function SendSignal() {
                     onChange={(ticker) => update("ticker", ticker)}
                     tickerDetails={tickerDetails}
                     onTickerDetails={setTickerDetails}
+                    onStockPrice={(price) => {
+                      setForm(prev => ({
+                        ...prev,
+                        stockPrice: price ? price.toString() : "",
+                        optionPrice: "",
+                        strike: "",
+                        expiration: getDefaultExpiration(),
+                      }));
+                    }}
                   />
                 </div>
 
@@ -670,10 +756,20 @@ export default function SendSignal() {
                   />
                 </div>
 
+                {form.stockPrice && (
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-xs text-muted-foreground">Stock Price:</span>
+                    <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
+                  </div>
+                )}
+
                 {form.isOption ? (
                   <div className="space-y-5 rounded-lg border border-border p-4">
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-sm">Option contract</span>
+                      {isFetchingOption && (
+                        <span className="text-xs text-muted-foreground animate-pulse" data-testid="text-fetching-option">Finding best option...</span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -701,7 +797,7 @@ export default function SendSignal() {
                       </Select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label className="font-semibold text-sm">Expiration</Label>
                         <Input
@@ -722,22 +818,42 @@ export default function SendSignal() {
                           data-testid="input-strike"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-sm">Option Price</Label>
+                        <Input
+                          placeholder="Option price"
+                          value={form.optionPrice}
+                          onChange={e => update("optionPrice", e.target.value)}
+                          data-testid="input-option-price"
+                        />
+                      </div>
                     </div>
 
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-sm">Direction</Label>
-                    <Select value={form.direction} onValueChange={v => update("direction", v)}>
-                      <SelectTrigger data-testid="select-direction">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DIRECTIONS.map(d => (
-                          <SelectItem key={d} value={d}>{d}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Direction</Label>
+                      <Select value={form.direction} onValueChange={v => update("direction", v)}>
+                        <SelectTrigger data-testid="select-direction">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DIRECTIONS.map(d => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Entry Price</Label>
+                      <Input
+                        placeholder="Entry price"
+                        value={form.entryPrice}
+                        onChange={e => update("entryPrice", e.target.value)}
+                        data-testid="input-entry-price"
+                      />
+                    </div>
                   </div>
                 )}
 

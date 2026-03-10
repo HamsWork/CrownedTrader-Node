@@ -74,6 +74,9 @@ shared/
   - Preview dialog shows full Discord embed with sample data
   - Send Manual dialog with form fields, channel selector, and live preview
 - **Signal Submission**: Unified trade entry form with live Discord embed preview, collapsible trade plan section with Live Custom (full form matching Edit Trade Plan) or saved presets
+  - Auto-fetches stock price from Polygon when ticker is selected
+  - Auto-selects best option contract (expiration, strike, option price) based on trade type (Scalp/Swing/Leap) when Is Option is ON and Manual Contract is OFF
+  - Best option selection uses progressive fallback levels matching CrownedTrader Django app logic (delta, DTE, OI, spread filters)
 - **Send TA**: Post technical analysis with image/video upload and optional commentary to Discord channels via webhooks; drag & drop media, live Discord preview
 - **Trade Plans**: Preset builder for take-profit levels — configure Level %, Take Off %, Raise stop loss to, Trailing Stop per level; live Discord preview; save/load/delete presets
 - **Discord Integration**: Send signals as rich embeds to Discord channels via webhooks, supports @everyone content
@@ -120,6 +123,8 @@ shared/
 - `POST /api/trade-plans` - Create trade plan (auth)
 - `PATCH /api/trade-plans/:id` - Update trade plan (auth, owner or admin, whitelisted fields only)
 - `DELETE /api/trade-plans/:id` - Delete trade plan (auth, owner or admin)
+- `GET /api/stock-price/:ticker` - Get current stock price via Polygon API (auth)
+- `GET /api/best-option` - Auto-select best option contract via Polygon API (auth, params: underlying, side, tradeType, underlyingPrice)
 - `GET /api/stats` - Dashboard stats (auth)
 
 ## Design Choices

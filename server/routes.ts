@@ -478,6 +478,295 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/stock-price/:ticker", requireAuth, async (req, res) => {
+    const ticker = req.params.ticker.toUpperCase();
+    const apiKey = process.env.POLYGON_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Polygon API key not configured" });
+    }
+    try {
+      const isCrypto = ticker.startsWith("X:") || ticker.endsWith("USD") || ticker.endsWith("USDT");
+      const polygonTicker = isCrypto && !ticker.startsWith("X:") ? `X:${ticker}` : ticker;
+
+      let price: number | null = null;
+      let source = "";
+
+      const nbboRes = await fetch(`https://api.polygon.io/v2/last/nbbo/${encodeURIComponent(polygonTicker)}?apiKey=${apiKey}`);
+      if (nbboRes.ok) {
+        const nbboData = await nbboRes.json() as any;
+        if (nbboData.status === "OK" && nbboData.results) {
+          const bid = parseFloat(nbboData.results.p || "0");
+          const ask = parseFloat(nbboData.results.P || "0");
+          if (bid > 0 && ask > 0) { price = (bid + ask) / 2; source = "nbbo_mid"; }
+          else if (ask > 0) { price = ask; source = "nbbo_ask"; }
+          else if (bid > 0) { price = bid; source = "nbbo_bid"; }
+        }
+      }
+
+      if (!price && !isCrypto) {
+        const snapRes = await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${encodeURIComponent(ticker)}?apiKey=${apiKey}`);
+        if (snapRes.ok) {
+          const snapData = await snapRes.json() as any;
+          const t = snapData.ticker || {};
+          const lastTrade = t.lastTrade || {};
+          const day = t.day || {};
+          const prevDay = t.prevDay || {};
+          const p = parseFloat(lastTrade.p || day.c || prevDay.c || "0");
+          if (p > 0) { price = p; source = "snapshot"; }
+        }
+      }
+
+      if (!price) {
+        const prevRes = await fetch(`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(isCrypto ? polygonTicker : ticker)}/prev?apiKey=${apiKey}`);
+        if (prevRes.ok) {
+          const prevData = await prevRes.json() as any;
+          if (prevData.status === "OK" && prevData.results?.length > 0) {
+            const c = parseFloat(prevData.results[0].c || "0");
+            if (c > 0) { price = c; source = "previous_close"; }
+          }
+        }
+      }
+
+      if (price) {
+        return res.json({ price: Math.round(price * 100) / 100, source });
+      }
+      return res.status(404).json({ message: "Price not available" });
+    } catch {
+      return res.status(500).json({ message: "Failed to fetch stock price" });
+    }
+  });
+
+  app.get("/api/best-option", requireAuth, async (req, res) => {
+    const apiKey = process.env.POLYGON_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Polygon API key not configured" });
+    }
+
+    const underlying = ((req.query.underlying as string) || "").trim().toUpperCase();
+    const side = ((req.query.side as string) || "call").trim().toLowerCase();
+    const tradeType = ((req.query.tradeType as string) || "scalp").trim().toLowerCase();
+    const underlyingPrice = parseFloat(req.query.underlyingPrice as string);
+
+    if (!underlying || !underlyingPrice || underlyingPrice <= 0) {
+      return res.status(400).json({ message: "underlying and underlyingPrice are required" });
+    }
+    if (!["call", "put"].includes(side)) {
+      return res.status(400).json({ message: "side must be call or put" });
+    }
+    if (!["scalp", "swing", "leap"].includes(tradeType)) {
+      return res.status(400).json({ message: "tradeType must be scalp, swing, or leap" });
+    }
+
+    try {
+      const today = new Date();
+      let expGte: string, expLte: string;
+
+      if (tradeType === "scalp") {
+        expGte = today.toISOString().slice(0, 10);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 3);
+        expLte = end.toISOString().slice(0, 10);
+      } else if (tradeType === "swing") {
+        const start = new Date(today);
+        start.setDate(start.getDate() + 6);
+        expGte = start.toISOString().slice(0, 10);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 45);
+        expLte = end.toISOString().slice(0, 10);
+      } else {
+        const start = new Date(today);
+        start.setDate(start.getDate() + 200);
+        expGte = start.toISOString().slice(0, 10);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 450);
+        expLte = end.toISOString().slice(0, 10);
+      }
+
+      const strikeRange = tradeType === "leap" ? 0.05 : 0.02;
+      const strikeGte = underlyingPrice * (1 - strikeRange);
+      const strikeLte = underlyingPrice * (1 + strikeRange);
+
+      const params = new URLSearchParams({
+        contract_type: side,
+        "expiration_date.gte": expGte,
+        "expiration_date.lte": expLte,
+        "strike_price.gte": strikeGte.toFixed(2),
+        "strike_price.lte": strikeLte.toFixed(2),
+        limit: "250",
+        apiKey,
+      });
+
+      const allSnapshots: any[] = [];
+      let url: string | null = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}?${params}`;
+      let pages = 0;
+
+      while (url && pages < 5) {
+        pages++;
+        const snapRes = await fetch(url);
+        if (!snapRes.ok) break;
+        const snapData = await snapRes.json() as any;
+        const results = snapData.results || [];
+        allSnapshots.push(...results);
+        url = snapData.next_url ? `${snapData.next_url}&apiKey=${apiKey}` : null;
+      }
+
+      if (allSnapshots.length === 0) {
+        return res.status(404).json({ message: "No option contracts found" });
+      }
+
+      interface NormalizedOption {
+        contract: string;
+        expiration: string;
+        strike: number;
+        delta: number | null;
+        openInterest: number;
+        bid: number | null;
+        ask: number | null;
+        spread: number | null;
+        optionPrice: number | null;
+        dte: number | null;
+      }
+
+      const rows: NormalizedOption[] = [];
+      for (const item of allSnapshots) {
+        const details = item.details || {};
+        const contract = (details.ticker || item.ticker || "").trim();
+        const exp = (details.expiration_date || "").trim();
+        const strike = parseFloat(details.strike_price);
+        if (!contract || !exp || isNaN(strike)) continue;
+
+        const greeks = item.greeks || {};
+        const delta = greeks.delta != null ? parseFloat(greeks.delta) : null;
+        const oi = parseInt(item.open_interest || "0") || 0;
+        const lq = item.last_quote || {};
+        const bid = lq.bid != null ? parseFloat(lq.bid) : null;
+        const ask = lq.ask != null ? parseFloat(lq.ask) : null;
+        const spread = (bid != null && ask != null && bid >= 0 && ask >= 0) ? ask - bid : null;
+
+        let optionPrice: number | null = null;
+        if (bid != null && ask != null && bid > 0 && ask > 0) optionPrice = (bid + ask) / 2;
+        else if (ask != null && ask > 0) optionPrice = ask;
+        else if (bid != null && bid > 0) optionPrice = bid;
+        else {
+          const lt = item.last_trade || {};
+          const p = parseFloat(lt.price || lt.p || "0");
+          if (p > 0) optionPrice = p;
+        }
+
+        const expDate = new Date(exp + "T00:00:00");
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const dte = Math.floor((expDate.getTime() - todayStart.getTime()) / 86400000);
+
+        rows.push({ contract, expiration: exp, strike, delta, openInterest: oi, bid, ask, spread, optionPrice, dte });
+      }
+
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "No valid option data found" });
+      }
+
+      const px = underlyingPrice;
+      const isCall = side === "call";
+
+      function strikeInRange(strike: number, maxPct: number) {
+        return Math.abs((strike - px) / px) <= maxPct;
+      }
+      function moneynessScore(strike: number, maxPct: number) {
+        const m = (strike - px) / px;
+        const target = isCall ? maxPct : -maxPct;
+        return Math.abs(m - target) + (Math.abs(m) <= maxPct ? 0 : 0.5 + Math.abs(m));
+      }
+
+      interface FilterLevel {
+        dteRange?: [number, number];
+        dteRanges?: [number, number][];
+        deltaRange: [number, number];
+        strikePct?: number;
+        minOi: number;
+        maxSpread: number;
+        targetDte?: number;
+      }
+
+      let levels: FilterLevel[];
+      if (tradeType === "scalp") {
+        levels = [
+          { dteRange: [0, 0], deltaRange: [0.35, 0.60], minOi: 500, maxSpread: 0.10 },
+          { dteRange: [0, 0], deltaRange: [0.25, 0.65], minOi: 300, maxSpread: 0.15 },
+          { dteRange: [0, 1], deltaRange: [0.25, 0.65], minOi: 200, maxSpread: 0.15 },
+          { dteRange: [0, 2], deltaRange: [0.20, 0.70], minOi: 100, maxSpread: 0.20 },
+        ];
+      } else if (tradeType === "swing") {
+        levels = [
+          { dteRanges: [[13, 25], [6, 15]], deltaRange: [0.40, 0.60], strikePct: 0.02, minOi: 1000, maxSpread: 0.05 },
+          { dteRanges: [[13, 45], [6, 30]], deltaRange: [0.40, 0.60], strikePct: 0.02, minOi: 500, maxSpread: 0.10 },
+          { dteRanges: [[6, 45]], deltaRange: [0.30, 0.70], strikePct: 0.03, minOi: 300, maxSpread: 0.15 },
+          { dteRanges: [[6, 60]], deltaRange: [0.25, 0.75], strikePct: 0.05, minOi: 100, maxSpread: 0.20 },
+        ];
+      } else {
+        levels = [
+          { dteRange: [330, 395], deltaRange: [0.50, 0.80], strikePct: 0.02, minOi: 500, maxSpread: 0.05, targetDte: 365 },
+          { dteRange: [270, 450], deltaRange: [0.40, 0.85], strikePct: 0.03, minOi: 300, maxSpread: 0.10, targetDte: 365 },
+          { dteRange: [200, 500], deltaRange: [0.30, 0.90], strikePct: 0.05, minOi: 100, maxSpread: 0.15, targetDte: 365 },
+        ];
+      }
+
+      for (const level of levels) {
+        const dteRanges = level.dteRanges || (level.dteRange ? [level.dteRange] : [[0, 9999]]);
+        const [dLo, dHi] = level.deltaRange;
+        const spct = level.strikePct ?? 1;
+
+        for (const [dteLo, dteHi] of dteRanges) {
+          const candidates: NormalizedOption[] = [];
+          for (const r of rows) {
+            if (r.dte == null || r.dte < dteLo || r.dte > dteHi) continue;
+            if (r.delta == null) continue;
+            const absDelta = Math.abs(r.delta);
+            if (absDelta < dLo || absDelta > dHi) continue;
+            if (spct < 1 && !strikeInRange(r.strike, spct)) continue;
+            if (r.openInterest < level.minOi) continue;
+            if (r.spread == null || r.spread >= level.maxSpread) continue;
+            candidates.push(r);
+          }
+
+          if (candidates.length > 0) {
+            const targetDte = level.targetDte ?? (tradeType === "scalp" ? 0 : 20);
+            candidates.sort((a, b) => {
+              if (tradeType === "scalp") {
+                const da = Math.abs(Math.abs(a.delta || 0) - 0.50);
+                const db = Math.abs(Math.abs(b.delta || 0) - 0.50);
+                if (da !== db) return da - db;
+                return (a.dte || 9999) - (b.dte || 9999);
+              }
+              const dteDiffA = Math.abs((a.dte || 0) - targetDte);
+              const dteDiffB = Math.abs((b.dte || 0) - targetDte);
+              if (dteDiffA !== dteDiffB) return dteDiffA - dteDiffB;
+              const ma = moneynessScore(a.strike, spct);
+              const mb = moneynessScore(b.strike, spct);
+              if (ma !== mb) return ma - mb;
+              return (a.spread || 9e9) - (b.spread || 9e9);
+            });
+
+            const best = candidates[0];
+            return res.json({
+              contract: best.contract,
+              expiration: best.expiration,
+              strike: best.strike,
+              optionPrice: best.optionPrice ? Math.round(best.optionPrice * 100) / 100 : null,
+              delta: best.delta,
+              openInterest: best.openInterest,
+              spread: best.spread ? Math.round(best.spread * 100) / 100 : null,
+              dte: best.dte,
+            });
+          }
+        }
+      }
+
+      return res.status(404).json({ message: "No option contract meets the selection criteria" });
+    } catch (err) {
+      console.error("Best option error:", err);
+      return res.status(500).json({ message: "Failed to find best option" });
+    }
+  });
+
   app.get("/api/stats", requireAuth, async (_req, res) => {
     const [allSignals, allTypes] = await Promise.all([
       storage.getSignals(),
