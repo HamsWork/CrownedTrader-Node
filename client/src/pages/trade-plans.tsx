@@ -59,9 +59,26 @@ function PlanPreview({
   targetType: string;
 }) {
   const isUnderlying = targetType === "Underlying Price Based";
+  const ep = 5;
+  const slPctVal = parseFloat(stopLossPct) || 10;
   const targetsStr = levels
     .map((l, i) => isUnderlying ? `TP${i + 1}: $${l.levelPct.toFixed(2)}` : `TP${i + 1}: ${l.levelPct.toFixed(2)}%`)
     .join(", ");
+
+  const slInitial = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `$${(ep * (1 - slPctVal / 100)).toFixed(2)} (-${slPctVal.toFixed(2)}%)`;
+  const slRaisedParts: string[] = [];
+  levels.forEach((l) => {
+    if (l.raiseStopLossTo === "Break even") {
+      slRaisedParts.push(`→ $${ep.toFixed(2)} (break even)`);
+    } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+      if (isUnderlying) {
+        slRaisedParts.push(`→ $${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
+      } else {
+        const customPrice = (ep * (1 + parseFloat(l.customRaiseSLValue || "0") / 100)).toFixed(2);
+        slRaisedParts.push(`→ $${customPrice} (+${l.customRaiseSLValue}%)`);
+      }
+    }
+  });
 
   return (
     <div className="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-2">
@@ -72,8 +89,11 @@ function PlanPreview({
         <span>🎯</span> Targets: {targetsStr}
       </p>
       <p>
-        <span>🔴</span> Stop Loss: {isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${stopLossPct}%`}
+        <span>🔴</span> Stop Loss: {slInitial}
       </p>
+      {slRaisedParts.map((part, i) => (
+        <p key={i} className="pl-5 text-muted-foreground">{part}</p>
+      ))}
 
       <p className="font-semibold flex items-center gap-1.5 pt-1">
         <span>🔥</span> Take Profit Plan
@@ -577,12 +597,24 @@ function PlanFormModal({
     ? levels.map((l) => `$${l.levelPct.toFixed(2)}`).join(", ")
     : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(2)}%)`).join(", ");
 
-  const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${slPrice}(-${slPct.toFixed(2)}%)`;
+  const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `$${computedSlPrice} (-${slPct.toFixed(2)}%)`;
   const stopLossParts = [stopLossDisplay];
-  const firstRaiseSL = levels.find((l) => l.raiseStopLossTo === "Break even" || l.raiseStopLossTo === "Custom Level");
-  if (firstRaiseSL && !isUnderlying) {
-    stopLossParts.push(`${ep.toFixed(2)}(+0%)`);
-  }
+  levels.forEach((l) => {
+    if (l.raiseStopLossTo === "Break even") {
+      if (isUnderlying) {
+        stopLossParts.push(`→ $${ep.toFixed(2)} (break even)`);
+      } else {
+        stopLossParts.push(`→ $${ep.toFixed(2)} (break even)`);
+      }
+    } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+      if (isUnderlying) {
+        stopLossParts.push(`→ $${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
+      } else {
+        const customPrice = (ep * (1 + parseFloat(l.customRaiseSLValue || "0") / 100)).toFixed(2);
+        stopLossParts.push(`→ $${customPrice} (+${l.customRaiseSLValue}%)`);
+      }
+    }
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -769,8 +801,11 @@ function PlanFormModal({
                         <span>🎯</span> Targets: {targetsStr || "—"}
                       </p>
                       <p>
-                        <span>🔴</span> Stop Loss: {stopLossParts.join(", ")}
+                        <span>🔴</span> Stop Loss: {stopLossParts[0]}
                       </p>
+                      {stopLossParts.slice(1).map((part, i) => (
+                        <p key={i} className="pl-5 text-[#72767d]">{part}</p>
+                      ))}
                     </div>
 
                     <div>
