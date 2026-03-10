@@ -149,7 +149,7 @@ function PlanCard({
           />
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
           {plan.isDefault ? (
             <Button variant="outline" size="sm" className="text-xs" disabled data-testid={`button-default-${plan.id}`}>
               Default
@@ -167,7 +167,7 @@ function PlanCard({
           )}
           <Button variant="outline" size="sm" className="text-xs" onClick={onUseToPost} data-testid={`button-use-plan-${plan.id}`}>
             <Send className="h-3 w-3 mr-1" />
-            Use to post a trade
+            Use to post
           </Button>
           <Button variant="default" size="sm" className="text-xs" onClick={onEdit} data-testid={`button-edit-plan-${plan.id}`}>
             Edit
@@ -181,7 +181,7 @@ function PlanCard({
 function CreateNewCard({ onClick }: { onClick: () => void }) {
   return (
     <Card
-      className="flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors min-h-[300px]"
+      className="flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors min-h-[200px] sm:min-h-[300px]"
       onClick={onClick}
       data-testid="card-create-new-plan"
     >
@@ -216,7 +216,7 @@ function TakeProfitLevelForm({
   const price = computePrice(entryPrice, level.levelPct);
 
   return (
-    <div className="rounded-lg border border-border p-4 space-y-4" data-testid={`tp-level-${index}`}>
+    <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid={`tp-level-${index}`}>
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-sm">Take Profit {index + 1}</h4>
         {canRemove && (
@@ -231,7 +231,7 @@ function TakeProfitLevelForm({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Level %</Label>
           <div className="flex items-center gap-1">
@@ -256,7 +256,7 @@ function TakeProfitLevelForm({
             data-testid={`input-price-${index}`}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 col-span-2 sm:col-span-1">
           <Label className="text-xs text-muted-foreground">Take Off</Label>
           <div className="flex items-center gap-1">
             <Input
@@ -391,7 +391,7 @@ function PlanFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl w-[95vw] sm:w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle data-testid="text-modal-title">
             {editingPlan ? "Edit Trade Plan" : "New Trade Plan"}
@@ -401,8 +401,8 @@ function PlanFormModal({
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mt-4 items-start">
-          <div className="space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 sm:gap-6 mt-4 items-start">
+          <div className="space-y-4 sm:space-y-5">
             <div className="flex items-center gap-2 mb-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
                 <ClipboardList className="h-4 w-4 text-blue-400" />
@@ -410,7 +410,7 @@ function PlanFormModal({
               <h2 className="font-bold text-base">Trade Plan</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="font-semibold text-sm">Plan Name</Label>
                 <Input
@@ -432,7 +432,7 @@ function PlanFormModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="font-semibold text-sm">Stop Loss %</Label>
                 <Input
@@ -612,9 +612,9 @@ export default function TradePlansPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-80" />
           ))}
@@ -626,13 +626,13 @@ export default function TradePlansPage() {
   const planCount = plans?.length || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div>
         <p className="text-muted-foreground text-sm">
           Manage your default plan and your custom trade plan presets.
         </p>
         <div className="flex items-center gap-3 mt-3">
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             Your trade plans
           </h1>
           <Badge variant="outline" className="text-xs" data-testid="badge-plan-count">
@@ -641,7 +641,7 @@ export default function TradePlansPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {(plans || []).map((plan) => (
           <PlanCard
             key={plan.id}
