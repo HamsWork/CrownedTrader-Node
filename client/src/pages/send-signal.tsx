@@ -797,7 +797,7 @@ export default function SendSignal() {
                       </Select>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label className="font-semibold text-sm">Expiration</Label>
                         <Input
@@ -818,16 +818,14 @@ export default function SendSignal() {
                           data-testid="input-strike"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label className="font-semibold text-sm">Option Price</Label>
-                        <Input
-                          placeholder="Option price"
-                          value={form.optionPrice}
-                          onChange={e => update("optionPrice", e.target.value)}
-                          data-testid="input-option-price"
-                        />
-                      </div>
                     </div>
+
+                    {form.optionPrice && (
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-xs text-muted-foreground">Option Price:</span>
+                        <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
+                      </div>
+                    )}
 
                   </div>
                 ) : (
