@@ -800,7 +800,7 @@ export default function SendSignal() {
 
   return (
     <div className="p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_520px] gap-6 items-start">
         <div className="space-y-6">
           <Card data-testid="card-signal-config">
             <CardContent className="pt-5">
