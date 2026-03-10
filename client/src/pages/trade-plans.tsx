@@ -52,8 +52,9 @@ function PlanPreview({
   stopLossPct: string;
   targetType: string;
 }) {
+  const isUnderlying = targetType === "Underlying Price Based";
   const targetsStr = levels
-    .map((l, i) => `TP${i + 1}: ${l.levelPct}%`)
+    .map((l, i) => isUnderlying ? `TP${i + 1}: $${l.levelPct.toFixed(2)}` : `TP${i + 1}: ${l.levelPct}%`)
     .join(", ");
 
   return (
@@ -65,14 +66,15 @@ function PlanPreview({
         <span>🎯</span> Targets: {targetsStr}
       </p>
       <p>
-        <span>🔴</span> Stop Loss: {stopLossPct}%
+        <span>🔴</span> Stop Loss: {isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${stopLossPct}%`}
       </p>
 
       <p className="font-semibold flex items-center gap-1.5 pt-1">
         <span>🔥</span> Take Profit Plan
       </p>
       {levels.map((l, i) => {
-        let desc = `At ${l.levelPct}% take off ${l.takeOffPct}% of `;
+        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct}%`;
+        let desc = `At ${levelLabel} take off ${l.takeOffPct}% of `;
         if (i === 0) {
           desc += "position";
           if (l.raiseStopLossTo === "Break even (entry)") {
@@ -198,6 +200,7 @@ function TakeProfitLevelForm({
   level,
   entryPrice,
   canRemove,
+  isUnderlyingBased,
   onChange,
   onRemove,
 }: {
@@ -205,6 +208,7 @@ function TakeProfitLevelForm({
   level: TakeProfitLevel;
   entryPrice: number;
   canRemove: boolean;
+  isUnderlyingBased: boolean;
   onChange: (updated: TakeProfitLevel) => void;
   onRemove: () => void;
 }) {
@@ -226,46 +230,79 @@ function TakeProfitLevelForm({
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Level %</Label>
-          <div className="flex items-center gap-1">
-            <Input
-              type="number"
-              step="1"
-              value={level.levelPct}
-              onChange={(e) => onChange({ ...level, levelPct: parseFloat(e.target.value) || 0 })}
-              className="text-sm"
-              data-testid={`input-level-pct-${index}`}
-            />
-            <span className="text-xs text-muted-foreground shrink-0">%</span>
+      {isUnderlyingBased ? (
+        <div className="flex items-end gap-3">
+          <div className="space-y-1 w-32">
+            <Label className="text-xs text-muted-foreground">Underlying Price</Label>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground shrink-0">$</span>
+              <Input
+                type="number"
+                step="0.01"
+                value={level.levelPct}
+                onChange={(e) => onChange({ ...level, levelPct: parseFloat(e.target.value) || 0 })}
+                className="text-sm"
+                data-testid={`input-level-pct-${index}`}
+              />
+            </div>
+          </div>
+          <div className="space-y-1 w-24">
+            <Label className="text-xs text-muted-foreground">Take Off</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="1"
+                value={level.takeOffPct}
+                onChange={(e) => onChange({ ...level, takeOffPct: parseFloat(e.target.value) || 0 })}
+                className="text-sm"
+                data-testid={`input-takeoff-${index}`}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">%</span>
+            </div>
           </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Price</Label>
-          <Input
-            type="text"
-            value={price}
-            readOnly
-            className="text-sm bg-muted/50"
-            data-testid={`input-price-${index}`}
-          />
-        </div>
-        <div className="space-y-1 col-span-2 sm:col-span-1">
-          <Label className="text-xs text-muted-foreground">Take Off</Label>
-          <div className="flex items-center gap-1">
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Level %</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="1"
+                value={level.levelPct}
+                onChange={(e) => onChange({ ...level, levelPct: parseFloat(e.target.value) || 0 })}
+                className="text-sm"
+                data-testid={`input-level-pct-${index}`}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">%</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Price</Label>
             <Input
-              type="number"
-              step="1"
-              value={level.takeOffPct}
-              onChange={(e) => onChange({ ...level, takeOffPct: parseFloat(e.target.value) || 0 })}
-              className="text-sm"
-              data-testid={`input-takeoff-${index}`}
+              type="text"
+              value={price}
+              readOnly
+              className="text-sm bg-muted/50"
+              data-testid={`input-price-${index}`}
             />
-            <span className="text-xs text-muted-foreground shrink-0">%</span>
+          </div>
+          <div className="space-y-1 col-span-2 sm:col-span-1">
+            <Label className="text-xs text-muted-foreground">Take Off</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="1"
+                value={level.takeOffPct}
+                onChange={(e) => onChange({ ...level, takeOffPct: parseFloat(e.target.value) || 0 })}
+                className="text-sm"
+                data-testid={`input-takeoff-${index}`}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">%</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
@@ -371,14 +408,16 @@ function PlanFormModal({
     }
   }
 
-  const slPrice = (ep * (1 - slPct / 100)).toFixed(2);
-  const targetsStr = levels
-    .map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(1)}%)`)
-    .join(", ");
+  const isUnderlying = targetType === "Underlying Price Based";
+  const slPrice = isUnderlying ? stopLossPct : (ep * (1 - slPct / 100)).toFixed(2);
+  const targetsStr = isUnderlying
+    ? levels.map((l) => `$${l.levelPct.toFixed(2)}`).join(", ")
+    : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(1)}%)`).join(", ");
 
-  const stopLossParts = [`${slPrice}(-${slPct}%)`];
+  const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${slPrice}(-${slPct}%)`;
+  const stopLossParts = [stopLossDisplay];
   const firstRaiseSL = levels.find((l) => l.raiseStopLossTo === "Break even (entry)");
-  if (firstRaiseSL) {
+  if (firstRaiseSL && !isUnderlying) {
     stopLossParts.push(`${ep.toFixed(2)}(+0%)`);
   }
 
@@ -444,6 +483,7 @@ function PlanFormModal({
                   level={level}
                   entryPrice={ep}
                   canRemove={levels.length > 1}
+                  isUnderlyingBased={targetType === "Underlying Price Based"}
                   onChange={(updated) => handleLevelChange(i, updated)}
                   onRemove={() => removeLevel(i)}
                 />
@@ -452,31 +492,50 @@ function PlanFormModal({
 
             <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid="section-stop-loss">
               <h4 className="font-semibold text-sm">Stop Loss</h4>
-              <div className="flex items-end gap-3">
-                <div className="space-y-1 w-24">
-                  <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      step="1"
-                      value={stopLossPct}
-                      onChange={(e) => setStopLossPct(e.target.value)}
-                      className="text-sm"
-                      data-testid="input-stop-loss-pct"
-                    />
-                    <span className="text-xs text-muted-foreground shrink-0">%</span>
+              {targetType === "Underlying Price Based" ? (
+                <div className="flex items-end gap-3">
+                  <div className="space-y-1 w-32">
+                    <Label className="text-xs text-muted-foreground">Underlying Price</Label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground shrink-0">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={stopLossPct}
+                        onChange={(e) => setStopLossPct(e.target.value)}
+                        className="text-sm"
+                        data-testid="input-stop-loss-pct"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-1 w-24">
-                  <Label className="text-xs text-muted-foreground">Price</Label>
-                  <Input
-                    type="text"
-                    value={slPrice}
-                    readOnly
-                    className="text-sm bg-muted/50"
-                  />
+              ) : (
+                <div className="flex items-end gap-3">
+                  <div className="space-y-1 w-24">
+                    <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        step="1"
+                        value={stopLossPct}
+                        onChange={(e) => setStopLossPct(e.target.value)}
+                        className="text-sm"
+                        data-testid="input-stop-loss-pct"
+                      />
+                      <span className="text-xs text-muted-foreground shrink-0">%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 w-24">
+                    <Label className="text-xs text-muted-foreground">Price</Label>
+                    <Input
+                      type="text"
+                      value={slPrice}
+                      readOnly
+                      className="text-sm bg-muted/50"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <Button
@@ -528,7 +587,8 @@ function PlanFormModal({
                         <span>🔥</span> Take Profit Plan
                       </p>
                       {levels.map((l, i) => {
-                        let desc = `At ${l.levelPct.toFixed(1)}% take off ${l.takeOffPct.toFixed(1)}% of `;
+                        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct.toFixed(1)}%`;
+                        let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(1)}% of `;
                         desc += i === 0 ? "position" : "remaining position";
                         if (i === 0 && l.raiseStopLossTo === "Break even (entry)") {
                           desc += " and raise stop loss to break even";
