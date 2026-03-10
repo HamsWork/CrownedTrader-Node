@@ -745,19 +745,6 @@ export default function SendSignal() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">
-                        Entry Price <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={form.entryPrice}
-                        onChange={e => update("entryPrice", e.target.value)}
-                        data-testid="input-entry-price"
-                      />
-                    </div>
                   </div>
                 )}
 
