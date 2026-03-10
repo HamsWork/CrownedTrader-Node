@@ -450,16 +450,33 @@ function PlanFormModal({
               ))}
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-semibold text-sm">Stop Loss %</Label>
-              <Input
-                type="number"
-                step="1"
-                value={stopLossPct}
-                onChange={(e) => setStopLossPct(e.target.value)}
-                className="max-w-[200px]"
-                data-testid="input-stop-loss-pct"
-              />
+            <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid="section-stop-loss">
+              <h4 className="font-semibold text-sm">Stop Loss</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      step="1"
+                      value={stopLossPct}
+                      onChange={(e) => setStopLossPct(e.target.value)}
+                      className="text-sm"
+                      data-testid="input-stop-loss-pct"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">%</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Price</Label>
+                  <Input
+                    type="text"
+                    value={slPrice}
+                    readOnly
+                    className="text-sm bg-muted/50"
+                  />
+                </div>
+              </div>
             </div>
 
             <Button
