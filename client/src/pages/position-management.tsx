@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -79,6 +79,16 @@ export default function PositionManagement() {
       toast({ title: "Position reopened" });
     } catch (err: any) {
       toast({ title: "Failed to reopen position", description: err.message, variant: "destructive" });
+    }
+  }
+
+  async function handleSwitchToManual(signal: Signal) {
+    try {
+      await apiRequest("PATCH", `/api/signals/${signal.id}/data`, { trade_tracking: "Manual updates" });
+      await queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
+      toast({ title: "Switched to manual tracking" });
+    } catch (err: any) {
+      toast({ title: "Failed to switch tracking", description: err.message, variant: "destructive" });
     }
   }
 
@@ -279,26 +289,39 @@ export default function PositionManagement() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
                           {isOpen ? (
-                            <>
+                            tracking === "Automatic" ? (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-xs h-7 px-3"
-                                onClick={() => openExitDialog(signal, true)}
-                                data-testid={`button-partial-exit-${signal.id}`}
+                                onClick={() => handleSwitchToManual(signal)}
+                                data-testid={`button-switch-manual-${signal.id}`}
                               >
-                                Partial Exit
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Switch to Manual
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="text-xs h-7 px-3"
-                                onClick={() => openExitDialog(signal, false)}
-                                data-testid={`button-full-exit-${signal.id}`}
-                              >
-                                Full Exit
-                              </Button>
-                            </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-7 px-3"
+                                  onClick={() => openExitDialog(signal, true)}
+                                  data-testid={`button-partial-exit-${signal.id}`}
+                                >
+                                  Partial Exit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="text-xs h-7 px-3"
+                                  onClick={() => openExitDialog(signal, false)}
+                                  data-testid={`button-full-exit-${signal.id}`}
+                                >
+                                  Full Exit
+                                </Button>
+                              </>
+                            )
                           ) : (
                             <Button
                               size="sm"

@@ -199,6 +199,18 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.patch("/api/signals/:id/data", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
+    const signal = await storage.getSignal(id);
+    if (!signal) return res.status(404).json({ message: "Signal not found" });
+    const existingData = (signal.data ?? {}) as Record<string, string>;
+    const updates = req.body as Record<string, string>;
+    const merged = { ...existingData, ...updates };
+    const updated = await storage.updateSignalData(id, merged);
+    res.json(updated);
+  });
+
   app.post("/api/signals", requireAuth, upload.single("chartMedia"), async (req, res) => {
     let body = req.body;
     if (typeof body.data === "string") {
