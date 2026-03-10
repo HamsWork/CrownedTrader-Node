@@ -644,7 +644,7 @@ function PlanFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] sm:w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="max-w-5xl w-[95vw] sm:w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle data-testid="text-modal-title">
             {editingPlan ? "Edit Trade Plan" : "New Trade Plan"}
@@ -654,7 +654,7 @@ function PlanFormModal({
           </p>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 sm:gap-6 mt-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 sm:gap-6 mt-4 items-start">
           <div className="space-y-4 sm:space-y-5">
             <div className="flex items-center gap-2 mb-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
