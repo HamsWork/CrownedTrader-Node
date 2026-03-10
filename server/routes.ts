@@ -959,5 +959,132 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/leaderboard", requireAuth, async (req, res) => {
+    try {
+      const period = (req.query.period as string) || "this_week";
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = now;
+
+      if (period === "this_week") {
+        const day = now.getDay();
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (period === "last_week") {
+        const day = now.getDay();
+        const thisMonday = new Date(now);
+        thisMonday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+        startDate = new Date(thisMonday);
+        startDate.setDate(thisMonday.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (period === "this_month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      } else if (period === "last_month") {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      } else {
+        startDate = new Date(0);
+      }
+
+      const [allSignals, allUsers] = await Promise.all([
+        storage.getSignals(),
+        storage.getUsers(),
+      ]);
+
+      const periodSignals = allSignals.filter(s => {
+        const created = new Date(s.createdAt);
+        return created >= startDate && created <= endDate;
+      });
+
+      const usersMap = new Map(allUsers.map(u => [u.id, u]));
+
+      const userStats: Record<number, {
+        userId: number;
+        username: string;
+        trades: number;
+        wins: number;
+        losses: number;
+        totalPnl: number;
+      }> = {};
+
+      for (const signal of periodSignals) {
+        const uid = signal.userId ?? 0;
+        if (!userStats[uid]) {
+          const user = usersMap.get(uid);
+          userStats[uid] = {
+            userId: uid,
+            username: user?.username ?? "Unknown",
+            trades: 0,
+            wins: 0,
+            losses: 0,
+            totalPnl: 0,
+          };
+        }
+        const st = userStats[uid];
+        st.trades++;
+
+        const data = (signal.data ?? {}) as Record<string, string>;
+        const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+        const direction = data.direction || "Long";
+
+        if (signal.status === "closed" && signal.closePrice) {
+          const exitPrice = parseFloat(signal.closePrice);
+          if (entryPrice > 0 && exitPrice > 0) {
+            const pnl = direction === "Short"
+              ? ((entryPrice - exitPrice) / entryPrice) * 100
+              : ((exitPrice - entryPrice) / entryPrice) * 100;
+            st.totalPnl += pnl;
+            if (pnl >= 0) st.wins++;
+            else st.losses++;
+          }
+        }
+      }
+
+      const leaderboard = Object.values(userStats)
+        .map(st => ({
+          ...st,
+          avgPnl: st.trades > 0 ? st.totalPnl / st.trades : 0,
+          winRate: (st.wins + st.losses) > 0 ? (st.wins / (st.wins + st.losses)) * 100 : 0,
+        }))
+        .sort((a, b) => b.avgPnl - a.avgPnl);
+
+      const totals = {
+        trades: periodSignals.length,
+        wins: leaderboard.reduce((s, l) => s + l.wins, 0),
+        losses: leaderboard.reduce((s, l) => s + l.losses, 0),
+        avgPnl: leaderboard.length > 0
+          ? leaderboard.reduce((s, l) => s + l.avgPnl, 0) / leaderboard.length
+          : 0,
+        winRate: (() => {
+          const totalW = leaderboard.reduce((s, l) => s + l.wins, 0);
+          const totalL = leaderboard.reduce((s, l) => s + l.losses, 0);
+          return (totalW + totalL) > 0 ? (totalW / (totalW + totalL)) * 100 : 0;
+        })(),
+      };
+
+      const formatDateRange = (s: Date, e: Date) => {
+        const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+        return `${fmt(s)} – ${fmt(e)}`;
+      };
+
+      res.json({
+        period,
+        dateRange: formatDateRange(startDate, endDate),
+        totals,
+        traders: leaderboard,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }
