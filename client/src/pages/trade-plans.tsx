@@ -487,6 +487,16 @@ function PlanFormModal({
                     ))}
                   </SelectContent>
                 </Select>
+                {targetType === "Underlying Price Based" && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Default prices based on $180 entry
+                  </p>
+                )}
+                {targetType === "Symbol Price Based" && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Default preview based on $5.00 entry
+                  </p>
+                )}
               </div>
             </div>
 
