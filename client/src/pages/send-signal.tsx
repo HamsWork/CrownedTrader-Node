@@ -13,6 +13,7 @@ import { Send, Settings, Rocket, Info, Search } from "lucide-react";
 const TRADE_TYPES = ["Scalp", "Swing", "Leap"];
 const TRADE_TRACKING = ["Manual updates", "Automatic"];
 const OPTION_TYPES = ["CALL", "PUT"];
+const DIRECTIONS = ["Long", "Short"];
 
 function getDefaultExpiration() {
   const d = new Date();
@@ -182,7 +183,8 @@ interface TradeForm {
   tradeType: string;
   tradeTracking: string;
   ticker: string;
-  isShares: boolean;
+  isOption: boolean;
+  direction: string;
   manualContract: boolean;
   optionType: string;
   expiration: string;
@@ -205,7 +207,7 @@ function computeTargets(entry: number, tp1Pct: number, tp2Pct: number, tp3Pct: n
 }
 
 function LivePreview({ form }: { form: TradeForm }) {
-  const entry = parseFloat(form.isShares ? form.entryPrice : form.optionPrice) || 0;
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
   const tp1Pct = parseFloat(form.tp1Pct) || 10;
   const tp2Pct = parseFloat(form.tp2Pct) || 20;
@@ -243,7 +245,7 @@ function LivePreview({ form }: { form: TradeForm }) {
               </div>
             </div>
 
-            {!form.isShares && (
+            {form.isOption ? (
               <div className="grid grid-cols-3 gap-x-4 gap-y-1">
                 <div>
                   <span className="text-[#72767d] text-xs">❌ Expiration</span>
@@ -255,6 +257,17 @@ function LivePreview({ form }: { form: TradeForm }) {
                 </div>
                 <div>
                   <span className="text-[#72767d] text-xs">💰 Option Price</span>
+                  <p className="text-white">$ {entry.toFixed(2)}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <span className="text-[#72767d] text-xs">📈 Direction</span>
+                  <p className="text-white">{form.direction}</p>
+                </div>
+                <div>
+                  <span className="text-[#72767d] text-xs">💰 Entry Price</span>
                   <p className="text-white">$ {entry.toFixed(2)}</p>
                 </div>
               </div>
@@ -321,7 +334,8 @@ export default function SendSignal() {
     tradeType: "Scalp",
     tradeTracking: "Manual updates",
     ticker: "",
-    isShares: false,
+    isOption: true,
+    direction: "Long",
     manualContract: false,
     optionType: "CALL",
     expiration: getDefaultExpiration(),
@@ -351,9 +365,9 @@ export default function SendSignal() {
       return;
     }
 
-    const entry = parseFloat(form.isShares ? form.entryPrice : form.optionPrice) || 0;
+    const entry = parseFloat(form.isOption ? form.optionPrice : form.entryPrice) || 0;
     if (entry <= 0) {
-      toast({ title: form.isShares ? "Entry price is required" : "Option price is required", variant: "destructive" });
+      toast({ title: form.isOption ? "Option price is required" : "Entry price is required", variant: "destructive" });
       return;
     }
 
@@ -367,7 +381,7 @@ export default function SendSignal() {
       ticker: form.ticker,
       trade_type: form.tradeType,
       trade_tracking: form.tradeTracking,
-      is_shares: form.isShares ? "true" : "false",
+      is_option: form.isOption ? "true" : "false",
       stock_price: form.stockPrice || "0",
       entry_price: entry.toString(),
       stop_loss_pct: slPct.toString(),
@@ -379,11 +393,13 @@ export default function SendSignal() {
       tp3_target: targets.tp3,
     };
 
-    if (!form.isShares) {
+    if (form.isOption) {
       signalData.option_type = form.optionType;
       signalData.expiration = form.expiration;
       signalData.strike = form.strike;
       signalData.option_price = form.optionPrice;
+    } else {
+      signalData.direction = form.direction;
     }
 
     try {
@@ -493,18 +509,18 @@ export default function SendSignal() {
                 </div>
 
                 <div className="flex items-center justify-between py-2">
-                  <Label className="font-semibold text-sm cursor-pointer" htmlFor="is-shares">
-                    Is_Shares (Disable Options fields)
+                  <Label className="font-semibold text-sm cursor-pointer" htmlFor="is-option">
+                    Is Option
                   </Label>
                   <Switch
-                    id="is-shares"
-                    checked={form.isShares}
-                    onCheckedChange={v => update("isShares", v)}
-                    data-testid="switch-is-shares"
+                    id="is-option"
+                    checked={form.isOption}
+                    onCheckedChange={v => update("isOption", v)}
+                    data-testid="switch-is-option"
                   />
                 </div>
 
-                {!form.isShares && (
+                {form.isOption ? (
                   <div className="space-y-5 rounded-lg border border-border p-4">
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-sm">Option contract</span>
@@ -570,6 +586,40 @@ export default function SendSignal() {
                       />
                     </div>
                   </div>
+                ) : (
+                  <div className="space-y-5 rounded-lg border border-border p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-sm">Shares / Stock</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Direction</Label>
+                      <Select value={form.direction} onValueChange={v => update("direction", v)}>
+                        <SelectTrigger data-testid="select-direction">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DIRECTIONS.map(d => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">
+                        Entry Price <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.entryPrice}
+                        onChange={e => update("entryPrice", e.target.value)}
+                        data-testid="input-entry-price"
+                      />
+                    </div>
+                  </div>
                 )}
 
                 <div className="space-y-2">
@@ -583,22 +633,6 @@ export default function SendSignal() {
                     data-testid="input-stock-price"
                   />
                 </div>
-
-                {form.isShares && (
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-sm">
-                      Entry Price <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={form.entryPrice}
-                      onChange={e => update("entryPrice", e.target.value)}
-                      data-testid="input-entry-price"
-                    />
-                  </div>
-                )}
 
                 <div className="space-y-3 rounded-lg border border-border p-4">
                   <span className="font-semibold text-sm">Risk Management</span>
