@@ -315,7 +315,18 @@ export async function registerRoutes(
       }));
       const stocks = stocksRes.ok ? mapResults(await stocksRes.json()) : [];
       const crypto = cryptoRes.ok ? mapResults(await cryptoRes.json()) : [];
-      res.json([...stocks, ...crypto]);
+      const all = [...stocks, ...crypto];
+      const q = query.toUpperCase();
+      all.sort((a: any, b: any) => {
+        const aExact = a.ticker.toUpperCase() === q ? 0 : 1;
+        const bExact = b.ticker.toUpperCase() === q ? 0 : 1;
+        if (aExact !== bExact) return aExact - bExact;
+        const aStarts = a.ticker.toUpperCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.ticker.toUpperCase().startsWith(q) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return a.ticker.length - b.ticker.length;
+      });
+      res.json(all);
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch tickers" });
     }
