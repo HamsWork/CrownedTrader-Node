@@ -60,7 +60,7 @@ function PlanPreview({
 }) {
   const isUnderlying = targetType === "Underlying Price Based";
   const targetsStr = levels
-    .map((l, i) => isUnderlying ? `TP${i + 1}: $${l.levelPct.toFixed(2)}` : `TP${i + 1}: ${l.levelPct}%`)
+    .map((l, i) => isUnderlying ? `TP${i + 1}: $${l.levelPct.toFixed(2)}` : `TP${i + 1}: ${l.levelPct.toFixed(2)}%`)
     .join(", ");
 
   return (
@@ -79,8 +79,8 @@ function PlanPreview({
         <span>🔥</span> Take Profit Plan
       </p>
       {levels.map((l, i) => {
-        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct}%`;
-        let desc = `At ${levelLabel} take off ${l.takeOffPct}% of `;
+        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct.toFixed(2)}%`;
+        let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(2)}% of `;
         desc += i === 0 ? "position" : "remaining position";
         if (l.raiseStopLossTo === "Break even") {
           desc += " and raise stop loss to break even";
@@ -224,12 +224,28 @@ function TakeProfitLevelForm({
   const computedPrice = computePrice(entryPrice, level.levelPct);
   const [localPrice, setLocalPrice] = useState(computedPrice);
   const [isPriceEditing, setIsPriceEditing] = useState(false);
+  const [localLevelPct, setLocalLevelPct] = useState(level.levelPct.toFixed(2));
+  const [isLevelPctEditing, setIsLevelPctEditing] = useState(false);
+  const [localTakeOff, setLocalTakeOff] = useState(level.takeOffPct.toFixed(2));
+  const [isTakeOffEditing, setIsTakeOffEditing] = useState(false);
 
   useEffect(() => {
     if (!isPriceEditing) {
       setLocalPrice(computedPrice);
     }
   }, [computedPrice, isPriceEditing]);
+
+  useEffect(() => {
+    if (!isLevelPctEditing) {
+      setLocalLevelPct(level.levelPct.toFixed(2));
+    }
+  }, [level.levelPct, isLevelPctEditing]);
+
+  useEffect(() => {
+    if (!isTakeOffEditing) {
+      setLocalTakeOff(level.takeOffPct.toFixed(2));
+    }
+  }, [level.takeOffPct, isTakeOffEditing]);
 
   return (
     <div className="rounded-lg border border-border p-3 sm:p-4 space-y-3 sm:space-y-4" data-testid={`tp-level-${index}`}>
@@ -254,10 +270,16 @@ function TakeProfitLevelForm({
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground shrink-0">$</span>
               <Input
-                type="number"
-                step="0.01"
-                value={level.levelPct}
-                onChange={(e) => onChange({ ...level, levelPct: parseFloat(e.target.value) || 0 })}
+                type="text"
+                inputMode="decimal"
+                value={localLevelPct}
+                onFocus={() => setIsLevelPctEditing(true)}
+                onChange={(e) => setLocalLevelPct(e.target.value)}
+                onBlur={() => {
+                  setIsLevelPctEditing(false);
+                  const val = parseFloat(localLevelPct) || 0;
+                  onChange({ ...level, levelPct: val });
+                }}
                 className="text-sm"
                 data-testid={`input-level-pct-${index}`}
               />
@@ -267,10 +289,16 @@ function TakeProfitLevelForm({
             <Label className="text-xs text-muted-foreground">Take Off</Label>
             <div className="flex items-center gap-1">
               <Input
-                type="number"
-                step="1"
-                value={level.takeOffPct}
-                onChange={(e) => onChange({ ...level, takeOffPct: parseFloat(e.target.value) || 0 })}
+                type="text"
+                inputMode="decimal"
+                value={localTakeOff}
+                onFocus={() => setIsTakeOffEditing(true)}
+                onChange={(e) => setLocalTakeOff(e.target.value)}
+                onBlur={() => {
+                  setIsTakeOffEditing(false);
+                  const val = parseFloat(localTakeOff) || 0;
+                  onChange({ ...level, takeOffPct: val });
+                }}
                 className="text-sm"
                 data-testid={`input-takeoff-${index}`}
               />
@@ -284,10 +312,16 @@ function TakeProfitLevelForm({
             <Label className="text-xs text-muted-foreground">Level %</Label>
             <div className="flex items-center gap-1">
               <Input
-                type="number"
-                step="1"
-                value={level.levelPct}
-                onChange={(e) => onChange({ ...level, levelPct: parseFloat(e.target.value) || 0 })}
+                type="text"
+                inputMode="decimal"
+                value={localLevelPct}
+                onFocus={() => setIsLevelPctEditing(true)}
+                onChange={(e) => setLocalLevelPct(e.target.value)}
+                onBlur={() => {
+                  setIsLevelPctEditing(false);
+                  const val = parseFloat(localLevelPct) || 0;
+                  onChange({ ...level, levelPct: val });
+                }}
                 className="text-sm"
                 data-testid={`input-level-pct-${index}`}
               />
@@ -319,10 +353,16 @@ function TakeProfitLevelForm({
             <Label className="text-xs text-muted-foreground">Take Off</Label>
             <div className="flex items-center gap-1">
               <Input
-                type="number"
-                step="1"
-                value={level.takeOffPct}
-                onChange={(e) => onChange({ ...level, takeOffPct: parseFloat(e.target.value) || 0 })}
+                type="text"
+                inputMode="decimal"
+                value={localTakeOff}
+                onFocus={() => setIsTakeOffEditing(true)}
+                onChange={(e) => setLocalTakeOff(e.target.value)}
+                onBlur={() => {
+                  setIsTakeOffEditing(false);
+                  const val = parseFloat(localTakeOff) || 0;
+                  onChange({ ...level, takeOffPct: val });
+                }}
                 className="text-sm"
                 data-testid={`input-takeoff-${index}`}
               />
@@ -435,7 +475,7 @@ function PlanFormModal({
 
   const [name, setName] = useState(editingPlan?.name || "");
   const [targetType, setTargetType] = useState(editingPlan?.targetType || "Symbol Price Based");
-  const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct || "10");
+  const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct ? parseFloat(editingPlan.stopLossPct).toFixed(2) : "10.00");
   const [localSlPrice, setLocalSlPrice] = useState("");
   const [isSlPriceEditing, setIsSlPriceEditing] = useState(false);
   const defaultLevels = editingPlan?.takeProfitLevels?.length
@@ -451,10 +491,10 @@ function PlanFormModal({
     if (wasUnderlying !== isNowUnderlying) {
       if (isNowUnderlying) {
         setLevels([...DEFAULT_LEVELS_UNDERLYING]);
-        setStopLossPct("175");
+        setStopLossPct("175.00");
       } else {
         setLevels([...DEFAULT_LEVELS_SYMBOL]);
-        setStopLossPct("10");
+        setStopLossPct("10.00");
       }
     }
   }
@@ -515,9 +555,9 @@ function PlanFormModal({
   }, [computedSlPrice, isSlPriceEditing]);
   const targetsStr = isUnderlying
     ? levels.map((l) => `$${l.levelPct.toFixed(2)}`).join(", ")
-    : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${parseFloat(l.levelPct.toFixed(2))}%)`).join(", ");
+    : levels.map((l) => `$${computePrice(ep, l.levelPct)} (+${l.levelPct.toFixed(2)}%)`).join(", ");
 
-  const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${slPrice}(-${slPct}%)`;
+  const stopLossDisplay = isUnderlying ? `$${parseFloat(stopLossPct).toFixed(2)}` : `${slPrice}(-${slPct.toFixed(2)}%)`;
   const stopLossParts = [stopLossDisplay];
   const firstRaiseSL = levels.find((l) => l.raiseStopLossTo === "Break even" || l.raiseStopLossTo === "Custom Level");
   if (firstRaiseSL && !isUnderlying) {
@@ -611,10 +651,14 @@ function PlanFormModal({
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-muted-foreground shrink-0">$</span>
                     <Input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={stopLossPct}
                       onChange={(e) => setStopLossPct(e.target.value)}
+                      onBlur={() => {
+                        const val = parseFloat(stopLossPct) || 0;
+                        setStopLossPct(val.toFixed(2));
+                      }}
                       className="text-sm"
                       data-testid="input-stop-loss-pct"
                     />
@@ -626,10 +670,14 @@ function PlanFormModal({
                     <Label className="text-xs text-muted-foreground">Stop Loss %</Label>
                     <div className="flex items-center gap-1">
                       <Input
-                        type="number"
-                        step="1"
+                        type="text"
+                        inputMode="decimal"
                         value={stopLossPct}
                         onChange={(e) => setStopLossPct(e.target.value)}
+                        onBlur={() => {
+                          const val = parseFloat(stopLossPct) || 0;
+                          setStopLossPct(val.toFixed(2));
+                        }}
                         className="text-sm"
                         data-testid="input-stop-loss-pct"
                       />
@@ -650,7 +698,7 @@ function PlanFormModal({
                           setIsSlPriceEditing(false);
                           const newPrice = parseFloat(localSlPrice) || 0;
                           const newPct = ep > 0 ? ((ep - newPrice) / ep) * 100 : 0;
-                          setStopLossPct(Math.max(0, parseFloat(newPct.toFixed(2))).toString());
+                          setStopLossPct(Math.max(0, parseFloat(newPct.toFixed(2))).toFixed(2));
                         }}
                         className="text-sm"
                         data-testid="input-stop-loss-price"
@@ -710,8 +758,8 @@ function PlanFormModal({
                         <span>🔥</span> Take Profit Plan
                       </p>
                       {levels.map((l, i) => {
-                        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${parseFloat(l.levelPct.toFixed(2))}%`;
-                        let desc = `At ${levelLabel} take off ${parseFloat(l.takeOffPct.toFixed(1))}% of `;
+                        const levelLabel = isUnderlying ? `$${l.levelPct.toFixed(2)}` : `${l.levelPct.toFixed(2)}%`;
+                        let desc = `At ${levelLabel} take off ${l.takeOffPct.toFixed(2)}% of `;
                         desc += i === 0 ? "position" : "remaining position";
                         if (l.raiseStopLossTo === "Break even") {
                           desc += " and raise stop loss to break even";
