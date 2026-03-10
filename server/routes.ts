@@ -305,8 +305,8 @@ export async function registerRoutes(
       const { channel, commentary } = req.body;
       const file = req.file;
 
-      if (!file) {
-        return res.status(400).json({ message: "Media file is required" });
+      if (!file && !commentary?.trim()) {
+        return res.status(400).json({ message: "Please add commentary or upload media" });
       }
       if (!channel) {
         return res.status(400).json({ message: "Destination channel is required" });
@@ -318,14 +318,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Channel not found or missing webhook URL" });
       }
 
-      const sent = await sendFileToDiscord(
-        selectedChannel.webhookUrl,
-        file.path,
-        file.originalname,
-        commentary || undefined
-      );
-
-      fs.unlink(file.path, () => {});
+      let sent: boolean;
+      if (file) {
+        sent = await sendFileToDiscord(
+          selectedChannel.webhookUrl,
+          file.path,
+          file.originalname,
+          commentary || undefined
+        );
+        fs.unlink(file.path, () => {});
+      } else {
+        sent = await sendToDiscord(
+          selectedChannel.webhookUrl,
+          { description: commentary },
+          undefined
+        );
+      }
 
       if (!sent) {
         return res.status(502).json({ message: "Failed to send to Discord" });

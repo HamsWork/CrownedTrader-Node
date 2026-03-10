@@ -132,8 +132,8 @@ export default function SendTA() {
       toast({ title: "Please select a destination channel", variant: "destructive" });
       return;
     }
-    if (!mediaFile) {
-      toast({ title: "Please upload an image or video", variant: "destructive" });
+    if (!mediaFile && !commentary.trim()) {
+      toast({ title: "Please add commentary or upload media — cannot send an empty message", variant: "destructive" });
       return;
     }
 
@@ -142,7 +142,9 @@ export default function SendTA() {
       const formData = new FormData();
       formData.append("channel", channel);
       formData.append("commentary", commentary);
-      formData.append("media", mediaFile);
+      if (mediaFile) {
+        formData.append("media", mediaFile);
+      }
 
       const res = await fetch("/api/send-ta", {
         method: "POST",
@@ -204,7 +206,7 @@ export default function SendTA() {
 
               <div className="space-y-2">
                 <Label className="font-semibold text-sm">
-                  TA Media (Image or Video) <span className="text-destructive">*</span>
+                  TA Media (Image or Video)
                 </Label>
                 <input
                   ref={fileInputRef}
