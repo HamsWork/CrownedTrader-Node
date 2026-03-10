@@ -433,6 +433,10 @@ export default function SendSignal() {
   });
 
   const [isFetchingOption, setIsFetchingOption] = useState(false);
+  const [isFetchingManualQuote, setIsFetchingManualQuote] = useState(false);
+  const [manualQuoteError, setManualQuoteError] = useState<string | null>(null);
+  const manualQuoteAbortRef = useRef<AbortController | null>(null);
+  const manualQuoteReqIdRef = useRef(0);
 
   const [isSendingMultipart, setIsSendingMultipart] = useState(false);
   const [chartFile, setChartFile] = useState<File | null>(null);
@@ -526,6 +530,60 @@ export default function SendSignal() {
       setIsFetchingOption(false);
     }
   }, [form.isOption, form.manualContract, form.ticker, form.stockPrice, form.optionType, form.tradeType]);
+
+  useEffect(() => {
+    if (!form.isOption || !form.manualContract) {
+      setManualQuoteError(null);
+      return;
+    }
+
+    const ticker = form.ticker?.trim().toUpperCase();
+    const expiration = form.expiration?.trim();
+    const strike = parseFloat(form.strike);
+    if (!ticker || !expiration || isNaN(strike) || strike <= 0) {
+      setManualQuoteError(null);
+      return;
+    }
+
+    if (manualQuoteAbortRef.current) manualQuoteAbortRef.current.abort();
+    const controller = new AbortController();
+    manualQuoteAbortRef.current = controller;
+    const reqId = ++manualQuoteReqIdRef.current;
+
+    setIsFetchingManualQuote(true);
+    setManualQuoteError(null);
+
+    const params = new URLSearchParams({
+      underlying: ticker,
+      expiration,
+      strike: strike.toString(),
+      optionType: form.optionType,
+    });
+
+    fetch(`/api/option-quote?${params}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (reqId !== manualQuoteReqIdRef.current) return;
+        if (res.ok) {
+          const data = await res.json();
+          setForm(prev => ({ ...prev, optionPrice: data.price?.toString() || "" }));
+          setManualQuoteError(null);
+        } else {
+          setForm(prev => ({ ...prev, optionPrice: "" }));
+          setManualQuoteError("Contract not found");
+        }
+      })
+      .catch((e: any) => {
+        if (e.name !== "AbortError" && reqId === manualQuoteReqIdRef.current) {
+          setForm(prev => ({ ...prev, optionPrice: "" }));
+          setManualQuoteError("Failed to fetch option price");
+        }
+      })
+      .finally(() => {
+        if (reqId === manualQuoteReqIdRef.current) {
+          setIsFetchingManualQuote(false);
+        }
+      });
+  }, [form.isOption, form.manualContract, form.ticker, form.expiration, form.strike, form.optionType]);
 
   useEffect(() => {
     if (!form.isOption && form.stockPrice && !form.entryPrice) {
@@ -820,12 +878,26 @@ export default function SendSignal() {
                       </div>
                     </div>
 
-                    {form.optionPrice && (
-                      <div className="flex items-center gap-2 px-1">
-                        <span className="text-xs text-muted-foreground">Option Price:</span>
-                        <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 px-1 min-h-[20px]">
+                      {(isFetchingManualQuote || isFetchingOption) ? (
+                        <>
+                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                          <span className="text-xs text-muted-foreground animate-pulse" data-testid="text-option-price-loading">
+                            {form.manualContract ? "Looking up contract..." : "Finding best option..."}
+                          </span>
+                        </>
+                      ) : manualQuoteError && form.manualContract ? (
+                        <>
+                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                          <span className="text-xs text-orange-400" data-testid="text-option-price-error">{manualQuoteError}</span>
+                        </>
+                      ) : form.optionPrice ? (
+                        <>
+                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                          <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
+                        </>
+                      ) : null}
+                    </div>
 
                   </div>
                 ) : (

@@ -553,6 +553,73 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/option-quote", requireAuth, async (req, res) => {
+    const apiKey = process.env.POLYGON_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "Polygon API key not configured" });
+    }
+
+    const underlying = ((req.query.underlying as string) || "").trim().toUpperCase();
+    const expiration = ((req.query.expiration as string) || "").trim();
+    const strike = parseFloat(req.query.strike as string);
+    const optionType = ((req.query.optionType as string) || "call").trim().toUpperCase();
+
+    if (!underlying || !expiration || isNaN(strike) || strike <= 0) {
+      return res.status(400).json({ message: "underlying, expiration, and strike are required" });
+    }
+
+    try {
+      const expClean = expiration.replace(/-/g, "");
+      const side = optionType === "PUT" ? "P" : "C";
+      const strikePadded = (strike * 1000).toFixed(0).padStart(8, "0");
+      const contractTicker = `O:${underlying}${expClean}${side}${strikePadded}`;
+
+      const url = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}/${encodeURIComponent(contractTicker)}?apiKey=${apiKey}`;
+      const snapRes = await fetch(url);
+
+      if (!snapRes.ok) {
+        return res.status(404).json({ message: "Option contract not found" });
+      }
+
+      const snapData = await snapRes.json() as any;
+      if (snapData.status !== "OK" || !snapData.results) {
+        return res.status(404).json({ message: "Option contract not found" });
+      }
+
+      const results = snapData.results;
+      const lq = results.last_quote || results.lastQuote || {};
+      const bid = parseFloat(lq.bid || lq.bid_price || "0") || 0;
+      const ask = parseFloat(lq.ask || lq.ask_price || "0") || 0;
+      let price: number | null = null;
+      if (bid > 0 && ask > 0) price = (bid + ask) / 2;
+      else if (ask > 0) price = ask;
+      else if (bid > 0) price = bid;
+
+      if (!price) {
+        const lt = results.last_trade || results.lastTrade || {};
+        const p = parseFloat(lt.price || lt.p || "0");
+        if (p > 0) price = p;
+      }
+
+      if (!price) {
+        return res.status(404).json({ message: "No price data for this contract" });
+      }
+
+      const greeks = results.greeks || {};
+      return res.json({
+        contract: contractTicker,
+        price: Math.round(price * 100) / 100,
+        bid: bid > 0 ? bid : null,
+        ask: ask > 0 ? ask : null,
+        delta: greeks.delta != null ? parseFloat(greeks.delta) : null,
+        openInterest: parseInt(results.open_interest || "0") || 0,
+      });
+    } catch (err) {
+      console.error("Option quote error:", err);
+      return res.status(500).json({ message: "Failed to fetch option quote" });
+    }
+  });
+
   app.get("/api/best-option", requireAuth, async (req, res) => {
     const apiKey = process.env.POLYGON_API_KEY;
     if (!apiKey) {
