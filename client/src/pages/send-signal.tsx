@@ -132,8 +132,12 @@ function TickerAutocomplete({
     }
   }
 
+  function stripCryptoPrefix(t: string) {
+    return t.replace(/^X:/, "");
+  }
+
   function handleInputChange(val: string) {
-    const upper = val.toUpperCase();
+    const upper = stripCryptoPrefix(val.toUpperCase());
     setQuery(upper);
     onChange(upper);
     onTickerDetails(null);
@@ -143,11 +147,12 @@ function TickerAutocomplete({
   }
 
   function selectTicker(ticker: string) {
-    setQuery(ticker);
-    onChange(ticker);
+    const clean = stripCryptoPrefix(ticker);
+    setQuery(clean);
+    onChange(clean);
     setIsOpen(false);
     setResults([]);
-    fetchDetails(ticker);
+    fetchDetails(clean);
   }
 
   const badge = tickerDetails ? CATEGORY_BADGES[tickerDetails.category] : null;
@@ -170,21 +175,24 @@ function TickerAutocomplete({
           {isLoading ? (
             <div className="p-3 text-sm text-muted-foreground text-center">Searching...</div>
           ) : (
-            results.map((r) => (
-              <button
-                key={r.ticker}
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer transition-colors"
-                onClick={() => selectTicker(r.ticker)}
-                data-testid={`ticker-option-${r.ticker}`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold shrink-0">{r.ticker}</span>
-                  <span className="text-muted-foreground truncate text-xs">{r.name}</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground uppercase shrink-0 ml-2">{r.market}</span>
-              </button>
-            ))
+            results.map((r) => {
+              const displayTicker = stripCryptoPrefix(r.ticker);
+              return (
+                <button
+                  key={r.ticker}
+                  type="button"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent cursor-pointer transition-colors"
+                  onClick={() => selectTicker(r.ticker)}
+                  data-testid={`ticker-option-${displayTicker}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold shrink-0">{displayTicker}</span>
+                    <span className="text-muted-foreground truncate text-xs">{r.name}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground uppercase shrink-0 ml-2">{r.market}</span>
+                </button>
+              );
+            })
           )}
         </div>
       )}
