@@ -503,9 +503,35 @@ export async function registerRoutes(
             leverage = "-2x";
           }
 
-          const trackingMatch = descLower.match(/(?:tracks?|based on|seeks.*(?:results|return).*of)\s+(?:the\s+)?([A-Za-z0-9&\s]+?)(?:\s+index|\s+price|\.|,)/i);
-          if (trackingMatch) {
-            underlying = trackingMatch[1].trim();
+          const LETF_UNDERLYING_MAP: Record<string, string> = {
+            TQQQ: "QQQ", SQQQ: "QQQ", QLD: "QQQ", QID: "QQQ", PSQ: "QQQ",
+            SPXL: "SPY", SPXS: "SPY", UPRO: "SPY", SDS: "SPY", SSO: "SPY", SH: "SPY", SPXU: "SPY",
+            TNA: "IWM", TZA: "IWM", URTY: "IWM", SRTY: "IWM",
+            SOXL: "SOXX", SOXS: "SOXX",
+            FAS: "XLF", FAZ: "XLF",
+            LABU: "XBI", LABD: "XBI",
+            NUGT: "GDX", DUST: "GDX",
+            TECL: "XLK", TECS: "XLK",
+            CURE: "XLV",
+            DRN: "IYR", DRV: "IYR",
+            NAIL: "ITB",
+            WEBL: "ARKK", WEBS: "ARKK",
+            BULZ: "FNGU", BERZ: "FNGU",
+            UDOW: "DIA", SDOW: "DIA",
+            MIDU: "MDY", SMDD: "MDY",
+            JNUG: "GDXJ", JDST: "GDXJ",
+            ERX: "XLE", ERY: "XLE",
+            FNGU: "NYFANG",
+            UCO: "USO", SCO: "USO",
+            AGQ: "SLV", ZSL: "SLV",
+            UGL: "GLD",
+          };
+          underlying = LETF_UNDERLYING_MAP[ticker] || "";
+          if (!underlying) {
+            const trackingMatch = descLower.match(/(?:tracks?|based on|seeks.*(?:results|return).*of)\s+(?:the\s+)?([A-Za-z0-9&\s]+?)(?:\s+index|\s+price|\.|,)/i);
+            if (trackingMatch) {
+              underlying = trackingMatch[1].trim();
+            }
           }
         } else {
           category = "ETF";
