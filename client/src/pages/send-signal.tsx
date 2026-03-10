@@ -489,6 +489,7 @@ export default function SendSignal() {
 
   const userChannels = currentUser?.discordChannels || [];
   const [tickerDetails, setTickerDetails] = useState<TickerDetails | null>(null);
+  const [underlyingPrice, setUnderlyingPrice] = useState<number | null>(null);
   const [tradePlanOpen, setTradePlanOpen] = useState(false);
 
   const [form, setForm] = useState<TradeForm>({
@@ -547,6 +548,17 @@ export default function SendSignal() {
     setChartMediaType(null);
     if (chartFileRef.current) chartFileRef.current.value = "";
   }, [chartPreviewUrl]);
+
+  useEffect(() => {
+    if (tickerDetails?.category === "LETF" && tickerDetails.underlying) {
+      fetch(`/api/stock-price/${encodeURIComponent(tickerDetails.underlying)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setUnderlyingPrice(d?.price ?? null))
+        .catch(() => setUnderlyingPrice(null));
+    } else {
+      setUnderlyingPrice(null);
+    }
+  }, [tickerDetails]);
 
   useEffect(() => {
     if (userChannels.length > 0 && !form.channel) {
@@ -920,9 +932,16 @@ export default function SendSignal() {
                 </div>
 
                 {form.stockPrice && (
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-xs text-muted-foreground">Stock Price:</span>
+                  <div className="flex items-center gap-2 px-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{tickerDetails?.category === "LETF" ? "LETF Price:" : "Stock Price:"}</span>
                     <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
+                    {tickerDetails?.category === "LETF" && underlyingPrice !== null && (
+                      <>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">{tickerDetails.underlying} Price:</span>
+                        <span className="text-sm font-semibold text-blue-400" data-testid="text-underlying-price">${underlyingPrice.toFixed(2)}</span>
+                      </>
+                    )}
                   </div>
                 )}
 
