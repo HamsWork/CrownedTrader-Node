@@ -372,29 +372,28 @@ function TakeProfitLevelForm({
         </div>
       )}
 
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
-        <Select
-          value={level.raiseStopLossTo}
-          onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || "") : "" })}
-        >
-          <SelectTrigger className="text-sm" data-testid={`select-raise-sl-${index}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RAISE_SL_OPTIONS.map((opt) => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <div className="rounded-lg border border-border p-3 space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Raise stop loss to:</Label>
+          <Select
+            value={level.raiseStopLossTo}
+            onValueChange={(v) => onChange({ ...level, raiseStopLossTo: v, customRaiseSLValue: v === "Custom Level" ? (level.customRaiseSLValue || "") : "" })}
+          >
+            <SelectTrigger className="text-sm" data-testid={`select-raise-sl-${index}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RAISE_SL_OPTIONS.map((opt) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {level.raiseStopLossTo === "Custom Level" && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">{isUnderlyingBased ? "Price" : "Level %"}</Label>
-            <div className="flex items-center gap-1">
-              {isUnderlyingBased && <span className="text-xs text-muted-foreground shrink-0">$</span>}
+        {level.raiseStopLossTo === "Custom Level" && (
+          <>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{isUnderlyingBased ? "Price" : "Level %"}</Label>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -404,13 +403,9 @@ function TakeProfitLevelForm({
                 className="text-sm"
                 data-testid={`input-custom-sl-pct-${index}`}
               />
-              {!isUnderlyingBased && <span className="text-xs text-muted-foreground shrink-0">%</span>}
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Price</Label>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground shrink-0">$</span>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Price</Label>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -432,44 +427,46 @@ function TakeProfitLevelForm({
                 data-testid={`input-custom-sl-price-${index}`}
               />
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
 
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Trailing Stop:</Label>
-        <Select
-          value={level.trailingStop}
-          onValueChange={(v) => onChange({ ...level, trailingStop: v, trailingStopPct: v === "On" ? (level.trailingStopPct || "") : "" })}
-        >
-          <SelectTrigger className="text-sm" data-testid={`select-trailing-stop-${index}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TRAILING_STOP_OPTIONS.map((opt) => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="border-t border-border" />
 
-      {level.trailingStop === "On" && (
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Trailing Stop Percent</Label>
-          <div className="flex items-center gap-1">
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={level.trailingStopPct || ""}
-              onChange={(e) => onChange({ ...level, trailingStopPct: e.target.value })}
-              placeholder="e.g. 5"
-              className="text-sm"
-              data-testid={`input-trailing-stop-pct-${index}`}
-            />
-            <span className="text-xs text-muted-foreground shrink-0">%</span>
-          </div>
+          <Label className="text-xs text-muted-foreground">Trailing Stop:</Label>
+          <Select
+            value={level.trailingStop}
+            onValueChange={(v) => onChange({ ...level, trailingStop: v, trailingStopPct: v === "On" ? (level.trailingStopPct || "") : "" })}
+          >
+            <SelectTrigger className="text-sm" data-testid={`select-trailing-stop-${index}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TRAILING_STOP_OPTIONS.map((opt) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+
+        {level.trailingStop === "On" && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Trailing Stop Percent</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={level.trailingStopPct || ""}
+                onChange={(e) => onChange({ ...level, trailingStopPct: e.target.value })}
+                placeholder="e.g. 5"
+                className="text-sm"
+                data-testid={`input-trailing-stop-pct-${index}`}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">%</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
