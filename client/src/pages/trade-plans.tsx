@@ -820,10 +820,6 @@ function PlanFormModal({
 
                 <div className="rounded-lg bg-[#1a1d23] border border-[#2a2d35] overflow-hidden">
                   <div className="p-3 space-y-3 text-xs text-[#dcddde]">
-                    <p className="font-bold text-white flex items-center gap-1.5">
-                      <span>🔺</span> Trade Alert
-                    </p>
-
                     <div>
                       <p className="font-bold text-white flex items-center gap-1.5">
                         <span>📋</span> Trade Plan
