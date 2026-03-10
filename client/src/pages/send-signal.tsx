@@ -931,25 +931,22 @@ export default function SendSignal() {
                   />
                 </div>
 
-                {form.stockPrice && tickerDetails?.category === "LETF" ? (
+                {form.stockPrice ? (
                   <div className="rounded-md bg-muted/50 border border-border px-3 py-2 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">📊 {form.ticker} (LETF) Price:</span>
+                      <span className="text-xs text-muted-foreground font-medium">{tickerDetails?.category === "LETF" ? `${form.ticker} (LETF) Price:` : "Stock Price:"}</span>
                       <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">📈 {tickerDetails.underlying || "Underlying"} Price:</span>
-                      {underlyingPrice !== null ? (
-                        <span className="text-sm font-semibold text-blue-400" data-testid="text-underlying-price">${underlyingPrice.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
-                      )}
-                    </div>
-                  </div>
-                ) : form.stockPrice ? (
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-xs text-muted-foreground">Stock Price:</span>
-                    <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
+                    {tickerDetails?.category === "LETF" && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-medium">{tickerDetails.underlying || "Underlying"} Price:</span>
+                        {underlyingPrice !== null ? (
+                          <span className="text-sm font-semibold text-blue-400" data-testid="text-underlying-price">${underlyingPrice.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : null}
 
@@ -1010,25 +1007,30 @@ export default function SendSignal() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 px-1 min-h-[20px]">
+                    <div className="rounded-md bg-muted/50 border border-border px-3 py-2 min-h-[20px]">
                       {(isFetchingManualQuote || isFetchingOption) ? (
-                        <>
-                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
                           <span className="text-xs text-muted-foreground animate-pulse" data-testid="text-option-price-loading">
                             {form.manualContract ? "Looking up contract..." : "Finding best option..."}
                           </span>
-                        </>
+                        </div>
                       ) : manualQuoteError && form.manualContract ? (
-                        <>
-                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
                           <span className="text-xs text-orange-400" data-testid="text-option-price-error">{manualQuoteError}</span>
-                        </>
+                        </div>
                       ) : form.optionPrice ? (
-                        <>
-                          <span className="text-xs text-muted-foreground">Option Price:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
                           <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
-                        </>
-                      ) : null}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
+                          <span className="text-xs text-muted-foreground">—</span>
+                        </div>
+                      )}
                     </div>
 
                   </div>
