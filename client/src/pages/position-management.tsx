@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -447,38 +446,45 @@ export default function PositionManagement() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="rounded-md bg-muted/50 border border-border px-4 py-2 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-green-400" />
-          <span className="text-sm font-medium" data-testid="text-open-count">{openCount} Open</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center border-b border-border">
+          {([
+            { value: "open", label: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
+            { value: "closed", label: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
+            { value: "all", label: "All", count: (openCount + closedCount), icon: Briefcase, color: "text-muted-foreground" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                statusFilter === tab.value
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+              data-testid={`tab-${tab.value}`}
+            >
+              <tab.icon className={`h-3.5 w-3.5 ${statusFilter === tab.value ? tab.color : ""}`} />
+              {tab.label}
+              <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${
+                statusFilter === tab.value
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
         </div>
-        <div className="rounded-md bg-muted/50 border border-border px-4 py-2 flex items-center gap-2">
-          <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium" data-testid="text-closed-count">{closedCount} Closed</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search positions by ticker, type..."
+            placeholder="Search by ticker..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9"
             data-testid="input-search"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48" data-testid="select-status-filter">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Positions</SelectItem>
-            <SelectItem value="open">Open Only</SelectItem>
-            <SelectItem value="closed">Closed Only</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {filtered.length === 0 ? (
