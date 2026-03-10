@@ -29,7 +29,7 @@ import { Plus, Trash2, Info, Save, ClipboardList, Send } from "lucide-react";
 import { useLocation } from "wouter";
 import type { TradePlan, TakeProfitLevel } from "@shared/schema";
 
-const TARGET_TYPES = ["% based (Option)", "% based (Shares)", "$ based"];
+const TARGET_TYPES = ["Underlying Price Based", "Symbol Price Based"];
 const RAISE_SL_OPTIONS = ["Off", "Break even (entry)", "+5%", "+10%", "Trail"];
 const TRAILING_STOP_OPTIONS = ["Off", "5%", "10%", "15%", "20%"];
 
@@ -52,13 +52,8 @@ function PlanPreview({
   stopLossPct: string;
   targetType: string;
 }) {
-  const isPercentage = targetType.includes("%");
-
   const targetsStr = levels
-    .map((l, i) => {
-      if (isPercentage) return `TP${i + 1}: ${l.levelPct}%`;
-      return `TP${i + 1}: $${l.levelPct.toFixed(2)}`;
-    })
+    .map((l, i) => `TP${i + 1}: ${l.levelPct}%`)
     .join(", ");
 
   return (
@@ -77,7 +72,7 @@ function PlanPreview({
         <span>🔥</span> Take Profit Plan
       </p>
       {levels.map((l, i) => {
-        let desc = `At ${isPercentage ? `${l.levelPct}%` : `TP${i + 1}`} take off ${l.takeOffPct}% of `;
+        let desc = `At ${l.levelPct}% take off ${l.takeOffPct}% of `;
         if (i === 0) {
           desc += "position";
           if (l.raiseStopLossTo === "Break even (entry)") {
@@ -137,8 +132,8 @@ function PlanCard({
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-muted-foreground">Target Type</span>
-          <span className="text-xs font-medium">{plan.targetType.includes("%") ? "Percentage" : "Dollar"}</span>
+          <span className="text-xs text-muted-foreground">Trade Plan Type</span>
+          <span className="text-xs font-medium">{plan.targetType}</span>
         </div>
 
         <div className="flex-1 mb-4">
@@ -325,7 +320,7 @@ function PlanFormModal({
   const { toast } = useToast();
 
   const [name, setName] = useState(editingPlan?.name || "");
-  const [targetType, setTargetType] = useState(editingPlan?.targetType || "% based (Option)");
+  const [targetType, setTargetType] = useState(editingPlan?.targetType || "Underlying Price Based");
   const [stopLossPct, setStopLossPct] = useState(editingPlan?.stopLossPct || "10");
   const [levels, setLevels] = useState<TakeProfitLevel[]>(
     editingPlan?.takeProfitLevels?.length ? editingPlan.takeProfitLevels : [...DEFAULT_LEVELS]
@@ -419,7 +414,7 @@ function PlanFormModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-semibold text-sm">Target Type</Label>
+                <Label className="font-semibold text-sm">Trade Plan Type</Label>
                 <Select value={targetType} onValueChange={setTargetType}>
                   <SelectTrigger data-testid="select-target-type">
                     <SelectValue />
