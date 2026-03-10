@@ -356,7 +356,6 @@ export async function registerRoutes(
 
       const taEmbed: DiscordEmbed = {
         color: 0x5865F2,
-        timestamp: new Date().toISOString(),
         footer: { text: "Disclaimer: Not financial advice. Trade at your own risk." },
       };
       if (description) {
