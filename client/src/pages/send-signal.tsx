@@ -649,7 +649,7 @@ export default function SendSignal() {
       await pollOptionPrice();
     };
 
-    pricePollingRef.current = setInterval(safePoll, 15000);
+    pricePollingRef.current = setInterval(safePoll, 1000);
 
     return () => {
       abortController.abort();
