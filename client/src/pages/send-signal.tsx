@@ -532,6 +532,9 @@ export default function SendSignal() {
     timeHorizon: "",
   });
 
+  const formRef = useRef(form);
+  formRef.current = form;
+
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [isFetchingOption, setIsFetchingOption] = useState(false);
   const [isFetchingManualQuote, setIsFetchingManualQuote] = useState(false);
@@ -597,7 +600,7 @@ export default function SendSignal() {
     const pollPrices = async () => {
       try {
         const marketParam = market ? `?market=${encodeURIComponent(market)}` : "";
-        const res = await fetch(`/api/stock-price/${encodeURIComponent(ticker)}${marketParam}`);
+        const res = await fetch(`/api/stock-price/${encodeURIComponent(ticker)}${marketParam}`, { signal: abortController.signal });
         if (res.ok) {
           const data = await res.json();
           if (data.price) {
@@ -606,10 +609,33 @@ export default function SendSignal() {
           }
         }
         if (tickerDetails?.category === "LETF" && tickerDetails.underlying) {
-          const ulRes = await fetch(`/api/stock-price/${encodeURIComponent(tickerDetails.underlying)}`);
+          const ulRes = await fetch(`/api/stock-price/${encodeURIComponent(tickerDetails.underlying)}`, { signal: abortController.signal });
           if (ulRes.ok) {
             const ulData = await ulRes.json();
             setUnderlyingPrice(ulData?.price ?? null);
+          }
+        }
+      } catch {}
+    };
+
+    const pollOptionPrice = async () => {
+      try {
+        const currentForm = formRef.current;
+        if (!currentForm.isOption) return;
+        const exp = currentForm.expiration?.trim();
+        const strikeVal = parseFloat(currentForm.strike);
+        if (!exp || isNaN(strikeVal) || strikeVal <= 0) return;
+        const params = new URLSearchParams({
+          underlying: ticker,
+          expiration: exp,
+          strike: strikeVal.toString(),
+          optionType: currentForm.optionType,
+        });
+        const res = await fetch(`/api/option-quote?${params}`, { signal: abortController.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.price) {
+            setForm(prev => ({ ...prev, optionPrice: data.price.toString() }));
           }
         }
       } catch {}
@@ -620,6 +646,7 @@ export default function SendSignal() {
     const safePoll = async () => {
       if (abortController.signal.aborted) return;
       await pollPrices();
+      await pollOptionPrice();
     };
 
     pricePollingRef.current = setInterval(safePoll, 15000);
