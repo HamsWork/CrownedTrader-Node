@@ -336,15 +336,15 @@ export async function getBestOption(
     start.setDate(start.getDate() + 6);
     expGte = start.toISOString().slice(0, 10);
     const end = new Date(today);
-    end.setDate(end.getDate() + 60);
+    end.setDate(end.getDate() + 90);
     expLte = end.toISOString().slice(0, 10);
     strikeRange = 0.05;
   } else {
     const start = new Date(today);
-    start.setDate(start.getDate() + 270);
+    start.setDate(start.getDate() + 120);
     expGte = start.toISOString().slice(0, 10);
     const end = new Date(today);
-    end.setDate(end.getDate() + 450);
+    end.setDate(end.getDate() + 550);
     expLte = end.toISOString().slice(0, 10);
     strikeRange = 0.05;
   }
@@ -362,29 +362,20 @@ export async function getBestOption(
     apiKey,
   });
 
-  const allSnapshots: Array<Record<string, unknown>> = [];
-  let url: string | null = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}?${params}`;
-  let pages = 0;
-
-  while (url && pages < 5) {
-    pages++;
-    const snapRes = await fetch(url);
-    if (!snapRes.ok) break;
-    const snapData = (await snapRes.json()) as { results?: Array<Record<string, unknown>>; next_url?: string };
-    const results = snapData.results || [];
-    allSnapshots.push(...results);
-    url = snapData.next_url ? `${snapData.next_url}&apiKey=${apiKey}` : null;
+  function strikeInRange(strike: number, pct: number) {
+    return Math.abs((strike - px) / px) <= pct;
+  }
+  function otmScore(strike: number): number {
+    if (isCall) return (strike - px) / px;
+    return (px - strike) / px;
   }
 
-  if (allSnapshots.length === 0) return null;
-
-  const rows: NormalizedOption[] = [];
-  for (const item of allSnapshots) {
+  function normalizeItem(item: Record<string, unknown>): NormalizedOption | null {
     const details = (item.details || {}) as { ticker?: string; expiration_date?: string; strike_price?: string };
     const contract = (details.ticker || (item.ticker as string) || "").trim();
     const exp = (details.expiration_date || "").trim();
     const strike = parseFloat(details.strike_price || "");
-    if (!contract || !exp || isNaN(strike)) continue;
+    if (!contract || !exp || isNaN(strike)) return null;
 
     const greeks = (item.greeks || {}) as { delta?: number | string };
     const delta = greeks.delta != null ? parseFloat(String(greeks.delta)) : null;
@@ -406,71 +397,109 @@ export async function getBestOption(
 
     const expDate = new Date(exp + "T00:00:00");
     const dte = Math.floor((expDate.getTime() - todayStart.getTime()) / 86400000);
-
-    rows.push({ contract, expiration: exp, strike, delta, openInterest: oi, bid, ask, spread, optionPrice, dte });
+    return { contract, expiration: exp, strike, delta, openInterest: oi, bid, ask, spread, optionPrice, dte };
   }
 
-  if (rows.length === 0) return null;
+  // Progressive fallback levels per best-option-logic.md
+  const scalpLevels = [
+    { dteRange: [0, 0] as [number, number], deltaRange: [0.35, 0.60] as [number, number], minOi: 500, maxSpread: 0.10 },
+    { dteRange: [0, 0] as [number, number], deltaRange: [0.25, 0.65] as [number, number], minOi: 300, maxSpread: 0.15 },
+    { dteRange: [0, 1] as [number, number], deltaRange: [0.25, 0.65] as [number, number], minOi: 200, maxSpread: 0.15 },
+    { dteRange: [0, 2] as [number, number], deltaRange: [0.20, 0.70] as [number, number], minOi: 100, maxSpread: 0.20 },
+  ];
+  const swingLevels = [
+    { dteRanges: [[13, 25], [6, 15]] as [number, number][], deltaRange: [0.40, 0.60] as [number, number], strikePct: 0.02, minOi: 1000, maxSpread: 0.05 },
+    { dteRanges: [[13, 45], [6, 30]] as [number, number][], deltaRange: [0.40, 0.60] as [number, number], strikePct: 0.02, minOi: 500, maxSpread: 0.08 },
+    { dteRanges: [[13, 60], [6, 45]] as [number, number][], deltaRange: [0.30, 0.70] as [number, number], strikePct: 0.05, minOi: 300, maxSpread: 0.10 },
+    { dteRanges: [[13, 90], [6, 60]] as [number, number][], deltaRange: [0.25, 0.75] as [number, number], strikePct: 0.08, minOi: 200, maxSpread: 0.15 },
+  ];
+  const leapLevels = [
+    { dteRange: [330, 395] as [number, number], deltaRange: [0.50, 0.80] as [number, number], strikePct: 0.02, minOi: 500, maxSpread: 0.05, targetDte: 365 },
+    { dteRange: [270, 450] as [number, number], deltaRange: [0.50, 0.80] as [number, number], strikePct: 0.02, minOi: 300, maxSpread: 0.08, targetDte: 365 },
+    { dteRange: [180, 500] as [number, number], deltaRange: [0.40, 0.85] as [number, number], strikePct: 0.05, minOi: 200, maxSpread: 0.10, targetDte: 365 },
+    { dteRange: [120, 550] as [number, number], deltaRange: [0.35, 0.90] as [number, number], strikePct: 0.08, minOi: 100, maxSpread: 0.15, targetDte: 365 },
+  ];
 
-  function otmScore(strike: number): number {
-    if (isCall) return (strike - px) / px;
-    return (px - strike) / px;
-  }
+  const scalpCandidates: NormalizedOption[][] = scalpLevels.map(() => []);
+  const swingCandidates: NormalizedOption[][][] = swingLevels.map(l => l.dteRanges.map(() => []));
+  const leapCandidates: NormalizedOption[][] = leapLevels.map(() => []);
 
-  function strikeInRange(strike: number, pct: number) {
-    return Math.abs((strike - px) / px) <= pct;
-  }
+  let url: string | null = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}?${params}`;
+  let pages = 0;
+  while (url && pages < 5) {
+    pages++;
+    const snapRes = await fetch(url);
+    if (!snapRes.ok) break;
+    const snapData = (await snapRes.json()) as { results?: Array<Record<string, unknown>>; next_url?: string };
+    const results = snapData.results || [];
+    for (const item of results) {
+      const row = normalizeItem(item);
+      if (!row) continue;
 
-  if (tradeType === "scalp") {
-    const scalpLevels: { deltaRange: [number, number]; minOi: number; maxSpread: number }[] = [
-      { deltaRange: [0.35, 0.60], minOi: 500, maxSpread: 0.10 },
-      { deltaRange: [0.25, 0.65], minOi: 300, maxSpread: 0.15 },
-      { deltaRange: [0.20, 0.70], minOi: 100, maxSpread: 0.20 },
-    ];
-
-    for (const level of scalpLevels) {
-      for (let targetDte = 0; targetDte <= 14; targetDte++) {
-        const candidates = rows.filter(r => {
-          if (r.dte == null || r.dte !== targetDte) return false;
-          if (r.delta == null) return false;
-          const absDelta = Math.abs(r.delta);
-          if (absDelta < level.deltaRange[0] || absDelta > level.deltaRange[1]) return false;
-          if (r.openInterest < level.minOi) return false;
-          if (r.spread == null || r.spread >= level.maxSpread) return false;
-          return true;
-        });
-
-        if (candidates.length > 0) {
-          candidates.sort((a, b) => {
-            const da = Math.abs(Math.abs(a.delta || 0) - 0.50);
-            const db = Math.abs(Math.abs(b.delta || 0) - 0.50);
-            if (da !== db) return da - db;
-            return (b.openInterest - a.openInterest);
-          });
-          return formatResult(candidates[0]);
+      if (tradeType === "scalp") {
+        for (let li = 0; li < scalpLevels.length; li++) {
+          const level = scalpLevels[li];
+          const [dteLo, dteHi] = level.dteRange;
+          if (row.dte != null && row.dte >= dteLo && row.dte <= dteHi && row.delta != null) {
+            const absDelta = Math.abs(row.delta);
+            if (absDelta >= level.deltaRange[0] && absDelta <= level.deltaRange[1] &&
+                row.openInterest >= level.minOi &&
+                row.spread != null && row.spread < level.maxSpread) {
+              scalpCandidates[li].push(row);
+            }
+          }
+        }
+      } else if (tradeType === "swing") {
+        for (let li = 0; li < swingLevels.length; li++) {
+          const level = swingLevels[li];
+          for (let ri = 0; ri < level.dteRanges.length; ri++) {
+            const [dteLo, dteHi] = level.dteRanges[ri];
+            if (row.dte != null && row.dte >= dteLo && row.dte <= dteHi && row.delta != null) {
+              const absDelta = Math.abs(row.delta);
+              if (absDelta >= level.deltaRange[0] && absDelta <= level.deltaRange[1] &&
+                  strikeInRange(row.strike, level.strikePct) &&
+                  row.openInterest >= level.minOi &&
+                  row.spread != null && row.spread < level.maxSpread) {
+                swingCandidates[li][ri].push(row);
+              }
+            }
+          }
+        }
+      } else {
+        for (let li = 0; li < leapLevels.length; li++) {
+          const level = leapLevels[li];
+          if (row.dte != null && row.dte >= level.dteRange[0] && row.dte <= level.dteRange[1] && row.delta != null) {
+            const absDelta = Math.abs(row.delta);
+            if (absDelta >= level.deltaRange[0] && absDelta <= level.deltaRange[1] &&
+                strikeInRange(row.strike, level.strikePct) &&
+                row.openInterest >= level.minOi &&
+                row.spread != null && row.spread < level.maxSpread) {
+              leapCandidates[li].push(row);
+            }
+          }
         }
       }
     }
-  } else if (tradeType === "swing") {
-    const swingLevels: { dteRanges: [number, number][]; deltaRange: [number, number]; strikePct: number; minOi: number; maxSpread: number }[] = [
-      { dteRanges: [[13, 25], [6, 15]], deltaRange: [0.40, 0.60], strikePct: 0.02, minOi: 1000, maxSpread: 0.05 },
-      { dteRanges: [[6, 45]], deltaRange: [0.40, 0.60], strikePct: 0.02, minOi: 1000, maxSpread: 0.05 },
-      { dteRanges: [[6, 45]], deltaRange: [0.35, 0.65], strikePct: 0.03, minOi: 500, maxSpread: 0.10 },
-      { dteRanges: [[6, 60]], deltaRange: [0.30, 0.70], strikePct: 0.05, minOi: 200, maxSpread: 0.15 },
-    ];
+    url = snapData.next_url ? `${snapData.next_url}&apiKey=${apiKey}` : null;
+  }
 
-    for (const level of swingLevels) {
-      for (const [dteLo, dteHi] of level.dteRanges) {
-        const candidates = rows.filter(r => {
-          if (r.dte == null || r.dte < dteLo || r.dte > dteHi) return false;
-          if (r.delta == null) return false;
-          const absDelta = Math.abs(r.delta);
-          if (absDelta < level.deltaRange[0] || absDelta > level.deltaRange[1]) return false;
-          if (!strikeInRange(r.strike, level.strikePct)) return false;
-          if (r.openInterest < level.minOi) return false;
-          if (r.spread == null || r.spread >= level.maxSpread) return false;
-          return true;
+  if (tradeType === "scalp") {
+    for (let li = 0; li < scalpLevels.length; li++) {
+      const candidates = scalpCandidates[li];
+      if (candidates.length > 0) {
+        candidates.sort((a, b) => {
+          const da = Math.abs(Math.abs(a.delta || 0) - 0.50);
+          const db = Math.abs(Math.abs(b.delta || 0) - 0.50);
+          if (da !== db) return da - db;
+          return (b.openInterest - a.openInterest);
         });
+        return formatResult(candidates[0]);
+      }
+    }
+  } else if (tradeType === "swing") {
+    for (let li = 0; li < swingLevels.length; li++) {
+      for (let ri = 0; ri < swingLevels[li].dteRanges.length; ri++) {
+        const candidates = swingCandidates[li][ri];
         if (candidates.length > 0) {
           candidates.sort((a, b) => {
             const otmA = otmScore(a.strike);
@@ -488,24 +517,9 @@ export async function getBestOption(
       }
     }
   } else {
-    const leapLevels: { dteRange: [number, number]; deltaRange: [number, number]; strikePct: number; minOi: number; maxSpread: number; targetDte: number }[] = [
-      { dteRange: [330, 395], deltaRange: [0.50, 0.80], strikePct: 0.02, minOi: 500, maxSpread: 0.05, targetDte: 365 },
-      { dteRange: [300, 420], deltaRange: [0.45, 0.85], strikePct: 0.03, minOi: 300, maxSpread: 0.10, targetDte: 365 },
-      { dteRange: [270, 450], deltaRange: [0.40, 0.90], strikePct: 0.05, minOi: 100, maxSpread: 0.15, targetDte: 365 },
-    ];
-
-    for (const level of leapLevels) {
-      const candidates = rows.filter(r => {
-        if (r.dte == null || r.dte < level.dteRange[0] || r.dte > level.dteRange[1]) return false;
-        if (r.delta == null) return false;
-        const absDelta = Math.abs(r.delta);
-        if (absDelta < level.deltaRange[0] || absDelta > level.deltaRange[1]) return false;
-        if (!strikeInRange(r.strike, level.strikePct)) return false;
-        if (r.openInterest < level.minOi) return false;
-        if (r.spread == null || r.spread >= level.maxSpread) return false;
-        return true;
-      });
-
+    for (let li = 0; li < leapLevels.length; li++) {
+      const level = leapLevels[li];
+      const candidates = leapCandidates[li];
       if (candidates.length > 0) {
         candidates.sort((a, b) => {
           const dteDiffA = Math.abs((a.dte ?? 0) - level.targetDte);

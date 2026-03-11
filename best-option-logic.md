@@ -1,3 +1,4 @@
+For Scalp
 Find the best option contract by increasing DTE until one matches criteria:
 
 Delta between 0.35 and 0.60
@@ -5,7 +6,8 @@ Open interest >= 500
 Spread < $0.10
 Closest to 0.50 delta
 CALL for BUY signals, PUT for SELL signals
-Swing
+
+For Swing
 Select Strike Price:
 
 Determine whether it's a CALL (breakout) or PUT (breakdown)
@@ -22,7 +24,8 @@ Liquidity Requirements:
 
 Open interest >= 1,000
 Spread < $0.05
-LEAP
+
+For LEAP
 Select Strike Price:
 
 Determine whether it's a CALL (breakout) or PUT (breakdown)
