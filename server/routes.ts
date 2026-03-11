@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
 import { sendToTradeSync, buildTradeSyncPayload } from "./utils/tradesync";
+import { processSignalDelivery } from "./utils/signals";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import {
   getApiKey as getPolygonApiKey,
@@ -224,107 +225,31 @@ export async function registerRoutes(
     if (typeof body.data === "string") {
       try {
         body = { ...body, data: JSON.parse(body.data) };
-      } catch { /* keep as-is */ }
+      } catch {
+        // keep as-is
+      }
     }
 
     const parsed = insertSignalSchema.safeParse(body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
 
     const currentUser = (req as any).user;
-    const signal = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
-    const chartFile = req.file;
-
-    const discordErrors: string[] = [];
+    const created = await storage.createSignal({ ...parsed.data, userId: currentUser.id });
 
     try {
-      if (signal.discordChannelName) {
-        const userChannels = currentUser.discordChannels || [];
-        const channel = userChannels.find((ch: any) => ch.name === signal.discordChannelName);
-        if (channel) {
-          let signalType = null;
-          if (parsed.data.signalTypeId) {
-            signalType = await storage.getSignalType(parsed.data.signalTypeId);
-            if (!signalType) return res.status(400).json({ message: "Invalid signal type" });
-          }
-          if (signalType) {
-            const embed = buildEmbed(signalType, signal);
-            const result = await sendToDiscord(channel.webhookUrl, embed, signalType.content || undefined);
-            await storage.updateSignalDiscordStatus(signal.id, result.ok);
-            signal.sentToDiscord = result.ok;
-            if (!result.ok) discordErrors.push(result.error || "Failed to send embed to Discord");
-          } else {
-            const data = signal.data as Record<string, string>;
-            const entry = parseFloat(data.entry_price) || 0;
-            const embed = {
-              title: `🔺 Trade Alert`,
-              description: `**${data.ticker || ""}** — ${data.trade_type || "Scalp"}\nEntry: $${entry.toFixed(2)}`,
-              color: 0x22c55e,
-              fields: [] as Array<{name: string; value: string; inline?: boolean}>,
-              footer: { text: "Disclaimer: Not financial advice. Trade at your own risk." },
-            };
-            if (data.is_shares !== "true") {
-              embed.fields.push(
-                { name: "Option Type", value: data.option_type || "CALL", inline: true },
-                { name: "Strike", value: data.strike || "—", inline: true },
-                { name: "Expiration", value: data.expiration || "—", inline: true },
-              );
-            }
-            embed.fields.push(
-              { name: "Targets", value: `TP1: $${data.tp1_target || "—"} | TP2: $${data.tp2_target || "—"} | TP3: $${data.tp3_target || "—"}`, inline: false },
-              { name: "Stop Loss", value: `-${data.stop_loss_pct || "10"}%`, inline: true },
-            );
-            if (data.risk_management) {
-              embed.fields.push({ name: "🛡️ Risk Management", value: data.risk_management, inline: false });
-            }
-            const result = await sendToDiscord(channel.webhookUrl, embed);
-            await storage.updateSignalDiscordStatus(signal.id, result.ok);
-            signal.sentToDiscord = result.ok;
-            if (!result.ok) discordErrors.push(result.error || "Failed to send embed to Discord");
-          }
+      const { signal, tradeSyncError } = await processSignalDelivery({
+        signal: created,
+        currentUser,
+        chartFile: req.file ?? null,
+      });
 
-          if (chartFile) {
-            const chartResult = await sendFileToDiscord(channel.webhookUrl, chartFile.path, chartFile.originalname || "chart.png", "📊 **Chart Analysis**");
-            if (!chartResult.ok) discordErrors.push(`Chart upload: ${chartResult.error || "Failed"}`);
-          }
-        } else {
-          discordErrors.push(`Channel "${signal.discordChannelName}" not found or has no webhook URL`);
-        }
-      }
-    } finally {
-      if (chartFile) {
-        try { fs.unlinkSync(chartFile.path); } catch {}
-      }
-    }
+      const response: Record<string, unknown> = { ...signal };
+      if (tradeSyncError) response.tradeSyncError = tradeSyncError;
 
-    let tradeSyncError: string | undefined;
-    try {
-      const data = signal.data as Record<string, string>;
-      const levelsRaw = data.take_profit_levels ? JSON.parse(data.take_profit_levels) : [];
-
-      let webhookUrl: string | undefined;
-      if (signal.discordChannelName) {
-        const userChannels = currentUser.discordChannels || [];
-        const ch = userChannels.find((c: any) => c.name === signal.discordChannelName);
-        if (ch?.webhookUrl) webhookUrl = ch.webhookUrl;
-      }
-
-      const tsPayload = buildTradeSyncPayload(data, levelsRaw, webhookUrl);
-      const tsResult = await sendToTradeSync(tsPayload);
-      if (!tsResult.ok) {
-        tradeSyncError = tsResult.error;
-      }
+      res.status(201).json(response);
     } catch (err: any) {
-      tradeSyncError = err.message || "TradeSync integration error";
+      return res.status(500).json({ message: err?.message || "Failed to process signal" });
     }
-
-    const response: Record<string, unknown> = { ...signal };
-    if (discordErrors.length > 0) {
-      response.discordErrors = discordErrors;
-    }
-    if (tradeSyncError) {
-      response.tradeSyncError = tradeSyncError;
-    }
-    res.status(201).json(response);
   });
 
   app.get("/api/trade-plans", requireAuth, async (req, res) => {

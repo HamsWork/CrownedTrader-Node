@@ -680,6 +680,14 @@ export default function SendSignal() {
           ? defaultPlan.takeProfitLevels.map(l => ({ ...l }))
           : (defaultPlan.targetType === "Underlying Price Based" ? [...DEFAULT_LEVELS_UNDERLYING] : [...DEFAULT_LEVELS_SYMBOL]),
       }));
+    } else if (tradePlans.length === 0 && !form.tradePlanId) {
+      setForm(prev => ({
+        ...prev,
+        tradePlanId: "live-custom",
+        customTargetType: "Symbol Price Based",
+        customStopLossPct: "10.00",
+        customLevels: [...DEFAULT_LEVELS_SYMBOL],
+      }));
     }
   }, [tradePlans]);
 
