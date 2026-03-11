@@ -614,7 +614,7 @@ export default function PositionManagement() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center border-b border-border overflow-x-auto">
+        <div className="flex items-center border-b border-border overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {([
             { value: "open", label: "Open", labelFull: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
             { value: "closed", label: "Closed", labelFull: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
