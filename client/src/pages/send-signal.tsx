@@ -536,6 +536,7 @@ export default function SendSignal() {
   formRef.current = form;
 
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  const [lastOptionPriceUpdate, setLastOptionPriceUpdate] = useState<Date | null>(null);
   const [isFetchingOption, setIsFetchingOption] = useState(false);
   const [isFetchingManualQuote, setIsFetchingManualQuote] = useState(false);
   const [manualQuoteError, setManualQuoteError] = useState<string | null>(null);
@@ -636,6 +637,7 @@ export default function SendSignal() {
           const data = await res.json();
           if (data.price) {
             setForm(prev => ({ ...prev, optionPrice: data.price.toString() }));
+            setLastOptionPriceUpdate(new Date());
           }
         }
       } catch {}
@@ -712,6 +714,7 @@ export default function SendSignal() {
           strike: data.strike?.toString() || prev.strike,
           optionPrice: data.optionPrice?.toString() || prev.optionPrice,
         }));
+        if (data.optionPrice) setLastOptionPriceUpdate(new Date());
       } else {
         setForm(prev => ({
           ...prev,
@@ -719,6 +722,7 @@ export default function SendSignal() {
           strike: "",
           optionPrice: "",
         }));
+        setLastOptionPriceUpdate(null);
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
@@ -1168,9 +1172,16 @@ export default function SendSignal() {
                           <span className="text-xs text-orange-400" data-testid="text-option-price-error">{manualQuoteError}</span>
                         </div>
                       ) : form.optionPrice ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
-                          <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
+                            <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
+                          </div>
+                          {lastOptionPriceUpdate && (
+                            <span className="text-[10px] text-muted-foreground tabular-nums" data-testid="text-option-price-updated">
+                              Live · {lastOptionPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
