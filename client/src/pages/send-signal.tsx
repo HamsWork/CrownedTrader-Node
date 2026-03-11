@@ -683,6 +683,7 @@ export default function SendSignal() {
 
   const bestOptionAbortRef = useRef<AbortController | null>(null);
   const bestOptionReqIdRef = useRef(0);
+  const bestOptionSelectedRef = useRef(false);
 
   const fetchBestOption = useCallback(async (ticker: string, stockPx: string, optionType: string, tradeType: string) => {
     const price = parseFloat(stockPx);
@@ -731,8 +732,15 @@ export default function SendSignal() {
   }, []);
 
   useEffect(() => {
+    bestOptionSelectedRef.current = false;
+  }, [form.ticker, form.optionType, form.tradeType, form.isOption, form.manualContract]);
+
+  useEffect(() => {
     if (form.isOption && !form.manualContract && form.ticker && parseFloat(form.stockPrice) > 0) {
-      fetchBestOption(form.ticker, form.stockPrice, form.optionType, form.tradeType);
+      if (!bestOptionSelectedRef.current) {
+        bestOptionSelectedRef.current = true;
+        fetchBestOption(form.ticker, form.stockPrice, form.optionType, form.tradeType);
+      }
     } else {
       if (bestOptionAbortRef.current) bestOptionAbortRef.current.abort();
       bestOptionReqIdRef.current++;
