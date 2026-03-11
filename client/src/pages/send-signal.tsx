@@ -236,6 +236,7 @@ interface TradeForm {
   showChartAnalysis: boolean;
   showRiskManagement: boolean;
   riskManagement: string;
+  timeHorizon: string;
 }
 
 function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
@@ -422,6 +423,12 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <span>🟢</span>{" "}
                         Time Stop: {timeStopDays} days
                       </p>
+                      {form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                        <p>
+                          <span>📅</span>{" "}
+                          Time Horizon: {form.timeHorizon}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -522,6 +529,7 @@ export default function SendSignal() {
     showChartAnalysis: false,
     showRiskManagement: false,
     riskManagement: "",
+    timeHorizon: "",
   });
 
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
@@ -794,6 +802,7 @@ export default function SendSignal() {
       stop_loss_pct: slPct.toString(),
       target_type: isUnderlyingBased ? "Underlying Price Based" : "Symbol Price Based",
       take_profit_levels: JSON.stringify(levels),
+      ...(form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") ? { time_horizon: form.timeHorizon } : {}),
       instrument_type: tickerDetails?.category === "LETF"
         ? (form.isOption ? "LETF Option" : "LETF")
         : tickerDetails?.category === "Crypto"
@@ -984,6 +993,18 @@ export default function SendSignal() {
                     }}
                   />
                 </div>
+
+                {(form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Time Horizon</Label>
+                    <Input
+                      type="date"
+                      value={form.timeHorizon}
+                      onChange={e => update("timeHorizon", e.target.value)}
+                      data-testid="input-time-horizon"
+                    />
+                  </div>
+                )}
 
                 {tickerDetails?.category !== "Crypto" && (
                   <div className="flex items-center justify-between py-2">
