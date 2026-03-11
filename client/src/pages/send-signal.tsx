@@ -537,6 +537,7 @@ export default function SendSignal() {
 
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [lastOptionPriceUpdate, setLastOptionPriceUpdate] = useState<Date | null>(null);
+  const [bestOptionError, setBestOptionError] = useState<string | null>(null);
   const [isFetchingOption, setIsFetchingOption] = useState(false);
   const [isFetchingManualQuote, setIsFetchingManualQuote] = useState(false);
   const [manualQuoteError, setManualQuoteError] = useState<string | null>(null);
@@ -705,6 +706,7 @@ export default function SendSignal() {
     const reqId = ++bestOptionReqIdRef.current;
 
     setIsFetchingOption(true);
+    setBestOptionError(null);
     try {
       const params = new URLSearchParams({
         underlying: ticker,
@@ -723,6 +725,7 @@ export default function SendSignal() {
           optionPrice: data.optionPrice?.toString() || prev.optionPrice,
         }));
         if (data.optionPrice) setLastOptionPriceUpdate(new Date());
+        setBestOptionError(null);
       } else {
         setForm(prev => ({
           ...prev,
@@ -731,10 +734,12 @@ export default function SendSignal() {
           optionPrice: "",
         }));
         setLastOptionPriceUpdate(null);
+        setBestOptionError(`No ${tradeType.toLowerCase()} option found matching criteria. Switch to Manual to enter contract details.`);
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
         console.error("Best option fetch failed:", e);
+        setBestOptionError("Failed to fetch option data. Try again or switch to Manual.");
       }
     } finally {
       if (reqId === bestOptionReqIdRef.current) {
@@ -1178,6 +1183,14 @@ export default function SendSignal() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
                           <span className="text-xs text-orange-400" data-testid="text-option-price-error">{manualQuoteError}</span>
+                        </div>
+                      ) : bestOptionError && !form.manualContract ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
+                            <span className="text-xs text-muted-foreground">—</span>
+                          </div>
+                          <p className="text-xs text-orange-400" data-testid="text-best-option-error">{bestOptionError}</p>
                         </div>
                       ) : form.optionPrice ? (
                         <div className="flex items-center justify-between">
