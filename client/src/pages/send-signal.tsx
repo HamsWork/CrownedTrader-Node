@@ -423,7 +423,7 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <span>🟢</span>{" "}
                         Time Stop: {timeStopDays} days
                       </p>
-                      {form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                      {form.timeHorizon && (
                         <p>
                           <span>📅</span>{" "}
                           Time Horizon: {form.timeHorizon}
@@ -741,6 +741,27 @@ export default function SendSignal() {
   }, [form.isOption, form.manualContract, form.ticker, form.stockPrice, form.optionType, form.tradeType]);
 
   useEffect(() => {
+    const today = new Date();
+    if (form.tradeType === "Scalp") {
+      setForm(prev => ({ ...prev, timeHorizon: prev.expiration || "" }));
+    } else if (form.tradeType === "Swing") {
+      const oneMonth = new Date(today);
+      oneMonth.setMonth(oneMonth.getMonth() + 1);
+      setForm(prev => ({ ...prev, timeHorizon: oneMonth.toISOString().split("T")[0] }));
+    } else if (form.tradeType === "Leap") {
+      const oneYear = new Date(today);
+      oneYear.setFullYear(oneYear.getFullYear() + 1);
+      setForm(prev => ({ ...prev, timeHorizon: oneYear.toISOString().split("T")[0] }));
+    }
+  }, [form.tradeType]);
+
+  useEffect(() => {
+    if (form.tradeType === "Scalp" && form.expiration) {
+      setForm(prev => ({ ...prev, timeHorizon: form.expiration }));
+    }
+  }, [form.expiration, form.tradeType]);
+
+  useEffect(() => {
     if (!form.isOption || !form.manualContract) {
       setManualQuoteError(null);
       return;
@@ -836,7 +857,7 @@ export default function SendSignal() {
       stop_loss_pct: slPct.toString(),
       target_type: isUnderlyingBased ? "Underlying Price Based" : "Symbol Price Based",
       take_profit_levels: JSON.stringify(levels),
-      ...(form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") ? { time_horizon: form.timeHorizon } : {}),
+      ...(form.timeHorizon ? { time_horizon: form.timeHorizon } : {}),
       instrument_type: tickerDetails?.category === "LETF"
         ? (form.isOption ? "LETF Option" : "LETF")
         : tickerDetails?.category === "Crypto"
@@ -1027,18 +1048,6 @@ export default function SendSignal() {
                     }}
                   />
                 </div>
-
-                {(form.tradeType === "Swing" || form.tradeType === "Leap") && (
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-sm">Time Horizon</Label>
-                    <Input
-                      type="date"
-                      value={form.timeHorizon}
-                      onChange={e => update("timeHorizon", e.target.value)}
-                      data-testid="input-time-horizon"
-                    />
-                  </div>
-                )}
 
                 {tickerDetails?.category !== "Crypto" && (
                   <div className="flex items-center justify-between py-2">
@@ -1426,6 +1435,23 @@ export default function SendSignal() {
                       )}
                     </>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-sm">Time Horizon</Label>
+                  <Input
+                    type="date"
+                    value={form.timeHorizon}
+                    onChange={e => update("timeHorizon", e.target.value)}
+                    data-testid="input-time-horizon"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {form.tradeType === "Scalp"
+                      ? "Defaults to expiration of option contract"
+                      : form.tradeType === "Swing"
+                        ? "Defaults to 1 month from today"
+                        : "Defaults to 1 year from today"}
+                  </p>
                 </div>
 
                 <div className="rounded-lg border border-border p-4 space-y-4">
