@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useSignals, useSignalTypes } from "@/hooks/use-signals";
+import { useSignalTypes } from "@/hooks/use-signals";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown, RefreshCw, LayoutDashboard, Send, History, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import type { Signal, TakeProfitLevel } from "@shared/schema";
 
 function formatDate(d: Date | string | null) {
@@ -310,8 +312,18 @@ function FullExitPreview({
   );
 }
 
+const quickNav = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Send Signal", href: "/send", icon: Send },
+  { label: "Trade Plans", href: "/trade-plans", icon: ClipboardList },
+  { label: "Signal History", href: "/history", icon: History },
+];
+
 export default function PositionManagement() {
-  const { data: signals, isLoading: signalsLoading } = useSignals();
+  const { data: signals, isLoading: signalsLoading } = useQuery<Signal[]>({
+    queryKey: ["/api/signals"],
+    refetchInterval: 15000,
+  });
   const { data: signalTypes, isLoading: typesLoading } = useSignalTypes();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("open");
@@ -575,18 +587,30 @@ export default function PositionManagement() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
-          Position Management
-        </h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-          Track and manage your trading positions
-          {lastPriceUpdate && (
-            <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">
-              Live · {lastPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
-          )}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
+            Position Management
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Track and manage your trading positions
+            {lastPriceUpdate && (
+              <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">
+                Live · {lastPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap" data-testid="nav-quick-links">
+          {quickNav.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
+                <item.icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{item.label}</span>
+              </Button>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
