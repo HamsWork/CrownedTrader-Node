@@ -1,8 +1,4 @@
-import { config } from "dotenv";
-if (!process.env.REPL_SLUG) {
-  config();
-}
-
+import "./env";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
