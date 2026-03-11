@@ -170,13 +170,13 @@ export function CreateUserPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/users")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Create User</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">Create User</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Add a new user account with Discord channel webhooks</p>
         </div>
       </div>
@@ -326,7 +326,7 @@ export function EditUserPage({ userId }: { userId: number }) {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48" />
         <Skeleton className="h-32" />
@@ -336,25 +336,25 @@ export function EditUserPage({ userId }: { userId: number }) {
 
   if (!user) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/users")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">User not found</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">User not found</h1>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/users")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Edit User</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">Edit User</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Editing <span className="font-medium text-foreground">{user.username}</span>
           </p>
@@ -464,7 +464,7 @@ export default function UserManagement() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64" />
       </div>
@@ -472,13 +472,13 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             User Management
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
             Manage users, roles, and Discord channel webhooks
           </p>
         </div>
@@ -495,31 +495,17 @@ export default function UserManagement() {
           testId="empty-users"
         />
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full" data-testid="table-users">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">User</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">Role</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground">Channels</th>
-                  <th className="px-4 py-3 text-sm font-medium text-muted-foreground text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(user => (
-                  <UserRow
-                    key={user.id}
-                    user={user}
-                    isSelf={user.id === currentUser?.id}
-                    onEdit={() => navigate(`/users/${user.id}/edit`)}
-                    onDelete={() => setDeleteTarget(user)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="grid-users">
+          {users.map(user => (
+            <UserCard
+              key={user.id}
+              user={user}
+              isSelf={user.id === currentUser?.id}
+              onEdit={() => navigate(`/users/${user.id}/edit`)}
+              onDelete={() => setDeleteTarget(user)}
+            />
+          ))}
+        </div>
       )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
@@ -546,7 +532,7 @@ export default function UserManagement() {
   );
 }
 
-function UserRow({
+function UserCard({
   user,
   isSelf,
   onEdit,
@@ -558,50 +544,64 @@ function UserRow({
   onDelete: () => void;
 }) {
   const channelCount = user.discordChannels?.length ?? 0;
+  const channelNames = (user.discordChannels ?? []).map(ch => ch.name).filter(Boolean);
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/50 transition-colors" data-testid={`row-user-${user.id}`}>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted shrink-0">
+    <div
+      className="rounded-lg border border-border bg-card overflow-hidden hover:border-border/80 transition-colors"
+      data-testid={`card-user-${user.id}`}
+    >
+      <div className="px-4 py-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shrink-0">
             {user.role === "admin" ? (
-              <Shield className="h-4 w-4 text-primary" />
+              <Shield className="h-4.5 w-4.5 text-primary" />
             ) : (
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="h-4.5 w-4.5 text-muted-foreground" />
             )}
           </div>
-          <div>
-            <p className="font-medium text-sm" data-testid={`text-username-${user.id}`}>
+          <div className="min-w-0">
+            <p className="font-bold text-sm truncate" data-testid={`text-username-${user.id}`}>
               {user.username}
-              {isSelf && <span className="text-xs text-muted-foreground ml-1.5">(you)</span>}
+              {isSelf && <span className="text-xs font-normal text-muted-foreground ml-1.5">(you)</span>}
             </p>
+            <Badge
+              variant={user.role === "admin" ? "default" : "secondary"}
+              className="text-[10px] mt-0.5"
+              data-testid={`badge-role-${user.id}`}
+            >
+              {user.role}
+            </Badge>
           </div>
         </div>
-      </td>
-      <td className="px-4 py-3">
-        <Badge
-          variant={user.role === "admin" ? "default" : "secondary"}
-          data-testid={`badge-role-${user.id}`}
-        >
-          {user.role}
-        </Badge>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-sm text-muted-foreground flex items-center gap-1" data-testid={`text-channel-count-${user.id}`}>
-          <Hash className="h-3.5 w-3.5" />
-          {channelCount} channel{channelCount !== 1 ? "s" : ""}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center justify-end gap-1">
+      </div>
+
+      <div className="px-4 pb-3">
+        <div className="py-2 border-t border-border">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid={`text-channel-count-${user.id}`}>
+            <Hash className="h-3.5 w-3.5" />
+            <span>{channelCount} channel{channelCount !== 1 ? "s" : ""}</span>
+          </div>
+          {channelNames.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {channelNames.map((name, i) => (
+                <Badge key={i} variant="outline" className="text-[10px] font-normal">
+                  #{name}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
           <Button
             variant="outline"
             size="sm"
             onClick={onEdit}
-            className="gap-1.5"
+            className="text-xs h-8 flex-1 gap-1.5"
             data-testid={`button-edit-user-${user.id}`}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3 w-3" />
             Edit
           </Button>
           <Button
@@ -609,13 +609,13 @@ function UserRow({
             size="icon"
             onClick={onDelete}
             disabled={isSelf}
-            className="text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
             data-testid={`button-delete-user-${user.id}`}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }

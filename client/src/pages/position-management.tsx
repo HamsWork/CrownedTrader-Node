@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useSignals, useSignalTypes } from "@/hooks/use-signals";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSignalTypes } from "@/hooks/use-signals";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { Briefcase, Search, DollarSign, TrendingUp, TrendingDown, RefreshCw, LayoutDashboard, Send, History, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import type { Signal, TakeProfitLevel } from "@shared/schema";
 
 function formatDate(d: Date | string | null) {
@@ -310,8 +312,18 @@ function FullExitPreview({
   );
 }
 
+const quickNav = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Send Signal", href: "/send", icon: Send },
+  { label: "Trade Plans", href: "/trade-plans", icon: ClipboardList },
+  { label: "Signal History", href: "/history", icon: History },
+];
+
 export default function PositionManagement() {
-  const { data: signals, isLoading: signalsLoading } = useSignals();
+  const { data: signals, isLoading: signalsLoading } = useQuery<Signal[]>({
+    queryKey: ["/api/signals"],
+    refetchInterval: 15000,
+  });
   const { data: signalTypes, isLoading: typesLoading } = useSignalTypes();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("open");
@@ -326,7 +338,112 @@ export default function PositionManagement() {
   const [fullExitReason, setFullExitReason] = useState<FullExitReason>("take_profit");
   const { toast } = useToast();
 
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  const pricePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const useManualPriceRef = useRef(useManualPrice);
+  useManualPriceRef.current = useManualPrice;
+
   useEffect(() => {
+    if (pricePollingRef.current) {
+      clearInterval(pricePollingRef.current);
+      pricePollingRef.current = null;
+    }
+
+    const openSignals = signals?.filter(s => s.status === "open") ?? [];
+    if (openSignals.length === 0) return;
+
+    interface PriceFetchJob {
+      key: string;
+      isOption: boolean;
+      ticker: string;
+      optionType?: string;
+      expiration?: string;
+      strike?: string;
+    }
+
+    const jobs: PriceFetchJob[] = [];
+    const seenKeys = new Set<string>();
+
+    for (const s of openSignals) {
+      const d = (s.data ?? {}) as Record<string, string>;
+      const ticker = d.ticker;
+      if (!ticker) continue;
+
+      const isOpt = d.is_option === "true";
+      const hasOptionFields = isOpt && !!d.expiration && !!d.strike && !!d.option_type;
+      const key = hasOptionFields
+        ? `opt:${ticker}:${d.expiration}:${d.strike}:${d.option_type}`
+        : `stock:${ticker}`;
+
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+
+      if (hasOptionFields) {
+        jobs.push({ key, isOption: true, ticker, optionType: d.option_type, expiration: d.expiration, strike: d.strike });
+      } else {
+        jobs.push({ key, isOption: false, ticker });
+      }
+    }
+
+    const abortController = new AbortController();
+
+    const pollAll = async () => {
+      if (abortController.signal.aborted) return;
+      const results: Record<string, number> = {};
+      await Promise.allSettled(
+        jobs.map(async (job) => {
+          try {
+            let url: string;
+            if (job.isOption) {
+              const params = new URLSearchParams({
+                underlying: job.ticker,
+                expiration: job.expiration!,
+                strike: job.strike!,
+                optionType: job.optionType!,
+              });
+              url = `/api/option-quote?${params}`;
+            } else {
+              url = `/api/stock-price/${encodeURIComponent(job.ticker)}`;
+            }
+            const res = await fetch(url, {
+              credentials: "include",
+              signal: abortController.signal,
+            });
+            if (res.ok) {
+              const d = await res.json();
+              const price = d?.price;
+              if (price) results[job.key] = price;
+            }
+          } catch {}
+        })
+      );
+      if (!abortController.signal.aborted && Object.keys(results).length > 0) {
+        setLivePrices(prev => ({ ...prev, ...results }));
+        setLastPriceUpdate(new Date());
+      }
+    };
+
+    pollAll();
+    pricePollingRef.current = setInterval(pollAll, 15000);
+
+    return () => {
+      abortController.abort();
+      if (pricePollingRef.current) {
+        clearInterval(pricePollingRef.current);
+        pricePollingRef.current = null;
+      }
+    };
+  }, [signals]);
+
+  const dialogPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (dialogPollingRef.current) {
+      clearInterval(dialogPollingRef.current);
+      dialogPollingRef.current = null;
+    }
+
     if (!closeDialog) {
       setLivePrice(null);
       return;
@@ -335,19 +452,52 @@ export default function PositionManagement() {
     const ticker = data.ticker;
     if (!ticker) return;
 
-    setIsFetchingPrice(true);
-    fetch(`/api/stock-price/${encodeURIComponent(ticker)}`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.price) {
-          setLivePrice(d.price);
-          if (!useManualPrice) {
-            setClosePrice(d.price.toString());
+    const abortController = new AbortController();
+    const isOption = data.is_option === "true";
+
+    const fetchPrice = async () => {
+      if (abortController.signal.aborted) return;
+      try {
+        let url: string;
+        if (isOption && data.expiration && data.strike && data.option_type) {
+          const params = new URLSearchParams({
+            underlying: ticker,
+            expiration: data.expiration,
+            strike: data.strike,
+            optionType: data.option_type,
+          });
+          url = `/api/option-quote?${params}`;
+        } else {
+          url = `/api/stock-price/${encodeURIComponent(ticker)}`;
+        }
+        const res = await fetch(url, {
+          credentials: "include",
+          signal: abortController.signal,
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d?.price) {
+            setLivePrice(d.price);
+            if (!useManualPriceRef.current) {
+              setClosePrice(d.price.toString());
+            }
           }
         }
-      })
-      .catch(() => {})
-      .finally(() => setIsFetchingPrice(false));
+      } catch {}
+      setIsFetchingPrice(false);
+    };
+
+    setIsFetchingPrice(true);
+    fetchPrice();
+    dialogPollingRef.current = setInterval(fetchPrice, 15000);
+
+    return () => {
+      abortController.abort();
+      if (dialogPollingRef.current) {
+        clearInterval(dialogPollingRef.current);
+        dialogPollingRef.current = null;
+      }
+    };
   }, [closeDialog]);
 
   const filtered = signals?.filter(signal => {
@@ -422,7 +572,7 @@ export default function PositionManagement() {
 
   if (signalsLoading || typesLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="flex gap-3">
           <Skeleton className="h-9 flex-1" />
@@ -436,27 +586,44 @@ export default function PositionManagement() {
   const currentPriceNum = parseFloat(closePrice) || 0;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-          Position Management
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Track and manage your trading positions
-        </p>
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
+            Position Management
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Track and manage your trading positions
+            {lastPriceUpdate && (
+              <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">
+                Live · {lastPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap" data-testid="nav-quick-links">
+          {quickNav.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
+                <item.icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{item.label}</span>
+              </Button>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center border-b border-border">
+        <div className="flex items-center border-b border-border overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {([
-            { value: "open", label: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
-            { value: "closed", label: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
-            { value: "all", label: "All", count: (openCount + closedCount), icon: Briefcase, color: "text-muted-foreground" },
+            { value: "open", label: "Open", labelFull: "Open Positions", count: openCount, icon: TrendingUp, color: "text-green-400" },
+            { value: "closed", label: "Closed", labelFull: "Closed Positions", count: closedCount, icon: TrendingDown, color: "text-muted-foreground" },
+            { value: "all", label: "All", labelFull: "All", count: (openCount + closedCount), icon: Briefcase, color: "text-muted-foreground" },
           ] as const).map((tab) => (
             <button
               key={tab.value}
               onClick={() => setStatusFilter(tab.value)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
                 statusFilter === tab.value
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
@@ -464,7 +631,8 @@ export default function PositionManagement() {
               data-testid={`tab-${tab.value}`}
             >
               <tab.icon className={`h-3.5 w-3.5 ${statusFilter === tab.value ? tab.color : ""}`} />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.labelFull}</span>
+              <span className="sm:hidden">{tab.label}</span>
               <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${
                 statusFilter === tab.value
                   ? "bg-primary/10 text-primary"
@@ -498,182 +666,193 @@ export default function PositionManagement() {
           testId="empty-positions"
         />
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-positions">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Symbol</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">QTY</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Closed</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Entry</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Mark</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">P/L %</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Realized P/L %</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Opened</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-muted-foreground">Track Mode</th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase text-muted-foreground"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(signal => {
-                  const data = (signal.data ?? {}) as Record<string, string>;
-                  const ticker = data.ticker || "—";
-                  const isOption = data.is_option === "true";
-                  const optionType = data.option_type || "";
-                  const strike = data.strike || "";
-                  const expiration = data.expiration || "";
-                  const direction = data.direction || "Long";
-                  const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
-                  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-                  const markPrice = signal.closePrice ? parseFloat(signal.closePrice) : null;
-                  const isOpen = signal.status === "open";
-                  const tracking = data.trade_tracking || "Manual";
-                  const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
-                  const realizedPnl = !isOpen && markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="grid-positions">
+          {filtered.map(signal => {
+            const data = (signal.data ?? {}) as Record<string, string>;
+            const ticker = data.ticker || "—";
+            const isOption = data.is_option === "true";
+            const optionType = data.option_type || "";
+            const strike = data.strike || "";
+            const expiration = data.expiration || "";
+            const direction = data.direction || "Long";
+            const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
+            const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+            const isOpen = signal.status === "open";
+            const tracking = data.trade_tracking || "Manual";
+            const livePriceKey = isOption && data.expiration && data.strike && data.option_type
+              ? `opt:${ticker}:${data.expiration}:${data.strike}:${data.option_type}`
+              : `stock:${ticker}`;
+            const liveMarkPrice = isOpen && ticker !== "—" ? livePrices[livePriceKey] : undefined;
+            const markPrice = isOpen
+              ? (liveMarkPrice ?? null)
+              : (signal.closePrice ? parseFloat(signal.closePrice) : null);
+            const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
+            const realizedPnl = !isOpen && signal.closePrice ? getPnlPct(entryPrice, parseFloat(signal.closePrice), direction) : 0;
+            const tradeType = data.trade_type || "—";
 
-                  let contractLine = "";
-                  if (isOption) {
-                    contractLine = `${optionType} ${strike} - ${expiration}`;
-                  } else if (instrumentType === "Crypto") {
-                    contractLine = "Crypto";
-                  } else {
-                    contractLine = "Shares";
-                  }
+            let contractLine = "";
+            if (isOption) {
+              contractLine = `${optionType} ${strike} — ${expiration}`;
+            } else if (instrumentType === "Crypto") {
+              contractLine = "Crypto";
+            } else {
+              contractLine = instrumentType || "Shares";
+            }
 
-                  return (
-                    <tr
-                      key={signal.id}
-                      className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors"
-                      data-testid={`row-position-${signal.id}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div>
-                          <span className="font-bold text-sm" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
-                          <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-qty-${signal.id}`}>
-                        100
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-closed-qty-${signal.id}`}>
-                        {isOpen ? "—" : "100"}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium" data-testid={`text-entry-${signal.id}`}>
-                        {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-mark-${signal.id}`}>
-                        {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={isOpen
-                            ? "bg-green-500/10 text-green-400 border-green-500/30"
-                            : "bg-muted text-muted-foreground border-border"
-                          }
-                          data-testid={`badge-status-${signal.id}`}
-                        >
-                          {isOpen ? "Opened" : "Closed"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-sm font-medium ${
-                            markPrice
-                              ? pnlPct >= 0 ? "text-green-400" : "text-red-400"
-                              : "text-muted-foreground"
-                          }`}
-                          data-testid={`text-pnl-${signal.id}`}
-                        >
-                          {markPrice
-                            ? `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
-                            : "—"
-                          }
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-sm font-medium ${
-                            !isOpen && markPrice
-                              ? realizedPnl >= 0 ? "text-green-400" : "text-red-400"
-                              : "text-green-400"
-                          }`}
-                          data-testid={`text-realized-pnl-${signal.id}`}
-                        >
-                          {!isOpen && markPrice
-                            ? `${realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(1)}%`
-                            : "+0.0%"
-                          }
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap" data-testid={`text-opened-${signal.id}`}>
-                        {formatDate(signal.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid={`text-tracking-${signal.id}`}>
+            return (
+              <div
+                key={signal.id}
+                className="rounded-lg border border-border bg-card overflow-hidden hover:border-border/80 transition-colors"
+                data-testid={`card-position-${signal.id}`}
+              >
+                <div className="px-4 py-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-base" data-testid={`text-ticker-${signal.id}`}>{ticker}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${isOpen
+                          ? "bg-green-500/10 text-green-400 border-green-500/30"
+                          : "bg-muted text-muted-foreground border-border"
+                        }`}
+                        data-testid={`badge-status-${signal.id}`}
+                      >
+                        {isOpen ? "Open" : "Closed"}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px]">
                         {tracking === "Automatic" ? "Auto" : "Manual"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          {isOpen ? (
-                            tracking === "Automatic" ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-7 px-3"
-                                onClick={() => handleSwitchToManual(signal)}
-                                data-testid={`button-switch-manual-${signal.id}`}
-                              >
-                                <RefreshCw className="h-3 w-3 mr-1" />
-                                Switch to Manual
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7 px-3"
-                                  onClick={() => openExitDialog(signal, true)}
-                                  data-testid={`button-partial-exit-${signal.id}`}
-                                >
-                                  Partial Exit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="text-xs h-7 px-3"
-                                  onClick={() => openExitDialog(signal, false)}
-                                  data-testid={`button-full-exit-${signal.id}`}
-                                >
-                                  Full Exit
-                                </Button>
-                              </>
-                            )
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 px-3"
-                              onClick={() => handleReopen(signal)}
-                              data-testid={`button-reopen-${signal.id}`}
-                            >
-                              Reopen
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{contractLine}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div
+                      className={`text-lg font-bold ${
+                        markPrice
+                          ? pnlPct >= 0 ? "text-green-400" : "text-red-400"
+                          : "text-muted-foreground"
+                      }`}
+                      data-testid={`text-pnl-${signal.id}`}
+                    >
+                      {markPrice
+                        ? `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
+                        : "—"
+                      }
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase">P/L</div>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-3">
+                  <div className="grid grid-cols-3 gap-3 py-2 border-t border-border">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Entry</div>
+                      <div className="text-sm font-semibold mt-0.5" data-testid={`text-entry-${signal.id}`}>
+                        {entryPrice > 0 ? `$${entryPrice.toFixed(2)}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium flex items-center gap-1">
+                        Mark
+                        {isOpen && markPrice && (
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" title="Live price" />
+                        )}
+                      </div>
+                      <div className="text-sm font-semibold mt-0.5" data-testid={`text-mark-${signal.id}`}>
+                        {markPrice ? `$${markPrice.toFixed(2)}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Realized</div>
+                      <div
+                        className={`text-sm font-semibold mt-0.5 ${
+                          !isOpen && markPrice
+                            ? realizedPnl >= 0 ? "text-green-400" : "text-red-400"
+                            : "text-muted-foreground"
+                        }`}
+                        data-testid={`text-realized-pnl-${signal.id}`}
+                      >
+                        {!isOpen && markPrice
+                          ? `${realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(1)}%`
+                          : "—"
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 py-2 border-t border-border">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Type</div>
+                      <div className="text-xs mt-0.5">{tradeType}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Direction</div>
+                      <div className="text-xs mt-0.5">{isOption ? optionType : direction}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Opened</div>
+                      <div className="text-xs mt-0.5" data-testid={`text-opened-${signal.id}`}>
+                        {signal.createdAt ? format(new Date(signal.createdAt), "MMM dd") : "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    {isOpen ? (
+                      tracking === "Automatic" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 flex-1"
+                          onClick={() => handleSwitchToManual(signal)}
+                          data-testid={`button-switch-manual-${signal.id}`}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Switch to Manual
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 flex-1"
+                            onClick={() => openExitDialog(signal, true)}
+                            data-testid={`button-partial-exit-${signal.id}`}
+                          >
+                            Partial Exit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="text-xs h-8 flex-1"
+                            onClick={() => openExitDialog(signal, false)}
+                            data-testid={`button-full-exit-${signal.id}`}
+                          >
+                            Full Exit
+                          </Button>
+                        </>
+                      )
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 flex-1"
+                        onClick={() => handleReopen(signal)}
+                        data-testid={`button-reopen-${signal.id}`}
+                      >
+                        Reopen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       <Dialog open={!!closeDialog} onOpenChange={(open) => { if (!open) resetDialog(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle data-testid="text-close-dialog-title">
               {isPartialExit ? "Partial Exit (Take Profit)" : "Full Exit"}
@@ -734,7 +913,7 @@ export default function PositionManagement() {
             </div>
           ) : closeDialog ? (
             <div className="space-y-4 py-2">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(["take_profit", "stop_loss", "trailing_stop"] as FullExitReason[]).map((r) => {
                   const labels: Record<FullExitReason, string> = {
                     take_profit: "Take Profit",
@@ -745,7 +924,7 @@ export default function PositionManagement() {
                     <button
                       key={r}
                       onClick={() => setFullExitReason(r)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                      className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium border transition-colors ${
                         fullExitReason === r
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"

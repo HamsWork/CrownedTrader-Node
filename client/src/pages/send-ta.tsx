@@ -186,16 +186,16 @@ export default function SendTA() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-page-title-ta">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" data-testid="text-page-title-ta">
           <Send className="h-6 w-6" />
           Send TA
         </h1>
-        <p className="text-muted-foreground mt-1">Post technical analysis with media to Discord</p>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Post technical analysis with media to Discord</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 sm:gap-6">
         <div>
           <Card>
             <CardContent className="pt-6 space-y-6">

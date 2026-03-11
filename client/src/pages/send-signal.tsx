@@ -236,6 +236,7 @@ interface TradeForm {
   showChartAnalysis: boolean;
   showRiskManagement: boolean;
   riskManagement: string;
+  timeHorizon: string;
 }
 
 function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
@@ -422,6 +423,12 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <span>🟢</span>{" "}
                         Time Stop: {timeStopDays} days
                       </p>
+                      {form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                        <p>
+                          <span>📅</span>{" "}
+                          Time Horizon: {form.timeHorizon}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -522,8 +529,13 @@ export default function SendSignal() {
     showChartAnalysis: false,
     showRiskManagement: false,
     riskManagement: "",
+    timeHorizon: "",
   });
 
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [isFetchingOption, setIsFetchingOption] = useState(false);
   const [isFetchingManualQuote, setIsFetchingManualQuote] = useState(false);
   const [manualQuoteError, setManualQuoteError] = useState<string | null>(null);
@@ -571,6 +583,82 @@ export default function SendSignal() {
       setForm(prev => ({ ...prev, isOption: false }));
     }
   }, [tickerDetails]);
+
+  const pricePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (pricePollingRef.current) {
+      clearInterval(pricePollingRef.current);
+      pricePollingRef.current = null;
+    }
+
+    const ticker = form.ticker?.trim();
+    if (!ticker) return;
+
+    const market = tickerDetails?.category === "Crypto" ? "crypto" : undefined;
+
+    const pollPrices = async () => {
+      try {
+        const marketParam = market ? `?market=${encodeURIComponent(market)}` : "";
+        const res = await fetch(`/api/stock-price/${encodeURIComponent(ticker)}${marketParam}`, { signal: abortController.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.price) {
+            setForm(prev => ({ ...prev, stockPrice: data.price.toString() }));
+            setLastPriceUpdate(new Date());
+          }
+        }
+        if (tickerDetails?.category === "LETF" && tickerDetails.underlying) {
+          const ulRes = await fetch(`/api/stock-price/${encodeURIComponent(tickerDetails.underlying)}`, { signal: abortController.signal });
+          if (ulRes.ok) {
+            const ulData = await ulRes.json();
+            setUnderlyingPrice(ulData?.price ?? null);
+          }
+        }
+      } catch {}
+    };
+
+    const pollOptionPrice = async () => {
+      try {
+        const currentForm = formRef.current;
+        if (!currentForm.isOption) return;
+        const exp = currentForm.expiration?.trim();
+        const strikeVal = parseFloat(currentForm.strike);
+        if (!exp || isNaN(strikeVal) || strikeVal <= 0) return;
+        const params = new URLSearchParams({
+          underlying: ticker,
+          expiration: exp,
+          strike: strikeVal.toString(),
+          optionType: currentForm.optionType,
+        });
+        const res = await fetch(`/api/option-quote?${params}`, { signal: abortController.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.price) {
+            setForm(prev => ({ ...prev, optionPrice: data.price.toString() }));
+          }
+        }
+      } catch {}
+    };
+
+    const abortController = new AbortController();
+
+    const safePoll = async () => {
+      if (abortController.signal.aborted) return;
+      await pollPrices();
+      await pollOptionPrice();
+    };
+
+    pricePollingRef.current = setInterval(safePoll, 15000);
+
+    return () => {
+      abortController.abort();
+      if (pricePollingRef.current) {
+        clearInterval(pricePollingRef.current);
+        pricePollingRef.current = null;
+      }
+    };
+  }, [form.ticker, tickerDetails?.category, tickerDetails?.underlying]);
 
   useEffect(() => {
     if (userChannels.length > 0 && !form.channel) {
@@ -741,6 +829,7 @@ export default function SendSignal() {
       stop_loss_pct: slPct.toString(),
       target_type: isUnderlyingBased ? "Underlying Price Based" : "Symbol Price Based",
       take_profit_levels: JSON.stringify(levels),
+      ...(form.timeHorizon && (form.tradeType === "Swing" || form.tradeType === "Leap") ? { time_horizon: form.timeHorizon } : {}),
       instrument_type: tickerDetails?.category === "LETF"
         ? (form.isOption ? "LETF Option" : "LETF")
         : tickerDetails?.category === "Crypto"
@@ -837,8 +926,8 @@ export default function SendSignal() {
   }
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_520px] gap-6 items-start">
+    <div className="p-4 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_520px] gap-4 sm:gap-6 items-start">
         <div className="space-y-6">
           <Card data-testid="card-signal-config">
             <CardContent className="pt-5">
@@ -927,9 +1016,22 @@ export default function SendSignal() {
                         strike: "",
                         expiration: getDefaultExpiration(),
                       }));
+                      setLastPriceUpdate(price ? new Date() : null);
                     }}
                   />
                 </div>
+
+                {(form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Time Horizon</Label>
+                    <Input
+                      type="date"
+                      value={form.timeHorizon}
+                      onChange={e => update("timeHorizon", e.target.value)}
+                      data-testid="input-time-horizon"
+                    />
+                  </div>
+                )}
 
                 {tickerDetails?.category !== "Crypto" && (
                   <div className="flex items-center justify-between py-2">
@@ -947,9 +1049,16 @@ export default function SendSignal() {
 
                 {form.stockPrice ? (
                   <div className="rounded-md bg-muted/50 border border-border px-3 py-2 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">{tickerDetails?.category === "LETF" ? `${form.ticker} (LETF) Price:` : tickerDetails?.category === "Crypto" ? "Crypto Price:" : "Stock Price:"}</span>
-                      <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-medium">{tickerDetails?.category === "LETF" ? `${form.ticker} (LETF) Price:` : tickerDetails?.category === "Crypto" ? "Crypto Price:" : "Stock Price:"}</span>
+                        <span className="text-sm font-semibold text-green-400" data-testid="text-stock-price">${parseFloat(form.stockPrice).toFixed(2)}</span>
+                      </div>
+                      {lastPriceUpdate && (
+                        <span className="text-[10px] text-muted-foreground tabular-nums" data-testid="text-price-updated">
+                          Live · {lastPriceUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </span>
+                      )}
                     </div>
                     {tickerDetails?.category === "LETF" && (
                       <div className="flex items-center gap-2">
@@ -1173,12 +1282,16 @@ export default function SendSignal() {
                             </Select>
                             {form.customTargetType === "Underlying Price Based" && (
                               <p className="text-[11px] text-muted-foreground mt-1">
-                                Default prices based on $180 entry
+                                {parseFloat(form.stockPrice) > 0
+                                  ? `Prices based on $${parseFloat(form.stockPrice).toFixed(2)} stock price`
+                                  : "Enter a ticker to see live prices"}
                               </p>
                             )}
                             {form.customTargetType === "Symbol Price Based" && (
                               <p className="text-[11px] text-muted-foreground mt-1">
-                                Default preview based on $5.00 entry
+                                {(parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0) > 0
+                                  ? `Prices based on $${(parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0).toFixed(2)} entry`
+                                  : "Enter a ticker to see live prices"}
                               </p>
                             )}
                           </div>
@@ -1200,9 +1313,10 @@ export default function SendSignal() {
 
                           <div className="space-y-4">
                             {form.customLevels.map((level, i) => {
-                              const ep = 5;
-                              const underlyingEntry = 180;
                               const isUnderlying = form.customTargetType === "Underlying Price Based";
+                              const ep = isUnderlying
+                                ? (parseFloat(form.stockPrice) || 0)
+                                : (parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0);
                               return (
                                 <TakeProfitLevelForm
                                   key={i}
@@ -1214,7 +1328,7 @@ export default function SendSignal() {
                                   showPrice={form.isOption}
                                   defaultCustomSLValue={
                                     isUnderlying
-                                      ? (i === 0 ? underlyingEntry.toFixed(2) : form.customLevels[i - 1].levelPct.toFixed(2))
+                                      ? (i === 0 ? (ep > 0 ? ep.toFixed(2) : "0") : form.customLevels[i - 1].levelPct.toFixed(2))
                                       : (i === 0 ? "0" : form.customLevels[i - 1].levelPct.toFixed(2))
                                   }
                                   onChange={(updated) => {
@@ -1275,26 +1389,29 @@ export default function SendSignal() {
                                     <span className="text-xs text-muted-foreground shrink-0">%</span>
                                   </div>
                                 </div>
-                                {form.isOption && (
-                                  <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Price</Label>
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-xs text-muted-foreground shrink-0">$</span>
-                                      <Input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={(5 * (1 - (parseFloat(form.customStopLossPct) || 10) / 100)).toFixed(2)}
-                                        onChange={e => {
-                                          const newPrice = parseFloat(e.target.value) || 0;
-                                          const newPct = 5 > 0 ? ((5 - newPrice) / 5) * 100 : 0;
-                                          update("customStopLossPct", Math.max(0, parseFloat(newPct.toFixed(2))).toFixed(2));
-                                        }}
-                                        className="text-sm"
-                                        data-testid="input-custom-stop-loss-price"
-                                      />
+                                {form.isOption && (() => {
+                                  const slEntry = parseFloat(form.optionPrice) || 0;
+                                  return (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Price</Label>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs text-muted-foreground shrink-0">$</span>
+                                        <Input
+                                          type="text"
+                                          inputMode="decimal"
+                                          value={slEntry > 0 ? (slEntry * (1 - (parseFloat(form.customStopLossPct) || 10) / 100)).toFixed(2) : "0.00"}
+                                          onChange={e => {
+                                            const newPrice = parseFloat(e.target.value) || 0;
+                                            const newPct = slEntry > 0 ? ((slEntry - newPrice) / slEntry) * 100 : 0;
+                                            update("customStopLossPct", Math.max(0, parseFloat(newPct.toFixed(2))).toFixed(2));
+                                          }}
+                                          className="text-sm"
+                                          data-testid="input-custom-stop-loss-price"
+                                        />
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>

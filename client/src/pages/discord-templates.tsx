@@ -63,19 +63,19 @@ function TemplateCard({
       className="rounded-lg border border-border/50 bg-card p-4 flex flex-col gap-3"
       data-testid={`card-template-${template.id}`}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted/60">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted/60 shrink-0">
             <Icon className={`h-4 w-4 ${slugInfo.className}`} />
           </div>
-          <div>
-            <h3 className="font-semibold text-sm" data-testid={`text-template-name-${template.id}`}>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-sm truncate" data-testid={`text-template-name-${template.id}`}>
               {template.name}
             </h3>
-            <p className="text-xs text-muted-foreground font-mono">{template.slug}</p>
+            <p className="text-xs text-muted-foreground font-mono truncate">{template.slug}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-12 sm:ml-0">
           <Button
             variant="ghost"
             size="sm"
@@ -158,7 +158,7 @@ function PreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Discord Preview — {template.name}</DialogTitle>
         </DialogHeader>
@@ -265,7 +265,7 @@ function SendManualDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Send Manual — {template.name} ({template.category})</DialogTitle>
         </DialogHeader>
@@ -376,7 +376,7 @@ export default function DiscordTemplatesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Skeleton className="h-8 w-72" />
         <Skeleton className="h-4 w-96" />
         <div className="flex gap-2">
@@ -394,14 +394,14 @@ export default function DiscordTemplatesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <SiDiscord className="h-7 w-7 text-[#5865F2]" />
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex items-start gap-3">
+        <SiDiscord className="h-6 w-6 sm:h-7 sm:w-7 text-[#5865F2] shrink-0 mt-1" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             Discord Message Templates
           </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             All available Discord message templates by instrument type. Click any template to send it manually.
           </p>
         </div>
