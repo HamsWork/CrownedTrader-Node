@@ -711,6 +711,13 @@ export default function SendSignal() {
           strike: data.strike?.toString() || prev.strike,
           optionPrice: data.optionPrice?.toString() || prev.optionPrice,
         }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          expiration: getDefaultExpiration(),
+          strike: "",
+          optionPrice: "",
+        }));
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
