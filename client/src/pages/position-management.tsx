@@ -61,7 +61,6 @@ function PartialExitPreview({
   const strike = data.strike || "";
   const expiration = data.expiration || "";
   const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-  const stockPrice = data.stock_price || "";
   const direction = data.direction || "Long";
   const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
 
@@ -72,90 +71,124 @@ function PartialExitPreview({
 
   const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, direction) : 0;
   const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, direction) : null;
-  const tpLabel = hitTp ? `TP${hitTp.level}` : "TP1";
+  const tpIndex = hitTp?.level ?? 1;
   const hitLevel = hitTp ? levels[hitTp.index] : levels[0];
   const nextLevel = hitTp && hitTp.index + 1 < levels.length ? levels[hitTp.index + 1] : null;
   const takeOffPct = hitLevel?.takeOffPct ?? 50;
   const remainPct = 100 - takeOffPct;
   const raiseSL = hitLevel?.raiseStopLossTo || "Off";
-
   const nextTpPrice = nextLevel
     ? (entryPrice * (1 + nextLevel.levelPct / 100)).toFixed(2)
-    : "—";
+    : null;
+  const newSLLabel = raiseSL === "Break even"
+    ? `$${entryPrice.toFixed(2)} (break even)`
+    : raiseSL !== "Off"
+      ? `$${raiseSL}`
+      : null;
 
-  const dateStr = format(new Date(), "EEE MMM dd");
+  const instrumentLabel = isOption ? "Options" : "Shares";
 
   return (
-    <div className="rounded-md border-l-4 border-red-500 bg-[#2b2d31] text-[#dcddde] text-[13px] p-4 space-y-3">
-      <div className="font-bold text-white text-base">
-        {ticker} Take Profit {hitTp?.level ?? 1} HIT — {dateStr}
-      </div>
+    <div className="rounded-md bg-[#2b2d31] text-[#dcddde] text-[13px] overflow-hidden">
+      <div className="p-4 text-sm text-[#dcddde]">
+        <p className="text-[#dcddde] text-sm font-medium mb-3">@everyone</p>
+        <div className="flex gap-1">
+          <div className="w-1 rounded-full bg-[#2ecc71] shrink-0" />
+          <div className="flex-1 pl-3 space-y-3">
+            <p className="font-bold text-white">🏆 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
 
-      <div className="space-y-1">
-        <div className="text-green-400 font-medium">Trade Performance:</div>
-        <div>Ticker: {ticker}{stockPrice ? ` (Stock: $${parseFloat(stockPrice).toFixed(2)})` : ""}</div>
-      </div>
+            {isOption ? (
+              <>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+                    <p className="text-white">{expiration || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                    <p className="text-white">{strike} {optionType}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                    <p className="text-white">${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                    <p className="text-white">${entryPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+                    <p className="text-white">${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                    <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🟢 Ticker</span>
+                    <p className="text-white">{ticker}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                    <p className="text-white">${entryPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+                    <p className="text-white">${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+                    <p className="text-white">{direction}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                    <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </>
+            )}
 
-      {isOption && (
-        <div className="grid grid-cols-3 gap-2 text-[13px]">
-          <div>
-            <span className="text-red-400 font-medium">Expiration</span>
-            <div>{expiration || "—"}</div>
+            <p className="text-white">⚙️ STATUS: TP{tpIndex} REACHED 🚨</p>
+
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>⚙️</span> POSITION MANAGEMENT
+              </p>
+              <p className="text-xs mt-1 leading-relaxed">
+                ✅ Reduce position by {takeOffPct}% (lock in profit)
+              </p>
+              {remainPct > 0 && nextTpPrice && (
+                <p className="text-xs mt-1 leading-relaxed">
+                  ✅ Let remaining {remainPct}% ride to TP{tpIndex + 1} (${nextTpPrice})
+                </p>
+              )}
+            </div>
+
+            {newSLLabel && (
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>⚙️</span> RISK MANAGEMENT
+                </p>
+                <p className="text-xs mt-1 leading-relaxed">
+                  Raising stop loss to {newSLLabel} on remaining position to secure gains while allowing room to run.
+                </p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-[#72767d] italic pt-1">
+              Disclaimer: Not financial advice. Trade at your own risk.
+            </p>
           </div>
-          <div>
-            <span className="text-yellow-400 font-medium">Strike</span>
-            <div>{strike} {optionType}</div>
-          </div>
-          <div>
-            <span className="text-blue-400 font-medium">Price</span>
-            <div>{entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
-          </div>
         </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2 text-[13px]">
-        <div>
-          <span className="text-green-400 font-medium">Entry</span>
-          <div>${entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
-        </div>
-        <div>
-          <span className="text-green-400 font-medium">{tpLabel} Hit</span>
-          <div>${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</div>
-        </div>
-        <div>
-          <span className="text-yellow-400 font-medium">Profit</span>
-          <div>{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</div>
-        </div>
-      </div>
-
-      <div>
-        <span className="text-orange-400 font-medium">Status: </span>
-        <span>{hitTp ? `${tpLabel} Zone Reached` : "Target not yet reached"}</span>
-      </div>
-
-      <div className="space-y-1">
-        <div className="font-medium">Position Management:</div>
-        <div className="text-green-400">
-          Reduce position by {takeOffPct}% (lock in +{profitPct > 0 ? profitPct.toFixed(1) : "0.0"}% on {takeOffPct === 100 ? "all" : "half"})
-        </div>
-        {remainPct > 0 && nextLevel && (
-          <div className="text-orange-400">
-            Let remaining {remainPct}% ride to TP{(hitTp?.level ?? 1) + 1} (${nextTpPrice})
-          </div>
-        )}
-      </div>
-
-      {raiseSL !== "Off" && (
-        <div className="space-y-1">
-          <div className="font-medium">Risk Management:</div>
-          <div>
-            Raising stop loss to ${raiseSL === "Break even" ? entryPrice.toFixed(2) : raiseSL} ({raiseSL === "Break even" ? "break even" : raiseSL}) on final {remainPct}% runner position to secure gains while allowing room to run.
-          </div>
-        </div>
-      )}
-
-      <div className="text-xs text-muted-foreground italic">
-        Disclaimer: Not financial advice. Trade at your own risk.
       </div>
     </div>
   );
@@ -179,7 +212,6 @@ function FullExitPreview({
   const strike = data.strike || "";
   const expiration = data.expiration || "";
   const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-  const stockPrice = data.stock_price || "";
   const direction = data.direction || "Long";
 
   let levels: TakeProfitLevel[] = [];
@@ -189,124 +221,284 @@ function FullExitPreview({
 
   const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, direction) : 0;
   const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, direction) : null;
-  const tpLabel = hitTp ? `TP${hitTp.level}` : "TP1";
+  const tpIndex = hitTp?.level ?? 1;
+  const instrumentLabel = isOption ? "Options" : "Shares";
 
-  const dateStr = format(new Date(), "EEE MMM dd");
+  const slPct = parseFloat(data.stop_loss_pct || "0");
+  const slPrice = entryPrice > 0 ? entryPrice * (1 - slPct / 100) : 0;
+  const exitPrice = currentPrice > 0 ? currentPrice : slPrice;
+  const resultPct = entryPrice > 0 ? (((exitPrice - entryPrice) / entryPrice) * 100) : 0;
 
-  let titlePrefix = "";
-  let statusText = "";
   if (reason === "take_profit") {
-    titlePrefix = `Take Profit ${hitTp?.level ?? 1} HIT`;
-    statusText = "Position Closed";
-  } else if (reason === "stop_loss") {
-    titlePrefix = "Stop Loss HIT";
-    statusText = "Stop Loss Triggered — Position Closed";
-  } else {
-    titlePrefix = "Trailing Stop HIT";
-    statusText = "Trailing Stop Triggered — Position Closed";
+    const barColor = "#2ecc71";
+    return (
+      <div className="rounded-md bg-[#2b2d31] text-[#dcddde] text-[13px] overflow-hidden">
+        <div className="p-4 text-sm text-[#dcddde]">
+          <p className="text-[#dcddde] text-sm font-medium mb-3">@everyone</p>
+          <div className="flex gap-1">
+            <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+            <div className="flex-1 pl-3 space-y-3">
+              <p className="font-bold text-white">🏆 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
+
+              {isOption ? (
+                <>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+                      <p className="text-white">{expiration || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                      <p className="text-white">{strike} {optionType}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                      <p className="text-white">${entryPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                      <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🟢 Ticker</span>
+                      <p className="text-white">{ticker}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                      <p className="text-white">${entryPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+                      <p className="text-white">{direction}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                      <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>⚙️</span> POSITION MANAGEMENT
+                </p>
+                <p className="text-xs mt-1 leading-relaxed">
+                  ✅ Full exit (100%) at ${exitPrice.toFixed(2)} ({profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%)
+                </p>
+              </div>
+
+              <p className="text-[10px] text-[#72767d] italic pt-1">
+                Disclaimer: Not financial advice. Trade at your own risk.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const exitLines: { color: string; text: string }[] = [];
-  if (reason === "take_profit") {
-    exitLines.push({
-      color: "text-green-400",
-      text: `Full Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (+${profitPct > 0 ? profitPct.toFixed(1) : "0.0"}%)`,
-    });
-    if (hitTp && hitTp.index > 0) {
-      for (let i = 0; i < hitTp.index; i++) {
-        const lvl = levels[i];
-        const lvlPrice = (entryPrice * (1 + lvl.levelPct / 100)).toFixed(2);
-        const lvlPnl = lvl.levelPct;
-        exitLines.push({
-          color: "text-orange-400",
-          text: `TP${i + 1} Exit (${lvl.takeOffPct}%) : ${lvlPrice} (+${lvlPnl.toFixed(1)}%)`,
-        });
-      }
-    }
-    exitLines.push({
-      color: "text-green-500",
-      text: `Average exit: $${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (+${profitPct > 0 ? profitPct.toFixed(1) : "0.0"}% blended)`,
-    });
-  } else if (reason === "stop_loss") {
-    const slPct = parseFloat(data.stop_loss_pct || "0");
-    const slPrice = entryPrice > 0 ? (entryPrice * (1 - slPct / 100)).toFixed(2) : "0.00";
-    const lossPct = profitPct < 0 ? profitPct : -slPct;
-    exitLines.push({
-      color: "text-red-400",
-      text: `Stop Loss Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : slPrice} (${lossPct.toFixed(1)}%)`,
-    });
-    exitLines.push({
-      color: "text-red-500",
-      text: `Loss: $${currentPrice > 0 ? currentPrice.toFixed(2) : slPrice} (${lossPct.toFixed(1)}%)`,
-    });
-  } else {
-    exitLines.push({
-      color: "text-yellow-400",
-      text: `Trailing Stop Exit (100%) : ${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(1)}%)`,
-    });
-    exitLines.push({
-      color: "text-green-500",
-      text: `Locked in: $${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"} (${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(1)}%)`,
-    });
+  if (reason === "stop_loss") {
+    const barColor = "#e74c3c";
+    return (
+      <div className="rounded-md bg-[#2b2d31] text-[#dcddde] text-[13px] overflow-hidden">
+        <div className="p-4 text-sm text-[#dcddde]">
+          <p className="text-[#dcddde] text-sm font-medium mb-3">@everyone</p>
+          <div className="flex gap-1">
+            <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+            <div className="flex-1 pl-3 space-y-3">
+              <p className="font-bold text-white">🔴 {ticker} {instrumentLabel} Stop Loss HIT</p>
+
+              {isOption ? (
+                <>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+                      <p className="text-white">{expiration || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                      <p className="text-white">{strike} {optionType}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                      <p className="text-white">${entryPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                      <p className="text-white">{resultPct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🟢 Ticker</span>
+                      <p className="text-white">{ticker}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                      <p className="text-white">${entryPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+                      <p className="text-white">${exitPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+                      <p className="text-white">{direction}</p>
+                    </div>
+                    <div>
+                      <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                      <p className="text-white">{resultPct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+
+              <div>
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <span>💔</span> DISCIPLINE MATTERS
+                </p>
+                <p className="text-xs mt-1 leading-relaxed">
+                  Following the plan keeps you in the game for winning trades
+                </p>
+              </div>
+
+              <p className="text-[10px] text-[#72767d] italic pt-1">
+                Disclaimer: Not financial advice. Trade at your own risk.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  const barColor = "#f39c12";
   return (
-    <div className="rounded-md border-l-4 border-red-500 bg-[#2b2d31] text-[#dcddde] text-[13px] p-4 space-y-3">
-      <div className="font-bold text-white text-base">
-        {ticker} {titlePrefix} — {dateStr}
-      </div>
+    <div className="rounded-md bg-[#2b2d31] text-[#dcddde] text-[13px] overflow-hidden">
+      <div className="p-4 text-sm text-[#dcddde]">
+        <p className="text-[#dcddde] text-sm font-medium mb-3">@everyone</p>
+        <div className="flex gap-1">
+          <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+          <div className="flex-1 pl-3 space-y-3">
+            <p className="font-bold text-white">⚡ {ticker} {instrumentLabel} Trailing Stop HIT</p>
 
-      <div className="space-y-1">
-        <div className="text-green-400 font-medium">Trade Performance:</div>
-        <div>Ticker: {ticker}{stockPrice ? ` (Stock: $${parseFloat(stockPrice).toFixed(2)})` : ""}</div>
-      </div>
+            {isOption ? (
+              <>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+                    <p className="text-white">{expiration || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                    <p className="text-white">{strike} {optionType}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                    <p className="text-white">${exitPrice.toFixed(2)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                    <p className="text-white">${entryPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">⚡ TRAIL STOP</span>
+                    <p className="text-white">${exitPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                    <p className="text-white">{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🟢 Ticker</span>
+                    <p className="text-white">{ticker}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+                    <p className="text-white">${entryPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">⚡ TRAIL STOP</span>
+                    <p className="text-white">${exitPrice.toFixed(2)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+                    <p className="text-white">{direction}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                    <p className="text-white">{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </>
+            )}
 
-      {isOption && (
-        <div className="grid grid-cols-3 gap-2 text-[13px]">
-          <div>
-            <span className="text-red-400 font-medium">Expiration</span>
-            <div>{expiration || "—"}</div>
+            <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>⚙️</span> RESULT
+              </p>
+              <p className="text-xs mt-1 leading-relaxed">
+                Locked in: ${exitPrice.toFixed(2)} ({profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%)
+              </p>
+            </div>
+
+            <p className="text-[10px] text-[#72767d] italic pt-1">
+              Disclaimer: Not financial advice. Trade at your own risk.
+            </p>
           </div>
-          <div>
-            <span className="text-yellow-400 font-medium">Strike</span>
-            <div>{strike} {optionType}</div>
-          </div>
-          <div>
-            <span className="text-blue-400 font-medium">Price</span>
-            <div>{entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
-          </div>
         </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2 text-[13px]">
-        <div>
-          <span className="text-green-400 font-medium">Entry</span>
-          <div>${entryPrice > 0 ? entryPrice.toFixed(2) : "—"}</div>
-        </div>
-        <div>
-          <span className="text-green-400 font-medium">{reason === "take_profit" ? `${tpLabel} Hit` : "Exit"}</span>
-          <div>${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</div>
-        </div>
-        <div>
-          <span className="text-yellow-400 font-medium">Profit</span>
-          <div>{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</div>
-        </div>
-      </div>
-
-      <div>
-        <span className="text-orange-400 font-medium">Status: </span>
-        <span>{statusText}</span>
-      </div>
-
-      <div className="space-y-1">
-        <div className="font-medium">Strategy Executed:</div>
-        {exitLines.map((line, i) => (
-          <div key={i} className={line.color}>{line.text}</div>
-        ))}
-      </div>
-
-      <div className="text-xs text-muted-foreground italic">
-        Disclaimer: Not financial advice. Trade at your own risk.
       </div>
     </div>
   );
