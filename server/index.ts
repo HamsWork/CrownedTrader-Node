@@ -32,7 +32,9 @@ app.use(
   session({
     store: new PgStore({
       pool,
-      createTableIfMissing: true,
+      // In development we can auto-create the session table; in production
+      // the table should be created via migration, so we disable file-based creation.
+      createTableIfMissing: process.env.NODE_ENV !== "production",
     }),
     secret: process.env.SESSION_SECRET || "crowned-trader-dev-secret",
     resave: false,
