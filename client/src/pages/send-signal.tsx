@@ -293,7 +293,7 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                       <p className="text-white">{form.direction}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💰 ENTRY PRICE</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💵 Entry Price</span>
                       <p className="text-white">${entry.toFixed(2)}</p>
                     </div>
                   </div>
@@ -319,11 +319,11 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <p className="text-white">{form.expiration || "—"}</p>
                       </div>
                       <div>
-                        <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                        <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                         <p className="text-white">{form.strike || "—"} {form.optionType}</p>
                       </div>
                       <div>
-                        <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                        <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                         <p className="text-white">${entry.toFixed(2)}</p>
                       </div>
                     </div>
@@ -340,12 +340,12 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <p className="text-white">{form.direction}</p>
                       </div>
                       <div>
-                        <span className="text-[#72767d] text-xs font-semibold">👑 LETF</span>
+                        <span className="text-[#72767d] text-xs font-semibold">✍️ LETF</span>
                         <p className="text-white">{tickerDetails?.underlying || ticker} ({tickerDetails?.leverage || "3x"} BULL)</p>
                       </div>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💰 LETF ENTRY</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💵 LETF Entry</span>
                       <p className="text-white">${entry.toFixed(2)}</p>
                     </div>
                   </>
@@ -371,11 +371,11 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                         <p className="text-white">{form.expiration || "—"}</p>
                       </div>
                       <div>
-                        <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                        <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                         <p className="text-white">{form.strike || "—"} {form.optionType}</p>
                       </div>
                       <div>
-                        <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                        <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                         <p className="text-white">${entry.toFixed(2)}</p>
                       </div>
                     </div>

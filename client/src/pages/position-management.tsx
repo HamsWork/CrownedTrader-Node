@@ -95,7 +95,7 @@ function PartialExitPreview({
         <div className="flex gap-1">
           <div className="w-1 rounded-full bg-[#2ecc71] shrink-0" />
           <div className="flex-1 pl-3 space-y-3">
-            <p className="font-bold text-white">🏆 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
+            <p className="font-bold text-white">🎯 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
 
             {isOption ? (
               <>
@@ -105,11 +105,11 @@ function PartialExitPreview({
                     <p className="text-white">{expiration || "—"}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                    <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                     <p className="text-white">{strike} {optionType}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                     <p className="text-white">${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</p>
                   </div>
                 </div>
@@ -123,7 +123,7 @@ function PartialExitPreview({
                     <p className="text-white">${currentPrice > 0 ? currentPrice.toFixed(2) : "0.00"}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💸 Profit</span>
                     <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                   </div>
                 </div>
@@ -150,18 +150,18 @@ function PartialExitPreview({
                     <p className="text-white">{direction}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💸 Profit</span>
                     <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                   </div>
                 </div>
               </>
             )}
 
-            <p className="text-white">⚙️ STATUS: TP{tpIndex} REACHED 🚨</p>
+            <p className="text-white">🚨 Status: TP{tpIndex} REACHED 🚨</p>
 
             <div>
               <p className="font-bold text-white flex items-center gap-1.5">
-                <span>⚙️</span> POSITION MANAGEMENT
+                <span>🔍</span> Position Management
               </p>
               <p className="text-xs mt-1 leading-relaxed">
                 ✅ Reduce position by {takeOffPct}% (lock in profit)
@@ -176,7 +176,7 @@ function PartialExitPreview({
             {newSLLabel && (
               <div>
                 <p className="font-bold text-white flex items-center gap-1.5">
-                  <span>⚙️</span> RISK MANAGEMENT
+                  <span>🛡️</span> Risk Management
                 </p>
                 <p className="text-xs mt-1 leading-relaxed">
                   Raising stop loss to {newSLLabel} on remaining position to secure gains while allowing room to run.
@@ -238,7 +238,7 @@ function FullExitPreview({
           <div className="flex gap-1">
             <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
             <div className="flex-1 pl-3 space-y-3">
-              <p className="font-bold text-white">🏆 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
+              <p className="font-bold text-white">🎯 {ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
 
               {isOption ? (
                 <>
@@ -248,11 +248,11 @@ function FullExitPreview({
                       <p className="text-white">{expiration || "—"}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                      <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                       <p className="text-white">{strike} {optionType}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                       <p className="text-white">${exitPrice.toFixed(2)}</p>
                     </div>
                   </div>
@@ -266,7 +266,7 @@ function FullExitPreview({
                       <p className="text-white">${exitPrice.toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💸 Profit</span>
                       <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                     </div>
                   </div>
@@ -293,18 +293,18 @@ function FullExitPreview({
                       <p className="text-white">{direction}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💸 Profit</span>
                       <p className="text-white">{profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                     </div>
                   </div>
                 </>
               )}
 
-              <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+              <p className="text-white">🚨 Status: POSITION CLOSED 🚨</p>
 
               <div>
                 <p className="font-bold text-white flex items-center gap-1.5">
-                  <span>⚙️</span> POSITION MANAGEMENT
+                  <span>🔍</span> Position Management
                 </p>
                 <p className="text-xs mt-1 leading-relaxed">
                   ✅ Full exit (100%) at ${exitPrice.toFixed(2)} ({profitPct > 0 ? "+" : ""}{profitPct.toFixed(1)}%)
@@ -330,7 +330,7 @@ function FullExitPreview({
           <div className="flex gap-1">
             <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
             <div className="flex-1 pl-3 space-y-3">
-              <p className="font-bold text-white">🔴 {ticker} {instrumentLabel} Stop Loss HIT</p>
+              <p className="font-bold text-white">🛑 {ticker} {instrumentLabel} Stop Loss HIT</p>
 
               {isOption ? (
                 <>
@@ -340,11 +340,11 @@ function FullExitPreview({
                       <p className="text-white">{expiration || "—"}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                      <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                       <p className="text-white">{strike} {optionType}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                       <p className="text-white">${exitPrice.toFixed(2)}</p>
                     </div>
                   </div>
@@ -354,11 +354,11 @@ function FullExitPreview({
                       <p className="text-white">${entryPrice.toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">🛑 Stop Hit</span>
                       <p className="text-white">${exitPrice.toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💸 Result</span>
                       <p className="text-white">{resultPct.toFixed(1)}%</p>
                     </div>
                   </div>
@@ -375,7 +375,7 @@ function FullExitPreview({
                       <p className="text-white">${entryPrice.toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">🛑 Stop Hit</span>
                       <p className="text-white">${exitPrice.toFixed(2)}</p>
                     </div>
                   </div>
@@ -385,18 +385,18 @@ function FullExitPreview({
                       <p className="text-white">{direction}</p>
                     </div>
                     <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                      <span className="text-[#72767d] text-xs font-semibold">💸 Result</span>
                       <p className="text-white">{resultPct.toFixed(1)}%</p>
                     </div>
                   </div>
                 </>
               )}
 
-              <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+              <p className="text-white">🚨 Status: POSITION CLOSED 🚨</p>
 
               <div>
                 <p className="font-bold text-white flex items-center gap-1.5">
-                  <span>💔</span> DISCIPLINE MATTERS
+                  <span>🛡️</span> Discipline Matters
                 </p>
                 <p className="text-xs mt-1 leading-relaxed">
                   Following the plan keeps you in the game for winning trades
@@ -431,11 +431,11 @@ function FullExitPreview({
                     <p className="text-white">{expiration || "—"}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+                    <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
                     <p className="text-white">{strike} {optionType}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
                     <p className="text-white">${exitPrice.toFixed(2)}</p>
                   </div>
                 </div>
@@ -449,7 +449,7 @@ function FullExitPreview({
                     <p className="text-white">${exitPrice.toFixed(2)}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💸 Result</span>
                     <p className="text-white">{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                   </div>
                 </div>
@@ -476,18 +476,18 @@ function FullExitPreview({
                     <p className="text-white">{direction}</p>
                   </div>
                   <div>
-                    <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+                    <span className="text-[#72767d] text-xs font-semibold">💸 Result</span>
                     <p className="text-white">{profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%</p>
                   </div>
                 </div>
               </>
             )}
 
-            <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+            <p className="text-white">🚨 Status: POSITION CLOSED 🚨</p>
 
             <div>
               <p className="font-bold text-white flex items-center gap-1.5">
-                <span>⚙️</span> RESULT
+                <span>⚙️</span> Result
               </p>
               <p className="text-xs mt-1 leading-relaxed">
                 Locked in: ${exitPrice.toFixed(2)} ({profitPct >= 0 ? "+" : ""}{profitPct.toFixed(1)}%)

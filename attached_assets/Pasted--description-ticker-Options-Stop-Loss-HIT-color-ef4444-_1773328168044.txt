@@ -1,0 +1,191 @@
+{
+  "description": "**🛑 {{ticker}} Options Stop Loss HIT**",
+  "color": "#ef4444",
+  "fields": [
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "❌ Expiration",
+      "value": "{{expiry}}",
+      "inline": true
+    },
+    {
+      "name": "✍️ Strike",
+      "value": "{{strike}} {{right}}",
+      "inline": true
+    },
+    {
+      "name": "💵 Option Price",
+      "value": "{{exit_price}}",
+      "inline": true
+    },
+    {
+      "name": "✅ Entry",
+      "value": "{{entry_price}}",
+      "inline": true
+    },
+    {
+      "name": "🛑 Stop Hit",
+      "value": "{{exit_price}}",
+      "inline": true
+    },
+    {
+      "name": "💸 Result",
+      "value": "{{profit_pct}}",
+      "inline": true
+    },
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "🚨 Status: Position Closed 🚨",
+      "value": "​",
+      "inline": false
+    },
+    {
+      "name": "🛡️ Discipline Matters",
+      "value": "Following the plan keeps you in the game for winning trades",
+      "inline": false
+    }
+  ],
+  "footer": "Disclaimer: Not financial advice. Trade at your own risk.",
+  "timestamp": true
+}
+
+{
+  "description": "**🎯 {{ticker}} Options Take Profit {{tp_number}} HIT**",
+  "color": "#22c55e",
+  "fields": [
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "❌ Expiration",
+      "value": "{{expiry}}",
+      "inline": true
+    },
+    {
+      "name": "✍️ Strike",
+      "value": "{{strike}} {{right}}",
+      "inline": true
+    },
+    {
+      "name": "💵 Option Price",
+      "value": "{{tp_price}}",
+      "inline": true
+    },
+    {
+      "name": "✅ Entry",
+      "value": "{{entry_price}}",
+      "inline": true
+    },
+    {
+      "name": "🎯 TP{{tp_number}} Hit",
+      "value": "{{tp_price}}",
+      "inline": true
+    },
+    {
+      "name": "💸 Profit",
+      "value": "{{profit_pct}}",
+      "inline": true
+    },
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "🚨 Status: TP{{tp_number}} Reached 🚨",
+      "value": "​",
+      "inline": false
+    },
+    {
+      "name": "🔍 Position Management",
+      "value": "{{position_mgmt}}",
+      "inline": false
+    },
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "🛡️ Risk Management",
+      "value": "{{risk_mgmt}}",
+      "inline": false
+    }
+  ],
+  "footer": "Disclaimer: Not financial advice. Trade at your own risk."
+}
+
+{
+  "description": "**🛡️ {{ticker}} Options Stop Loss Raised**",
+  "color": "#f59e0b",
+  "fields": [
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "❌ Expiration",
+      "value": "{{expiry}}",
+      "inline": true
+    },
+    {
+      "name": "✍️ Strike",
+      "value": "{{strike}} {{right}}",
+      "inline": true
+    },
+    {
+      "name": "💵 Option Price",
+      "value": "{{option_price}}",
+      "inline": true
+    },
+    {
+      "name": "✅ Entry",
+      "value": "{{entry_price}}",
+      "inline": true
+    },
+    {
+      "name": "🛡️ New Stop",
+      "value": "{{new_stop_loss}}",
+      "inline": true
+    },
+    {
+      "name": "💸 Risk",
+      "value": "{{risk_value}}",
+      "inline": true
+    },
+    {
+      "name": "​",
+      "value": "",
+      "inline": false
+    },
+    {
+      "name": "🚨 Status: Stop Loss Raised 🚨",
+      "value": "​",
+      "inline": false
+    },
+    {
+      "name": "🛡️ Risk Management",
+      "value": "{{risk_mgmt}}",
+      "inline": false
+    }
+  ],
+  "footer": "Disclaimer: Not financial advice. Trade at your own risk."
+}
+
+above is the ebmed Template json of Stop Loss, Take profit, Stop Loss raised discord messages, 
+
+update according above, 
+in the Position Exit Modal Discord Preview, 
+In the Signal History Discord Preview. 
+In the Discord Templates Page
