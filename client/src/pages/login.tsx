@@ -75,9 +75,6 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground mt-6" data-testid="text-demo-credentials">
-        Demo: admin / admin123 or trader1 / user123
-      </p>
     </div>
   );
 }
