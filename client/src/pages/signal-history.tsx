@@ -242,16 +242,94 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
       );
     }
 
-    const levelLabel = isUnderlyingBased
-      ? `$${level.levelPct.toFixed(2)}`
-      : `${level.levelPct.toFixed(1)}%`;
-    const targetPrice = isUnderlyingBased
+    const tpPrice = isUnderlyingBased
       ? level.levelPct
       : entry * (1 + level.levelPct / 100);
+    const profitPct = entry > 0 ? (((tpPrice - entry) / entry) * 100).toFixed(1) : "0.0";
+    const nextLevel = levels[tpIndex];
+    const nextTPPrice = nextLevel
+      ? (isUnderlyingBased ? nextLevel.levelPct : entry * (1 + nextLevel.levelPct / 100))
+      : null;
+    const newSLAfterTP = level.raiseStopLossTo === "Break even"
+      ? `$${entry.toFixed(2)} (break even)`
+      : level.raiseStopLossTo === "Custom"
+        ? (isUnderlyingBased ? `$${level.customRaiseSLValue}` : `${level.customRaiseSLValue}%`)
+        : null;
+
+    const instrumentLabel = isOption ? "Options" : "Shares";
+
+    if (isOption) {
+      return (
+        <div className="space-y-3">
+          <p className="font-bold text-white">🏆 {f.ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+              <p className="text-white">{f.expiration || "—"}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+              <p className="text-white">{f.strike} {f.optionType}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+              <p className="text-white">${tpPrice.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+              <p className="text-white">${entry.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+              <p className="text-white">${tpPrice.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+              <p className="text-white">{profitPct}%</p>
+            </div>
+          </div>
+
+          <p className="text-white">⚙️ STATUS: TP{tpIndex} REACHED 🚨</p>
+
+          <div>
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <span>⚙️</span> POSITION MANAGEMENT
+            </p>
+            <p className="text-xs mt-1 leading-relaxed">
+              ✅ Reduce position by {level.takeOffPct}% (lock in profit)
+            </p>
+            {nextTPPrice && (
+              <p className="text-xs mt-1 leading-relaxed">
+                ✅ Let remaining {100 - level.takeOffPct}% ride to TP{tpIndex + 1} (${nextTPPrice.toFixed(2)})
+              </p>
+            )}
+          </div>
+
+          {newSLAfterTP && (
+            <div>
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <span>⚙️</span> RISK MANAGEMENT
+              </p>
+              <p className="text-xs mt-1 leading-relaxed">
+                Raising stop loss to {newSLAfterTP} on remaining position to secure gains while allowing room to run.
+              </p>
+            </div>
+          )}
+
+          <p className="text-[10px] text-[#72767d] italic pt-1">
+            Disclaimer: Not financial advice. Trade at your own risk.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-3">
-        <p className="font-bold text-white">🎯 {f.ticker} — TP{tpIndex} Hit</p>
+        <p className="font-bold text-white">🏆 {f.ticker} {instrumentLabel} Take Profit {tpIndex} HIT</p>
 
         <div className="grid grid-cols-3 gap-x-4 gap-y-2">
           <div>
@@ -259,25 +337,52 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
             <p className="text-white">{f.ticker}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">🎯 Target Level</span>
-            <p className="text-white">TP{tpIndex} — {levelLabel}</p>
+            <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+            <p className="text-white">${entry.toFixed(2)}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">💰 Target Price</span>
-            <p className="text-white">${targetPrice.toFixed(2)}</p>
+            <span className="text-[#72767d] text-xs font-semibold">🎯 TP{tpIndex} HIT</span>
+            <p className="text-white">${tpPrice.toFixed(2)}</p>
           </div>
         </div>
 
+        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+            <p className="text-white">{f.direction}</p>
+          </div>
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">🎆 PROFIT</span>
+            <p className="text-white">{profitPct}%</p>
+          </div>
+        </div>
+
+        <p className="text-white">⚙️ STATUS: TP{tpIndex} REACHED 🚨</p>
+
         <div>
           <p className="font-bold text-white flex items-center gap-1.5">
-            <span>📋</span> Action
+            <span>⚙️</span> POSITION MANAGEMENT
           </p>
           <p className="text-xs mt-1 leading-relaxed">
-            Take off {level.takeOffPct}% of {tpIndex === 1 ? "position" : "remaining position"}
-            {level.raiseStopLossTo !== "Off" && ` and raise stop loss to ${level.raiseStopLossTo === "Break even" ? "break even" : (isUnderlyingBased ? `$${level.customRaiseSLValue}` : `${level.customRaiseSLValue}%`)}`}
-            {level.trailingStop === "On" && ` with ${level.trailingStopPct}% trailing stop`}.
+            ✅ Reduce position by {level.takeOffPct}% (lock in profit)
           </p>
+          {nextTPPrice && (
+            <p className="text-xs mt-1 leading-relaxed">
+              ✅ Let remaining {100 - level.takeOffPct}% ride to TP{tpIndex + 1} (${nextTPPrice.toFixed(2)})
+            </p>
+          )}
         </div>
+
+        {newSLAfterTP && (
+          <div>
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <span>⚙️</span> RISK MANAGEMENT
+            </p>
+            <p className="text-xs mt-1 leading-relaxed">
+              Raising stop loss to {newSLAfterTP} on remaining position to secure gains while allowing room to run.
+            </p>
+          </div>
+        )}
 
         <p className="text-[10px] text-[#72767d] italic pt-1">
           Disclaimer: Not financial advice. Trade at your own risk.
@@ -288,15 +393,88 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
 
   function renderSLRaisedEmbed() {
     const firstTP = levels[0];
-    const newSL = firstTP?.raiseStopLossTo === "Break even"
-      ? `Break even ($${entry.toFixed(2)})`
+    const newSLValue = firstTP?.raiseStopLossTo === "Break even"
+      ? entry
+      : firstTP?.raiseStopLossTo === "Custom"
+        ? parseFloat(firstTP.customRaiseSLValue || "0")
+        : 0;
+    const newSLLabel = firstTP?.raiseStopLossTo === "Break even"
+      ? `$${entry.toFixed(2)} (Break Even)`
       : firstTP?.raiseStopLossTo === "Custom"
         ? (isUnderlyingBased ? `$${firstTP.customRaiseSLValue}` : `${firstTP.customRaiseSLValue}%`)
         : "—";
+    const riskPct = entry > 0 ? (((entry - newSLValue) / entry) * 100).toFixed(1) : "0.0";
+    const nextLevel = levels[1];
+    const nextTPPrice = nextLevel
+      ? (isUnderlyingBased ? nextLevel.levelPct : entry * (1 + nextLevel.levelPct / 100))
+      : null;
+
+    const instrumentLabel = isOption ? "Options" : "Shares";
+
+    if (isOption) {
+      return (
+        <div className="space-y-3">
+          <p className="font-bold text-white">🛡️ {f.ticker} {instrumentLabel} Stop Loss Raised</p>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+              <p className="text-white">{f.expiration || "—"}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+              <p className="text-white">{f.strike} {f.optionType}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+              <p className="text-white">${entry.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+              <p className="text-white">${entry.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🟢 NEW STOP</span>
+              <p className="text-white">{newSLLabel}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🎆 RISK</span>
+              <p className="text-white">{riskPct}%</p>
+            </div>
+          </div>
+
+          <p className="text-white">⚙️ STATUS: STOP LOSS RAISED 🚨</p>
+
+          <div>
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <span>⚙️</span> RISK MANAGEMENT
+            </p>
+            <p className="text-xs mt-1 leading-relaxed">
+              Stop loss raised to {newSLLabel}.
+            </p>
+            <p className="text-xs mt-1 leading-relaxed">
+              Trade is now risk-free on remaining position.
+            </p>
+            {nextTPPrice && (
+              <p className="text-xs mt-1 leading-relaxed">
+                🎯 Next target: TP2 at ${nextTPPrice.toFixed(2)}
+              </p>
+            )}
+          </div>
+
+          <p className="text-[10px] text-[#72767d] italic pt-1">
+            Disclaimer: Not financial advice. Trade at your own risk.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-3">
-        <p className="font-bold text-white">🛡️ {f.ticker} — Stop Loss Raised</p>
+        <p className="font-bold text-white">🛡️ {f.ticker} {instrumentLabel} Stop Loss Raised</p>
 
         <div className="grid grid-cols-3 gap-x-4 gap-y-2">
           <div>
@@ -304,22 +482,43 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
             <p className="text-white">{f.ticker}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">🔴 Old Stop Loss</span>
-            <p className="text-white">${stopLossPrice.toFixed(2)} ({slPct.toFixed(1)}%)</p>
+            <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+            <p className="text-white">${entry.toFixed(2)}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">🟢 New Stop Loss</span>
-            <p className="text-white">{newSL}</p>
+            <span className="text-[#72767d] text-xs font-semibold">🟢 NEW STOP</span>
+            <p className="text-white">{newSLLabel}</p>
           </div>
         </div>
 
+        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+            <p className="text-white">{f.direction}</p>
+          </div>
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">🎆 RISK</span>
+            <p className="text-white">{riskPct}%</p>
+          </div>
+        </div>
+
+        <p className="text-white">⚙️ STATUS: STOP LOSS RAISED 🚨</p>
+
         <div>
           <p className="font-bold text-white flex items-center gap-1.5">
-            <span>📋</span> Reason
+            <span>⚙️</span> RISK MANAGEMENT
           </p>
           <p className="text-xs mt-1 leading-relaxed">
-            TP1 target reached. Stop loss raised to protect profits.
+            Stop loss raised to {newSLLabel}.
           </p>
+          <p className="text-xs mt-1 leading-relaxed">
+            Trade is now risk-free on remaining position.
+          </p>
+          {nextTPPrice && (
+            <p className="text-xs mt-1 leading-relaxed">
+              🎯 Next target: TP2 at ${nextTPPrice.toFixed(2)}
+            </p>
+          )}
         </div>
 
         <p className="text-[10px] text-[#72767d] italic pt-1">
@@ -330,9 +529,66 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
   }
 
   function renderSLHitEmbed() {
+    const slHitPrice = stopLossPrice;
+    const resultPct = entry > 0 ? (((slHitPrice - entry) / entry) * 100).toFixed(1) : "0.0";
+    const instrumentLabel = isOption ? "Options" : "Shares";
+
+    if (isOption) {
+      return (
+        <div className="space-y-3">
+          <p className="font-bold text-white">🔴 {f.ticker} {instrumentLabel} Stop Loss HIT</p>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
+              <p className="text-white">{f.expiration || "—"}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">👑 STRIKE</span>
+              <p className="text-white">{f.strike} {f.optionType}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">💰 OPTION PRICE</span>
+              <p className="text-white">${slHitPrice.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
+              <p className="text-white">${entry.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+              <p className="text-white">${slHitPrice.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+              <p className="text-white">{resultPct}%</p>
+            </div>
+          </div>
+
+          <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+
+          <div>
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <span>💔</span> DISCIPLINE MATTERS
+            </p>
+            <p className="text-xs mt-1 leading-relaxed">
+              Following the plan keeps you in the game for winning trades
+            </p>
+          </div>
+
+          <p className="text-[10px] text-[#72767d] italic pt-1">
+            Disclaimer: Not financial advice. Trade at your own risk.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-3">
-        <p className="font-bold text-white">🔴 {f.ticker} — Stop Loss Hit</p>
+        <p className="font-bold text-white">🔴 {f.ticker} {instrumentLabel} Stop Loss HIT</p>
 
         <div className="grid grid-cols-3 gap-x-4 gap-y-2">
           <div>
@@ -340,21 +596,34 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
             <p className="text-white">{f.ticker}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">💰 Entry Price</span>
+            <span className="text-[#72767d] text-xs font-semibold">✅ ENTRY</span>
             <p className="text-white">${entry.toFixed(2)}</p>
           </div>
           <div>
-            <span className="text-[#72767d] text-xs font-semibold">🔴 Stop Loss Price</span>
-            <p className="text-white">${stopLossPrice.toFixed(2)}</p>
+            <span className="text-[#72767d] text-xs font-semibold">🔴 STOP HIT</span>
+            <p className="text-white">${slHitPrice.toFixed(2)}</p>
           </div>
         </div>
 
+        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
+            <p className="text-white">{f.direction}</p>
+          </div>
+          <div>
+            <span className="text-[#72767d] text-xs font-semibold">🎆 RESULT</span>
+            <p className="text-white">{resultPct}%</p>
+          </div>
+        </div>
+
+        <p className="text-white">⚙️ STATUS: POSITION CLOSED 🚨</p>
+
         <div>
           <p className="font-bold text-white flex items-center gap-1.5">
-            <span>📋</span> Result
+            <span>💔</span> DISCIPLINE MATTERS
           </p>
           <p className="text-xs mt-1 leading-relaxed">
-            Position closed at stop loss. Loss: {slPct.toFixed(1)}%
+            Following the plan keeps you in the game for winning trades
           </p>
         </div>
 
