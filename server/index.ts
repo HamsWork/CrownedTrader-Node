@@ -11,6 +11,10 @@ import { pool } from "./db";
 const app = express();
 const httpServer = createServer(app);
 
+// When running behind a reverse proxy (Replit, Render, etc.), this ensures that
+// secure cookies are set based on the original HTTPS connection.
+app.set("trust proxy", 1);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
