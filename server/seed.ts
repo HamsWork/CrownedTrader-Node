@@ -2,6 +2,7 @@ import { db } from "./db";
 import { signalTypes, users } from "@shared/schema";
 import { hashPassword } from "./auth";
 import { DEFAULT_TEMPLATES } from "@shared/template-definitions";
+import { notInArray } from "drizzle-orm";
 
 export async function seedDatabase() {
   const existingUsers = await db.select().from(users);
@@ -21,6 +22,12 @@ export async function seedDatabase() {
     });
 
     console.log("Seeded users (admin/admin123, trader1/user123)");
+  }
+
+  const validSlugs = DEFAULT_TEMPLATES.map(t => t.slug);
+  const pruned = await db.delete(signalTypes).where(notInArray(signalTypes.slug, validSlugs)).returning();
+  if (pruned.length > 0) {
+    console.log(`Pruned ${pruned.length} obsolete templates: ${pruned.map(t => t.name).join(", ")}`);
   }
 
   const existingTypes = await db.select().from(signalTypes);

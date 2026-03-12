@@ -33,7 +33,6 @@ export const ACTION_TYPES = [
   { name: "Target TP2 Hit", slug: "target_hit_tp2", color: "#22c55e" },
   { name: "SL Raised (TP1)", slug: "stop_loss_raised", color: "#f59e0b" },
   { name: "Stop Loss Hit", slug: "stop_loss_hit", color: "#ef4444" },
-  { name: "Trade Closed", slug: "trade_closed_manually", color: "#6b7280" },
 ] as const;
 
 function makeVars(...names: string[]): TemplateVariable[] {
@@ -61,10 +60,6 @@ const CATEGORY_CONFIGS: Record<Category, {
   slHitFields: [string, string][];
   slHitTitle: string;
   slHitDesc: string;
-  closedVars: string[];
-  closedFields: [string, string][];
-  closedTitle: string;
-  closedDesc: string;
   footer: string;
 }> = {
   Options: {
@@ -84,10 +79,6 @@ const CATEGORY_CONFIGS: Record<Category, {
     slHitFields: [["❌ Expiration", "{{expiration}}"], ["✍️ Strike", "{{strike}} {{direction}}"], ["💵 Option Price", "${{exit_price}}"], ["✅ Entry", "${{entry_price}}"], ["🛑 Stop Hit", "${{exit_price}}"], ["💸 Result", "{{profit_pct}}%"]],
     slHitTitle: "",
     slHitDesc: "**🛑 {{ticker}} Options Stop Loss HIT**",
-    closedVars: ["ticker", "contract", "exit_price", "pnl"],
-    closedFields: [["Ticker", "{{ticker}}"], ["Contract", "{{contract}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"]],
-    closedTitle: "✖ Trade Closed — {{ticker}}",
-    closedDesc: "Trade manually closed at ${{exit_price}}",
     footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   Shares: {
@@ -107,10 +98,6 @@ const CATEGORY_CONFIGS: Record<Category, {
     slHitFields: [["Ticker", "{{ticker}}"], ["Action", "{{action}}"], ["Entry", "${{entry_price}}"], ["Exit", "${{exit_price}}"], ["Quantity", "{{quantity}}"], ["Loss", "{{loss_pct}}%"], ["Stop Loss", "${{stop_loss}}"], ["Notes", "{{notes}}"]],
     slHitTitle: "⚠️ Stop Loss Hit — {{ticker}}",
     slHitDesc: "Stop loss triggered\nEntry: ${{entry_price}} → Exit: ${{exit_price}} ({{loss_pct}}%)",
-    closedVars: ["ticker", "exit_price", "pnl", "notes"],
-    closedFields: [["Ticker", "{{ticker}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
-    closedTitle: "✖ Trade Closed — {{ticker}}",
-    closedDesc: "Trade manually closed at ${{exit_price}}",
     footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   LETF: {
@@ -130,10 +117,6 @@ const CATEGORY_CONFIGS: Record<Category, {
     slHitFields: [["ETF", "{{ticker}}"], ["Leverage", "{{leverage}}"], ["Direction", "{{direction}}"], ["Entry", "${{entry_price}}"], ["Exit", "${{exit_price}}"], ["Loss", "{{loss_pct}}%"], ["Stop Loss", "${{stop_loss}}"], ["Notes", "{{notes}}"]],
     slHitTitle: "⚠️ Stop Loss Hit — {{ticker}}",
     slHitDesc: "Stop loss triggered\nEntry: ${{entry_price}} → Exit: ${{exit_price}} ({{loss_pct}}%)",
-    closedVars: ["ticker", "exit_price", "pnl", "notes"],
-    closedFields: [["ETF", "{{ticker}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
-    closedTitle: "✖ Trade Closed — {{ticker}}",
-    closedDesc: "Trade manually closed at ${{exit_price}}",
     footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   "LETF Option": {
@@ -153,10 +136,6 @@ const CATEGORY_CONFIGS: Record<Category, {
     slHitFields: [["ETF", "{{ticker}}"], ["Contract", "{{contract}}"], ["Strike", "{{strike}}"], ["Expiration", "{{expiration}}"], ["Direction", "{{direction}}"], ["Leverage", "{{leverage}}"], ["Entry", "${{entry_price}}"], ["Exit", "${{exit_price}}"]],
     slHitTitle: "⚠️ Stop Loss Hit — {{ticker}} {{strike}}{{direction}}",
     slHitDesc: "Stop loss triggered\nEntry: ${{entry_price}} → Exit: ${{exit_price}}",
-    closedVars: ["ticker", "contract", "exit_price", "pnl"],
-    closedFields: [["ETF", "{{ticker}}"], ["Contract", "{{contract}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"]],
-    closedTitle: "✖ Trade Closed — {{ticker}}",
-    closedDesc: "Trade manually closed at ${{exit_price}}",
     footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
   Crypto: {
@@ -176,10 +155,6 @@ const CATEGORY_CONFIGS: Record<Category, {
     slHitFields: [["Coin", "{{coin}}"], ["Pair", "{{pair}}"], ["Action", "{{action}}"], ["Entry", "${{entry_price}}"], ["Exit", "${{exit_price}}"], ["Loss", "{{loss_pct}}%"], ["Stop Loss", "${{stop_loss}}"], ["Notes", "{{notes}}"]],
     slHitTitle: "⚠️ Stop Loss Hit — {{coin}}",
     slHitDesc: "Stop loss triggered\nEntry: ${{entry_price}} → Exit: ${{exit_price}} ({{loss_pct}}%)",
-    closedVars: ["coin", "exit_price", "pnl", "notes"],
-    closedFields: [["Coin", "{{coin}}"], ["Exit Price", "${{exit_price}}"], ["P&L", "{{pnl}}"], ["Notes", "{{notes}}"]],
-    closedTitle: "✖ Trade Closed — {{coin}}",
-    closedDesc: "Trade manually closed at ${{exit_price}}",
     footer: "Disclaimer: Not financial advice. Trade at your own risk.",
   },
 };
@@ -253,20 +228,6 @@ function buildTemplatesForCategory(category: Category): TemplateDefinition[] {
       titleTemplate: cfg.slHitTitle,
       descriptionTemplate: cfg.slHitDesc,
       fieldsTemplate: makeFields(cfg.slHitFields),
-      footerTemplate: cfg.footer,
-      showTitleDefault: true,
-      showDescriptionDefault: true,
-    },
-    {
-      name: "Trade Closed",
-      slug: "trade_closed_manually",
-      category,
-      content: "",
-      color: "#6b7280",
-      variables: makeVars(...cfg.closedVars),
-      titleTemplate: cfg.closedTitle,
-      descriptionTemplate: cfg.closedDesc,
-      fieldsTemplate: makeFields(cfg.closedFields),
       footerTemplate: cfg.footer,
       showTitleDefault: true,
       showDescriptionDefault: true,

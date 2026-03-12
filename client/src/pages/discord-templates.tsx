@@ -27,7 +27,6 @@ import {
   CircleCheck,
   CircleAlert,
   TriangleAlert,
-  X,
   MessageSquare,
 } from "lucide-react";
 import { SiDiscord } from "react-icons/si";
@@ -36,13 +35,22 @@ import { buildPreviewEmbed } from "@/components/discord-templates";
 import type { SignalType } from "@shared/schema";
 import type { Category } from "@shared/template-definitions";
 
+function renderDiscordMarkdown(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 const SLUG_ICONS: Record<string, { icon: typeof Rocket; className: string }> = {
   signal_alert: { icon: Rocket, className: "text-green-400" },
   target_hit: { icon: CircleCheck, className: "text-green-400" },
   target_hit_tp2: { icon: CircleCheck, className: "text-green-400" },
   stop_loss_raised: { icon: CircleAlert, className: "text-amber-400" },
   stop_loss_hit: { icon: TriangleAlert, className: "text-red-400" },
-  trade_closed_manually: { icon: X, className: "text-gray-400" },
 };
 
 function TemplateCard({
@@ -184,7 +192,7 @@ function PreviewDialog({
                   <p className="font-bold text-sm text-white" data-testid="preview-title">{preview.title}</p>
                 )}
                 {preview.description && (
-                  <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">{preview.description}</p>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">{renderDiscordMarkdown(preview.description)}</p>
                 )}
                 {preview.fields.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 pt-1" data-testid="preview-fields">
@@ -328,7 +336,7 @@ function SendManualDialog({
                     style={{ borderLeftColor: preview.color }}
                   >
                     {preview.title && <p className="font-bold text-xs text-white">{preview.title}</p>}
-                    {preview.description && <p className="text-[11px] text-gray-300 whitespace-pre-wrap">{preview.description}</p>}
+                    {preview.description && <p className="text-[11px] text-gray-300 whitespace-pre-wrap">{renderDiscordMarkdown(preview.description)}</p>}
                     {preview.fields.length > 0 && (
                       <div className="grid grid-cols-2 gap-1 pt-1">
                         {preview.fields.map((f, i) => (
