@@ -528,6 +528,7 @@ export default function PositionManagement() {
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
   const [fullExitReason, setFullExitReason] = useState<FullExitReason>("take_profit");
+  const [lastDialogPriceUpdate, setLastDialogPriceUpdate] = useState<Date | null>(null);
   const { toast } = useToast();
 
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -650,29 +651,45 @@ export default function PositionManagement() {
     const fetchPrice = async () => {
       if (abortController.signal.aborted) return;
       try {
-        let url: string;
+        const ts = Date.now();
+        let price: number | null = null;
+
         if (isOption && data.expiration && data.strike && data.option_type) {
           const params = new URLSearchParams({
             underlying: ticker,
             expiration: data.expiration,
             strike: data.strike,
             optionType: data.option_type,
+            _t: ts.toString(),
           });
-          url = `/api/option-quote?${params}`;
-        } else {
-          url = `/api/stock-price/${encodeURIComponent(ticker)}`;
+          const res = await fetch(`/api/option-quote?${params}`, {
+            credentials: "include",
+            signal: abortController.signal,
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const d = await res.json();
+            if (d?.price) price = d.price;
+          }
         }
-        const res = await fetch(url, {
-          credentials: "include",
-          signal: abortController.signal,
-        });
-        if (res.ok) {
-          const d = await res.json();
-          if (d?.price) {
-            setLivePrice(d.price);
-            if (!useManualPriceRef.current) {
-              setClosePrice(d.price.toString());
-            }
+
+        if (price === null) {
+          const res = await fetch(`/api/stock-price/${encodeURIComponent(ticker)}?_t=${ts}`, {
+            credentials: "include",
+            signal: abortController.signal,
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const d = await res.json();
+            if (d?.price) price = d.price;
+          }
+        }
+
+        if (price !== null) {
+          setLivePrice(price);
+          setLastDialogPriceUpdate(new Date());
+          if (!useManualPriceRef.current) {
+            setClosePrice(price.toString());
           }
         }
       } catch {}
@@ -759,6 +776,7 @@ export default function PositionManagement() {
     setCloseNote("");
     setUseManualPrice(false);
     setLivePrice(null);
+    setLastDialogPriceUpdate(null);
     setFullExitReason("take_profit");
   }
 
@@ -1054,7 +1072,21 @@ export default function PositionManagement() {
           {isPartialExit && closeDialog ? (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">Current Price</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold uppercase text-muted-foreground">Current Price</Label>
+                  {!useManualPrice && lastDialogPriceUpdate && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="text-live-price-indicator">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                      Live · {format(lastDialogPriceUpdate, "HH:mm:ss")}
+                    </span>
+                  )}
+                  {isFetchingPrice && !lastDialogPriceUpdate && (
+                    <span className="text-xs text-muted-foreground">Fetching price...</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
                     <Input
@@ -1131,7 +1163,21 @@ export default function PositionManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">Current Price</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold uppercase text-muted-foreground">Current Price</Label>
+                  {!useManualPrice && lastDialogPriceUpdate && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="text-live-price-indicator-full">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                      Live · {format(lastDialogPriceUpdate, "HH:mm:ss")}
+                    </span>
+                  )}
+                  {isFetchingPrice && !lastDialogPriceUpdate && (
+                    <span className="text-xs text-muted-foreground">Fetching price...</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
                     <Input
