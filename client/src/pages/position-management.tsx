@@ -543,7 +543,7 @@ export default function PositionManagement() {
 
   async function handleSwitchToManual(signal: Signal) {
     try {
-      await apiRequest("PATCH", `/api/signals/${signal.id}/data`, { trade_tracking: "Manual updates" });
+      await apiRequest("POST", `/api/signals/${signal.id}/stop-auto-track`);
       await queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
       toast({ title: "Switched to manual tracking" });
     } catch (err: any) {

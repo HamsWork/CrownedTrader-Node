@@ -234,6 +234,14 @@ export interface OptionQuoteResult {
   openInterest: number;
 }
 
+function buildOptionContractTicker(underlying: string, expiration: string, strike: number, optionType: string, useSixDigitExp: boolean): string {
+  const expClean = expiration.replace(/-/g, "");
+  const expPart = useSixDigitExp && expClean.length >= 6 ? expClean.slice(-6) : expClean;
+  const side = optionType.toUpperCase() === "PUT" ? "P" : "C";
+  const strikePadded = (strike * 1000).toFixed(0).padStart(8, "0");
+  return `O:${underlying}${expPart}${side}${strikePadded}`;
+}
+
 export async function getOptionQuote(
   apiKey: string,
   underlying: string,
@@ -241,43 +249,50 @@ export async function getOptionQuote(
   strike: number,
   optionType: string
 ): Promise<OptionQuoteResult | null> {
-  const expClean = expiration.replace(/-/g, "");
-  const side = optionType.toUpperCase() === "PUT" ? "P" : "C";
-  const strikePadded = (strike * 1000).toFixed(0).padStart(8, "0");
-  const contractTicker = `O:${underlying}${expClean}${side}${strikePadded}`;
+  for (const useSixDigitExp of [false, true]) {
+    const contractTicker = buildOptionContractTicker(underlying, expiration, strike, optionType, useSixDigitExp);
+    const url = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}/${encodeURIComponent(contractTicker)}?apiKey=${apiKey}`;
+    const snapRes = await fetch(url);
+    if (!snapRes.ok) {
+      if (useSixDigitExp) console.warn("Option quote 404/error", { contractTicker, underlying, expiration, strike, optionType, status: snapRes.status });
+      continue;
+    }
 
-  const url = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(underlying)}/${encodeURIComponent(contractTicker)}?apiKey=${apiKey}`;
-  const snapRes = await fetch(url);
-  if (!snapRes.ok) return null;
+    const snapData = (await snapRes.json()) as { status?: string; results?: Record<string, unknown> };
+    if (snapData.status !== "OK" || !snapData.results) {
+      if (useSixDigitExp) console.warn("Option quote no results", { contractTicker, status: snapData.status });
+      continue;
+    }
 
-  const snapData = (await snapRes.json()) as { status?: string; results?: Record<string, unknown> };
-  if (snapData.status !== "OK" || !snapData.results) return null;
+    const results = snapData.results;
+    const lq = (results.last_quote || results.lastQuote || {}) as { bid?: number | string; ask?: number | string; bid_price?: string; ask_price?: string };
+    const bid = parseFloat(String(lq.bid ?? lq.bid_price ?? "0")) || 0;
+    const ask = parseFloat(String(lq.ask ?? lq.ask_price ?? "0")) || 0;
+    let price: number | null = null;
+    if (bid > 0 && ask > 0) price = (bid + ask) / 2;
+    else if (ask > 0) price = ask;
+    else if (bid > 0) price = bid;
 
-  const results = snapData.results;
-  const lq = (results.last_quote || results.lastQuote || {}) as { bid?: number | string; ask?: number | string; bid_price?: string; ask_price?: string };
-  const bid = parseFloat(String(lq.bid ?? lq.bid_price ?? "0")) || 0;
-  const ask = parseFloat(String(lq.ask ?? lq.ask_price ?? "0")) || 0;
-  let price: number | null = null;
-  if (bid > 0 && ask > 0) price = (bid + ask) / 2;
-  else if (ask > 0) price = ask;
-  else if (bid > 0) price = bid;
+    if (!price) {
+      const lt = (results.last_trade || results.lastTrade || {}) as { price?: string; p?: string };
+      const p = parseFloat(lt.price || lt.p || "0");
+      if (p > 0) price = p;
+    }
+    if (!price) continue;
 
-  if (!price) {
-    const lt = (results.last_trade || results.lastTrade || {}) as { price?: string; p?: string };
-    const p = parseFloat(lt.price || lt.p || "0");
-    if (p > 0) price = p;
+    const greeks = (results.greeks || {}) as { delta?: number | string };
+    return {
+      contract: contractTicker,
+      price: Math.round(price * 100) / 100,
+      bid: bid > 0 ? bid : null,
+      ask: ask > 0 ? ask : null,
+      delta: greeks.delta != null ? parseFloat(String(greeks.delta)) : null,
+      openInterest: parseInt(String(results.open_interest || "0"), 10) || 0,
+    };
   }
-  if (!price) return null;
 
-  const greeks = (results.greeks || {}) as { delta?: number | string };
-  return {
-    contract: contractTicker,
-    price: Math.round(price * 100) / 100,
-    bid: bid > 0 ? bid : null,
-    ask: ask > 0 ? ask : null,
-    delta: greeks.delta != null ? parseFloat(String(greeks.delta)) : null,
-    openInterest: parseInt(String(results.open_interest || "0"), 10) || 0,
-  };
+  console.warn("Option quote not found after trying both date formats", { underlying, expiration, strike, optionType });
+  return null;
 }
 
 // --- Best option ---

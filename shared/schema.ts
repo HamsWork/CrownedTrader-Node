@@ -19,6 +19,46 @@ export const discordChannelSchema = z.object({
 
 export type UserDiscordChannel = z.infer<typeof discordChannelSchema>;
 
+// --- Shared signal payload types (mirrors server/utils/tradesync.ts) ---
+
+export const signalTargetEntrySchema = z.object({
+  price: z.number().optional(),
+  percentage: z.number().optional(),
+  take_off_percent: z.number().optional(),
+  raise_stop_loss: z.object({
+    price: z.number().optional(),
+    percentage: z.number().optional(),
+  }).optional(),
+});
+
+export type SignalTargetEntry = z.infer<typeof signalTargetEntrySchema>;
+
+export const signalDataSchema = z.object({
+  ticker: z.string(),
+  instrument_type: z.string(),
+  direction: z.string(),
+  entry_price: z.number().nullable(),
+  expiration: z.string().optional(),
+  strike: z.number().optional(),
+  right: z.string().optional(),
+  underlying_ticker: z.string().nullable().optional(),
+  leverage: z.number().optional(),
+  leverage_direction: z.string().optional(),
+  targets: z.record(signalTargetEntrySchema).optional(),
+  stop_loss: z.number().optional(),
+  stop_loss_percentage: z.number().optional(),
+  time_stop: z.string().optional(),
+  auto_track: z.boolean().optional(),
+  underlying_price_based: z.boolean().optional(),
+  entry_underlying_price: z.number().nullable().optional(),
+  entry_letf_price: z.number().nullable().optional(),
+  entry_option_price: z.number().nullable().optional(),
+  discord_webhook_url: z.string().nullable().optional(),
+  tradesync_id: z.number().optional(),
+});
+
+export type SignalData = z.infer<typeof signalDataSchema>;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -77,7 +117,7 @@ export const signals = pgTable("signals", {
   id: serial("id").primaryKey(),
   signalTypeId: integer("signal_type_id"),
   userId: integer("user_id"),
-  data: jsonb("data").$type<Record<string, string>>().default({}).notNull(),
+  data: jsonb("data").$type<SignalData>().default({} as any).notNull(),
   discordChannelName: text("discord_channel_name"),
   sentToDiscord: boolean("sent_to_discord").notNull().default(false),
   status: text("status").notNull().default("open"),

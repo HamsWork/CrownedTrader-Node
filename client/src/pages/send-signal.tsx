@@ -11,7 +11,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { queryClient } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText, AlertCircle } from "lucide-react";
 import type { TradePlan, TakeProfitLevel } from "@shared/schema";
 import {
   TakeProfitLevelForm,
@@ -994,18 +995,28 @@ export default function SendSignal() {
               <div className="space-y-5">
                 <div className="space-y-2">
                   <Label className="font-semibold text-sm">Destination Channel</Label>
-                  <Select value={form.channel} onValueChange={v => update("channel", v)}>
-                    <SelectTrigger data-testid="select-channel">
-                      <SelectValue placeholder="Select a channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userChannels.map((ch, i) => (
-                        <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
-                          {ch.name} {i === 0 ? "(Default)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {userChannels.length === 0 ? (
+                    <Alert variant="destructive" data-testid="alert-no-discord-channel">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>No Discord channel permissions</AlertTitle>
+                      <AlertDescription>
+                        You don&apos;t have access to any Discord channel. Contact your admin to add a Discord channel for your account.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Select value={form.channel} onValueChange={v => update("channel", v)}>
+                      <SelectTrigger data-testid="select-channel">
+                        <SelectValue placeholder="Select a channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userChannels.map((ch, i) => (
+                          <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
+                            {ch.name} {i === 0 ? "(Default)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1065,9 +1076,6 @@ export default function SendSignal() {
                       setForm(prev => ({
                         ...prev,
                         stockPrice: price ? price.toString() : "",
-                        optionPrice: "",
-                        strike: "",
-                        expiration: getDefaultExpiration(),
                       }));
                       setLastPriceUpdate(price ? new Date() : null);
                     }}

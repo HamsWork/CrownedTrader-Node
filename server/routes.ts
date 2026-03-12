@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
-import { sendToTradeSync, buildTradeSyncPayload } from "./utils/tradesync";
+import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack } from "./utils/tradesync";
 import { processSignalDelivery } from "./utils/signals";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import {
@@ -218,6 +218,40 @@ export async function registerRoutes(
     const merged = { ...existingData, ...updates };
     const updated = await storage.updateSignalData(id, merged);
     res.json(updated);
+  });
+
+  app.post("/api/signals/:id/stop-auto-track", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    console.log("stop-auto-track", id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
+    const signal = await storage.getSignal(id);
+    if (!signal) return res.status(404).json({ message: "Signal not found" });
+
+    const data = (signal.data ?? {}) as any;
+    const rawTsId = data.tradesync_id;
+    let tradesyncId: number | undefined;
+    if (typeof rawTsId === "number") {
+      tradesyncId = rawTsId;
+    } else if (typeof rawTsId === "string") {
+      const parsed = parseInt(rawTsId, 10);
+      if (!Number.isNaN(parsed)) tradesyncId = parsed;
+    }
+
+    if (!tradesyncId) {
+      return res.status(400).json({ message: "TradeSync id not found for this signal" });
+    }
+
+    const result = await stopAutoTrack(tradesyncId);
+    if (!result.ok) {
+      return res.status(502).json({ message: result.error ?? "TradeSync stop-auto-track failed" });
+    }
+    const merged = {
+      ...((signal.data ?? {}) as Record<string, unknown>),
+      auto_track: false,
+      trade_tracking: "Manual updates",
+    };
+    const updated = await storage.updateSignalData(id, merged as unknown as Record<string, string>);
+    res.json(updated ?? signal);
   });
 
   app.post("/api/signals", requireAuth, upload.single("chartMedia"), async (req, res) => {
