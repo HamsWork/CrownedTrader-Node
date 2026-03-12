@@ -32,6 +32,8 @@ export interface SignalData {
   entry_letf_price?: number | null;
   entry_option_price?: number | null;
   discord_webhook_url?: string | null;
+  /** Scalp / Swing / Leap — shown as Type in Position Management */
+  trade_type?: string;
   /** Optional TradeSync signal identifier returned from ingest API */
   tradesync_id?: number;
 }
@@ -70,12 +72,13 @@ export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResu
   }
 }
 
-export async function stopAutoTrack(tradeSyncSignalId: number): Promise<TradeSyncResult> {
+export async function stopAutoTrack(tradeSyncSignalId: string | number): Promise<TradeSyncResult> {
   if (!TRADESYNC_API_KEY) {
     return { ok: false, error: "TradeSync API key not configured" };
   }
+  const idSegment = encodeURIComponent(String(tradeSyncSignalId));
   try {
-    const res = await fetch(`${TRADESYNC_BASE_URL}/api/signals/${tradeSyncSignalId}/stop-auto-track`, {
+    const res = await fetch(`${TRADESYNC_BASE_URL}/api/signals/${idSegment}/stop-auto-track`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -159,6 +162,7 @@ export function buildTradeSyncPayload(
     auto_track: data.trade_tracking === "Automatic",
     underlying_price_based: isUnderlyingBased,
     targets,
+    trade_type: tradeType,
   };
 
   if (isOption) {

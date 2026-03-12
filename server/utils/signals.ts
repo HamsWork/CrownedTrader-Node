@@ -45,21 +45,20 @@ export async function processSignalDelivery(
     } else {
       // Persist the TradeSync payload as the canonical signal data (SignalData shape),
       // enriched with the TradeSync signal id when available.
-      let tradesyncId: number | undefined;
+      let tradesyncId: string | number | undefined;
       const resultData: any = tsResult.data;
-      if (resultData) {
-        if (typeof resultData.tradesync_id === "number") {
-          tradesyncId = resultData.tradesync_id;
-        } else if (typeof resultData.id === "number") {
-          tradesyncId = resultData.id;
-        } else if (typeof resultData.signal_id === "number") {
-          tradesyncId = resultData.signal_id;
-        }
+      if (resultData?.signal?.id != null) {
+        const raw = resultData.signal.id;
+        tradesyncId = typeof raw === "string" || typeof raw === "number" ? raw : undefined;
       }
 
       const enriched: any = { ...tsPayload };
-      if (typeof tradesyncId === "number") {
+      if (tradesyncId !== undefined && tradesyncId !== null) {
         enriched.tradesync_id = tradesyncId;
+      }
+      // Position Management reads data.trade_tracking ("Automatic" | "Manual updates") for the badge
+      if (typeof enriched.auto_track === "boolean") {
+        enriched.trade_tracking = enriched.auto_track ? "Automatic" : "Manual updates";
       }
 
       await storage.updateSignalData(signal.id, enriched);

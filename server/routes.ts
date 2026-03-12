@@ -228,23 +228,31 @@ export async function registerRoutes(
   });
 
   app.post("/api/signals/:id/stop-auto-track", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
-    console.log("stop-auto-track", id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
+    const rawId = req.params.id;
+    const id = typeof rawId === "string" ? parseInt(rawId, 10) : parseInt(String(rawId ?? ""), 10);
+    if (Number.isNaN(id) || id < 1) return res.status(400).json({ message: "Invalid signal ID" });
     const signal = await storage.getSignal(id);
-    if (!signal) return res.status(404).json({ message: "Signal not found" });
-
-    const data = (signal.data ?? {}) as any;
-    const rawTsId = data.tradesync_id;
-    let tradesyncId: number | undefined;
-    if (typeof rawTsId === "number") {
-      tradesyncId = rawTsId;
-    } else if (typeof rawTsId === "string") {
-      const parsed = parseInt(rawTsId, 10);
-      if (!Number.isNaN(parsed)) tradesyncId = parsed;
+    if (!signal) {
+      console.warn("stop-auto-track: no signal for id", id, "rawId", rawId);
+      return res.status(404).json({ message: "Signal not found" });
     }
 
-    if (!tradesyncId) {
+    let data: any = signal.data ?? {};
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data) as Record<string, unknown>;
+      } catch {
+        data = {};
+      }
+    }
+    const rawTsId = data.tradesync_id ?? data.tradesyncId;
+    let tradesyncId: string | number | undefined;
+    if (typeof rawTsId === "number" || (typeof rawTsId === "string" && rawTsId.length > 0)) {
+      tradesyncId = rawTsId;
+    }
+
+    if (tradesyncId === undefined || tradesyncId === null || tradesyncId === "") {
+      console.warn("stop-auto-track: no tradesync_id for signal", id, "data keys:", data && typeof data === "object" ? Object.keys(data) : "n/a");
       return res.status(400).json({ message: "TradeSync id not found for this signal" });
     }
 

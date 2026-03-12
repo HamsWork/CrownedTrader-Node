@@ -22,6 +22,7 @@ function formatDate(d: Date | string | null) {
   return format(new Date(d), "MMM dd, yyyy HH:mm");
 }
 
+/** P&L %: for Long (and Calls) profit when mark > entry; for Short (and Puts) profit when mark < entry. */
 function getPnlPct(entry: number, mark: number, direction: string): number {
   if (!entry || !mark) return 0;
   const diff = direction === "Short" ? entry - mark : mark - entry;
@@ -54,15 +55,16 @@ function PartialExitPreview({
   signal: Signal;
   currentPrice: number;
 }) {
-  const data = (signal.data ?? {}) as Record<string, string>;
+  const data = (signal.data ?? {}) as any;
   const ticker = data.ticker || "—";
-  const isOption = data.is_option === "true";
-  const optionType = data.option_type || "";
-  const strike = data.strike || "";
+  const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+  const isOption = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+  const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+  const strike = typeof data.strike === "number" ? String(data.strike) : (data.strike || "");
   const expiration = data.expiration || "";
   const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
   const direction = data.direction || "Long";
-  const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
+  const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
 
   let levels: TakeProfitLevel[] = [];
   try {
@@ -205,14 +207,16 @@ function FullExitPreview({
   currentPrice: number;
   reason: FullExitReason;
 }) {
-  const data = (signal.data ?? {}) as Record<string, string>;
+  const data = (signal.data ?? {}) as any;
   const ticker = data.ticker || "—";
-  const isOption = data.is_option === "true";
-  const optionType = data.option_type || "";
-  const strike = data.strike || "";
+  const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+  const isOption = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+  const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+  const strike = typeof data.strike === "number" ? String(data.strike) : (data.strike || "");
   const expiration = data.expiration || "";
   const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
   const direction = data.direction || "Long";
+  const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
 
   let levels: TakeProfitLevel[] = [];
   try {
@@ -553,29 +557,35 @@ export default function PositionManagement() {
       optionType?: string;
       expiration?: string;
       strike?: string;
+      market?: string;
     }
 
     const jobs: PriceFetchJob[] = [];
     const seenKeys = new Set<string>();
 
     for (const s of openSignals) {
-      const d = (s.data ?? {}) as Record<string, string>;
+      const d = (s.data ?? {}) as any;
       const ticker = d.ticker;
       if (!ticker) continue;
 
-      const isOpt = d.is_option === "true";
-      const hasOptionFields = isOpt && !!d.expiration && !!d.strike && !!d.option_type;
+      const instrumentType = d.instrument_type || (d.is_option === "true" ? "Options" : "Shares");
+      const isOpt = d.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+      const expiration = d.expiration ?? "";
+      const strikeStr = typeof d.strike === "number" ? String(d.strike) : (d.strike ?? "");
+      const optionType = d.option_type || (d.right === "P" ? "PUT" : d.right === "C" ? "CALL" : "");
+      const hasOptionFields = isOpt && !!expiration && !!strikeStr && !!optionType;
       const key = hasOptionFields
-        ? `opt:${ticker}:${d.expiration}:${d.strike}:${d.option_type}`
+        ? `opt:${ticker}:${expiration}:${strikeStr}:${optionType}`
         : `stock:${ticker}`;
 
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
 
       if (hasOptionFields) {
-        jobs.push({ key, isOption: true, ticker, optionType: d.option_type, expiration: d.expiration, strike: d.strike });
+        jobs.push({ key, isOption: true, ticker, optionType, expiration, strike: strikeStr });
       } else {
-        jobs.push({ key, isOption: false, ticker });
+        const market = instrumentType === "Crypto" ? "crypto" : undefined;
+        jobs.push({ key, isOption: false, ticker, market });
       }
     }
 
@@ -597,7 +607,8 @@ export default function PositionManagement() {
               });
               url = `/api/option-quote?${params}`;
             } else {
-              url = `/api/stock-price/${encodeURIComponent(job.ticker)}`;
+              const tickerPath = encodeURIComponent(job.ticker);
+              url = job.market ? `/api/stock-price/${tickerPath}?market=${encodeURIComponent(job.market)}` : `/api/stock-price/${tickerPath}`;
             }
             const res = await fetch(url, {
               credentials: "include",
@@ -641,12 +652,17 @@ export default function PositionManagement() {
       setLivePrice(null);
       return;
     }
-    const data = (closeDialog.data ?? {}) as Record<string, string>;
+    const data = (closeDialog.data ?? {}) as any;
     const ticker = data.ticker;
     if (!ticker) return;
 
     const abortController = new AbortController();
-    const isOption = data.is_option === "true";
+    const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+    const isOption = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+    const expiration = data.expiration ?? "";
+    const strikeStr = typeof data.strike === "number" ? String(data.strike) : (data.strike ?? "");
+    const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+    const hasOptionFields = isOption && !!expiration && !!strikeStr && !!optionType;
 
     const fetchPrice = async () => {
       if (abortController.signal.aborted) return;
@@ -710,9 +726,9 @@ export default function PositionManagement() {
   }, [closeDialog]);
 
   const filtered = signals?.filter(signal => {
-    const data = (signal.data ?? {}) as Record<string, string>;
+    const data = (signal.data ?? {}) as any;
     const matchesSearch = !search || Object.values(data).some(v =>
-      v.toLowerCase().includes(search.toLowerCase())
+      String(v).toLowerCase().includes(search.toLowerCase())
     );
     const matchesStatus = statusFilter === "all" || signal.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -878,26 +894,33 @@ export default function PositionManagement() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="grid-positions">
           {filtered.map(signal => {
-            const data = (signal.data ?? {}) as Record<string, string>;
+            const data = (signal.data ?? {}) as any;
             const ticker = data.ticker || "—";
-            const isOption = data.is_option === "true";
-            const optionType = data.option_type || "";
-            const strike = data.strike || "";
+            const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+            const isOption = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+            const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+            const strike = typeof data.strike === "number" ? String(data.strike) : (data.strike || "");
             const expiration = data.expiration || "";
-            const direction = data.direction || "Long";
-            const instrumentType = data.instrument_type || (isOption ? "Options" : "Shares");
-            const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
             const isOpen = signal.status === "open";
             const tracking = data.trade_tracking || "Manual";
-            const livePriceKey = isOption && data.expiration && data.strike && data.option_type
-              ? `opt:${ticker}:${data.expiration}:${data.strike}:${data.option_type}`
+            const entryPrice = (() => {
+              if (isOption && data.entry_option_price != null && data.entry_option_price !== "") return Number(data.entry_option_price);
+              const raw = data.entry_price ?? data.option_price ?? data.stock_price;
+              return typeof raw === "number" ? raw : parseFloat(String(raw || "0"));
+            })();
+            const direction = data.direction || "Long";
+            const directionForPnl = isOption
+              ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long")
+              : direction;
+            const livePriceKey = isOption && expiration && strike && optionType
+              ? `opt:${ticker}:${expiration}:${strike}:${optionType}`
               : `stock:${ticker}`;
             const liveMarkPrice = isOpen && ticker !== "—" ? livePrices[livePriceKey] : undefined;
             const markPrice = isOpen
               ? (liveMarkPrice ?? null)
               : (signal.closePrice ? parseFloat(signal.closePrice) : null);
-            const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, direction) : 0;
-            const realizedPnl = !isOpen && signal.closePrice ? getPnlPct(entryPrice, parseFloat(signal.closePrice), direction) : 0;
+            const pnlPct = markPrice ? getPnlPct(entryPrice, markPrice, directionForPnl) : 0;
+            const realizedPnl = !isOpen && signal.closePrice ? getPnlPct(entryPrice, parseFloat(signal.closePrice), directionForPnl) : 0;
             const tradeType = data.trade_type || "—";
 
             let contractLine = "";
