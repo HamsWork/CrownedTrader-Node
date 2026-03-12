@@ -65,6 +65,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("user"),
   discordChannels: jsonb("discord_channels").$type<UserDiscordChannel[]>().default([]).notNull(),
+  tosAccepted: boolean("tos_accepted").notNull().default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

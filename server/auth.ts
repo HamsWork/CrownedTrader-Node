@@ -17,7 +17,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
-export function toSafeUser(user: { id: number; username: string; role: string; password: string; discordChannels: any }): SafeUser {
+export function toSafeUser(user: { id: number; username: string; role: string; password: string; discordChannels: any; tosAccepted: boolean }): SafeUser {
   const { password, ...safe } = user;
   return safe;
 }

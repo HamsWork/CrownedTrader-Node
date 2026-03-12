@@ -36,3 +36,15 @@ export function useLogout() {
     },
   });
 }
+
+export function useAcceptTos() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/accept-tos");
+      return res.json() as Promise<SafeUser>;
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData(["/api/auth/me"], user);
+    },
+  });
+}

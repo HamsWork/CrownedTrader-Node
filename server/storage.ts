@@ -24,6 +24,7 @@ export interface IStorage {
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserPassword(id: number, password: string): Promise<User | undefined>;
   updateUserChannels(id: number, channels: UserDiscordChannel[]): Promise<User | undefined>;
+  acceptTos(id: number): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
 
   getSignalTypes(): Promise<SignalType[]>;
@@ -79,6 +80,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserChannels(id: number, channels: UserDiscordChannel[]): Promise<User | undefined> {
     const [updated] = await db.update(users).set({ discordChannels: channels }).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async acceptTos(id: number): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({ tosAccepted: true }).where(eq(users.id, id)).returning();
     return updated;
   }
 

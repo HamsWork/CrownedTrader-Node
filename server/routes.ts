@@ -87,6 +87,13 @@ export async function registerRoutes(
     res.json(toSafeUser((req as any).user));
   });
 
+  app.post("/api/auth/accept-tos", requireAuth, async (req, res) => {
+    const user = (req as any).user;
+    const updated = await storage.acceptTos(user.id);
+    if (!updated) return res.status(500).json({ message: "Failed to accept TOS" });
+    res.json(toSafeUser(updated));
+  });
+
   app.get("/api/users", requireAdmin, async (_req, res) => {
     const allUsers = await storage.getUsers();
     res.json(allUsers.map(toSafeUser));
