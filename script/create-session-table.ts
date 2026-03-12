@@ -18,9 +18,25 @@ async function main() {
   });
 
   try {
-    // Locate connect-pg-simple's table.sql inside node_modules
-    const tableSqlPath = require.resolve("connect-pg-simple/table.sql");
-    const sql = fs.readFileSync(tableSqlPath, "utf8");
+    // If the "session" table already exists, do nothing
+    const existing = await pool.query<{
+      oid: string | null;
+    }>("SELECT to_regclass('public.session') AS oid");
+
+    if (existing.rows[0]?.oid) {
+      console.log('Session table already exists, skipping creation.');
+      return;
+    }
+
+    // Locate connect-pg-simple's table.sql inside node_modules without require()
+    const tableSqlPath = path.join(
+      process.cwd(),
+      "node_modules",
+      "connect-pg-simple",
+      "table.sql",
+    );
+    let sql = fs.readFileSync(tableSqlPath, "utf8");
+
 
     console.log(`Executing session table SQL from: ${tableSqlPath}`);
 
