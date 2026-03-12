@@ -680,12 +680,12 @@ export default function PositionManagement() {
         const ts = Date.now();
         let price: number | null = null;
 
-        if (isOption && data.expiration && data.strike && data.option_type) {
+        if (isOption && expiration && strikeStr && optionType) {
           const params = new URLSearchParams({
             underlying: ticker,
-            expiration: data.expiration,
-            strike: data.strike,
-            optionType: data.option_type,
+            expiration: expiration,
+            strike: strikeStr,
+            optionType: optionType,
             _t: ts.toString(),
           });
           const res = await fetch(`/api/option-quote?${params}`, {
@@ -693,6 +693,7 @@ export default function PositionManagement() {
             signal: abortController.signal,
             cache: "no-store",
           });
+          console.log(res);
           if (res.ok) {
             const d = await res.json();
             if (d?.price) price = d.price;
@@ -1145,16 +1146,20 @@ export default function PositionManagement() {
                 <PartialExitPreview signal={closeDialog} currentPrice={currentPriceNum} />
               </div>
 
-              <DialogFooter className="flex justify-between sm:justify-between gap-2 pt-2">
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={resetDialog} data-testid="button-cancel-close">
-                    Cancel
-                  </Button>
-                </div>
+              <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={resetDialog}
+                  data-testid="button-cancel-close"
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
                 <Button
                   onClick={handleClose}
                   disabled={isSubmitting}
                   data-testid="button-confirm-close"
+                  className="w-full sm:w-auto"
                 >
                   {isSubmitting ? "Processing..." : "Partial Exit"}
                 </Button>
@@ -1236,14 +1241,20 @@ export default function PositionManagement() {
                 <FullExitPreview signal={closeDialog} currentPrice={currentPriceNum} reason={fullExitReason} />
               </div>
 
-              <DialogFooter className="flex justify-between sm:justify-between gap-2 pt-2">
-                <Button variant="outline" onClick={resetDialog} data-testid="button-cancel-close">
+              <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={resetDialog}
+                  data-testid="button-cancel-close"
+                  className="w-full sm:w-auto"
+                >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleClose}
                   disabled={isSubmitting}
                   data-testid="button-confirm-close"
+                  className="w-full sm:w-auto"
                 >
                   {isSubmitting ? "Processing..." : "Full Exit"}
                 </Button>
