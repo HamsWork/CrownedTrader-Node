@@ -1,4 +1,4 @@
-import { LayoutDashboard, Send, Briefcase, MessageSquare, Users, LogOut, Crown, ClipboardList, TrendingUp, History, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Send, Briefcase, MessageSquare, Users, LogOut, Crown, ClipboardList, TrendingUp, History, ShieldCheck, HelpCircle } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ const navItems = [
   { title: "Trade Plans", url: "/trade-plans", icon: ClipboardList, adminOnly: false },
   { title: "Position Management", url: "/positions", icon: Briefcase, adminOnly: false },
   { title: "Signal History", url: "/history", icon: History, adminOnly: false },
+  { title: "Help", url: "/help", icon: HelpCircle, adminOnly: false },
 ];
 
 const adminItems = [

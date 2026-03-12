@@ -17,6 +17,7 @@ import DiscordTemplatesPage from "@/pages/discord-templates";
 import UserManagement, { CreateUserPage, EditUserPage } from "@/pages/user-management";
 import TradePlansPage from "@/pages/trade-plans";
 import SystemAudit from "@/pages/system-audit";
+import HelpPage from "@/pages/help";
 import LoginPage from "@/pages/login";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ function Router() {
       {isAdmin && <Route path="/users/create" component={CreateUserPage} />}
       {isAdmin && <Route path="/users/:id/edit">{(params) => <EditUserPage userId={Number(params.id)} />}</Route>}
       {isAdmin && <Route path="/audit" component={SystemAudit} />}
+      <Route path="/help" component={HelpPage} />
       <Route component={NotFound} />
     </Switch>
   );
