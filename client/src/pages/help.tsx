@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import {
   Accordion,
   AccordionContent,
@@ -48,6 +52,7 @@ interface HelpSection {
   adminOnly?: boolean;
   color: string;
   summary: string;
+  screenshot: string;
   details: string[];
   features: { label: string; description: string }[];
 }
@@ -58,6 +63,7 @@ const HELP_SECTIONS: HelpSection[] = [
     title: "Login",
     icon: LogIn,
     color: "bg-blue-500",
+    screenshot: "/help/login.png",
     summary: "Secure login screen — no public registration. Only admins can create user accounts.",
     details: [
       "Enter your username and password to sign in.",
@@ -75,6 +81,7 @@ const HELP_SECTIONS: HelpSection[] = [
     title: "Terms of Service",
     icon: FileText,
     color: "bg-indigo-500",
+    screenshot: "/help/tos.png",
     summary: "One-time agreement screen shown on first login, covering disclaimers and platform rules.",
     details: [
       "On your very first login, a Terms of Service screen will appear before you can access the dashboard.",
@@ -93,6 +100,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: LayoutDashboard,
     route: "/",
     color: "bg-emerald-500",
+    screenshot: "/help/dashboard.png",
     summary: "Your home screen with the trading leaderboard and platform overview.",
     details: [
       "The Dashboard is the first page you see after logging in. It provides a quick overview of the platform activity.",
@@ -111,6 +119,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: Send,
     route: "/send",
     color: "bg-green-500",
+    screenshot: "/help/send-signal.png",
     summary: "The unified form for creating and sending trading signals to Discord channels.",
     details: [
       "This is the main page for creating trading signals. Select a category (Options, Shares, LETF, LETF Option, or Crypto) and fill out the trade details.",
@@ -135,6 +144,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: TrendingUp,
     route: "/send-ta",
     color: "bg-cyan-500",
+    screenshot: "/help/send-ta.png",
     summary: "Send Technical Analysis posts with chart images to Discord channels.",
     details: [
       "Use this page to share technical analysis with your community.",
@@ -153,6 +163,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: ClipboardList,
     route: "/trade-plans",
     color: "bg-amber-500",
+    screenshot: "/help/trade-plans.png",
     summary: "Create and manage your trading plans before entering trades.",
     details: [
       "Trade Plans let you document your trading strategy before executing.",
@@ -172,6 +183,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: Briefcase,
     route: "/positions",
     color: "bg-orange-500",
+    screenshot: "/help/positions.png",
     summary: "Track open positions and manage exits with live pricing and Discord notifications.",
     details: [
       "Position Management shows all your open and closed trading positions as cards.",
@@ -196,6 +208,7 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: History,
     route: "/history",
     color: "bg-purple-500",
+    screenshot: "/help/signal-history.png",
     summary: "View all past signals with full Discord preview for each signal lifecycle stage.",
     details: [
       "Signal History shows a table of all signals that have been sent, with filtering and search capabilities.",
@@ -222,6 +235,7 @@ const HELP_SECTIONS: HelpSection[] = [
     route: "/discord-templates",
     adminOnly: true,
     color: "bg-violet-500",
+    screenshot: "/help/discord-templates.png",
     summary: "View and manage the 25 Discord message templates used across all categories.",
     details: [
       "This admin-only page shows all Discord embed templates organized by category (Options, Shares, LETF, LETF Option, Crypto).",
@@ -245,6 +259,7 @@ const HELP_SECTIONS: HelpSection[] = [
     route: "/users",
     adminOnly: true,
     color: "bg-rose-500",
+    screenshot: "/help/user-management.png",
     summary: "Create, edit, and manage user accounts. Only admins can create new users.",
     details: [
       "This admin-only page lets you manage all user accounts on the platform.",
@@ -269,6 +284,7 @@ const HELP_SECTIONS: HelpSection[] = [
     route: "/audit",
     adminOnly: true,
     color: "bg-slate-500",
+    screenshot: "/help/system-audit.png",
     summary: "Architecture reference page showing the system design, API routes, and data flow.",
     details: [
       "The System Audit page is a read-only reference that documents the platform's technical architecture.",
@@ -283,7 +299,7 @@ const HELP_SECTIONS: HelpSection[] = [
   },
 ];
 
-function HelpSectionCard({ section }: { section: HelpSection }) {
+function HelpSectionCard({ section, onImageClick }: { section: HelpSection; onImageClick: (src: string, title: string) => void }) {
   const Icon = section.icon;
 
   return (
@@ -312,6 +328,26 @@ function HelpSectionCard({ section }: { section: HelpSection }) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
+        <div
+          className="rounded-lg border overflow-hidden mb-3 cursor-pointer group"
+          onClick={() => onImageClick(section.screenshot, section.title)}
+          data-testid={`help-screenshot-${section.id}`}
+        >
+          <div className="relative">
+            <img
+              src={section.screenshot}
+              alt={`${section.title} screenshot`}
+              className="w-full h-auto block transition-transform group-hover:scale-[1.01]"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5" />
+                Click to enlarge
+              </span>
+            </div>
+          </div>
+        </div>
         <Accordion type="single" collapsible>
           <AccordionItem value="details" className="border-none">
             <AccordionTrigger className="py-2 text-sm font-medium" data-testid={`help-details-${section.id}`}>
@@ -351,6 +387,11 @@ function HelpSectionCard({ section }: { section: HelpSection }) {
 export default function HelpPage() {
   const { data: user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [lightbox, setLightbox] = useState<{ src: string; title: string } | null>(null);
+
+  const handleImageClick = useCallback((src: string, title: string) => {
+    setLightbox({ src, title });
+  }, []);
 
   const visibleSections = HELP_SECTIONS.filter(
     (s) => !s.adminOnly || isAdmin
@@ -361,6 +402,22 @@ export default function HelpPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6" data-testid="page-help">
+      <Dialog open={!!lightbox} onOpenChange={() => setLightbox(null)}>
+        <DialogContent className="max-w-5xl w-[95vw] p-2">
+          {lightbox && (
+            <div>
+              <p className="text-sm font-semibold mb-2 px-2 pt-1">{lightbox.title}</p>
+              <img
+                src={lightbox.src}
+                alt={lightbox.title}
+                className="w-full h-auto rounded-md"
+                data-testid="lightbox-image"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -397,7 +454,7 @@ export default function HelpPage() {
         </h2>
         <div className="space-y-3">
           {generalSections.filter(s => s.id === "login" || s.id === "tos" || s.id === "dashboard").map((section) => (
-            <HelpSectionCard key={section.id} section={section} />
+            <HelpSectionCard key={section.id} section={section} onImageClick={handleImageClick} />
           ))}
         </div>
       </div>
@@ -409,7 +466,7 @@ export default function HelpPage() {
         </h2>
         <div className="space-y-3">
           {generalSections.filter(s => ["send-signal", "send-ta", "trade-plans", "positions", "signal-history"].includes(s.id)).map((section) => (
-            <HelpSectionCard key={section.id} section={section} />
+            <HelpSectionCard key={section.id} section={section} onImageClick={handleImageClick} />
           ))}
         </div>
       </div>
@@ -422,7 +479,7 @@ export default function HelpPage() {
           </h2>
           <div className="space-y-3">
             {adminSections.map((section) => (
-              <HelpSectionCard key={section.id} section={section} />
+              <HelpSectionCard key={section.id} section={section} onImageClick={handleImageClick} />
             ))}
           </div>
         </div>
