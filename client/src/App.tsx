@@ -93,32 +93,76 @@ function TermsOfServiceScreen() {
 
         <ScrollArea className="h-64 rounded-md border p-4 bg-muted/30">
           <div className="space-y-4 text-sm text-muted-foreground pr-4" data-testid="text-tos-content">
-            <p className="font-semibold text-foreground">Welcome to Crowned Trader</p>
-            <p>By using this platform, you agree to the following terms and conditions. Please read them carefully before proceeding.</p>
+            <p className="font-semibold text-foreground">SWJ Crown Trader and Scout Rules (Simple Agreement)</p>
+            <p>
+              Welcome to SWJ. By holding a Crown Trader or Scout role and continuing to use this platform,
+              you agree to the following simple terms. If you do not agree, you may not hold these roles.
+            </p>
 
-            <p className="font-semibold text-foreground">1. Disclaimer</p>
-            <p>All signals, trade ideas, and technical analysis provided on this platform are for educational and informational purposes only. Nothing shared here constitutes financial advice, investment advice, or a recommendation to buy or sell any security or financial instrument.</p>
+            <p className="font-semibold text-foreground">Crown Traders (Featured Traders)</p>
+            <p>
+              Crown Traders are official featured traders inside SWJ. SWJ may spotlight, rank, promote, and
+              highlight your results and activity. To make this possible, you agree that your trade ideas and alerts
+              will be posted through the SWJ system so performance and impact can be tracked.
+            </p>
+            <p>
+              As a Crown Trader, you agree to contribute to the main SWJ community by posting at least once per week
+              in the shared Crown Trader area so all members can learn from you.
+            </p>
 
-            <p className="font-semibold text-foreground">2. Risk Acknowledgement</p>
-            <p>Trading stocks, options, ETFs, and cryptocurrencies involves substantial risk of loss and is not suitable for every investor. You acknowledge that you are solely responsible for your own trading decisions and any resulting gains or losses. Past performance does not guarantee future results.</p>
+            <p className="font-semibold text-foreground">Crown Trader Private Communities</p>
+            <p>
+              Crown Traders may have their own private experience inside the SWJ Discord, but it must live within the
+              SWJ server. SWJ will create and manage private, role-based channels for your upgraded members so you do
+              not need to run a separate server. SWJ handles roles, access, support tickets, and backend organization;
+              you focus on alerts, education, and delivering value.
+            </p>
 
-            <p className="font-semibold text-foreground">3. No Guarantees</p>
-            <p>Crowned Trader makes no guarantees regarding the accuracy, completeness, or timeliness of the signals or information provided. Markets are unpredictable and signals may not perform as expected.</p>
+            <p className="font-semibold text-foreground">No Outside Discord Promotion While a Crown Trader</p>
+            <p>
+              If you choose to operate a separate paid community outside SWJ, you cannot remain a Crown Trader inside SWJ.
+              While holding the Crown Trader role, you may not create, run, or promote any separate Discord server or paid
+              community outside SWJ. You may not promote outside communities anywhere in SWJ, including posting links,
+              mentioning or hinting at them, sharing screenshots, asking members to DM you for access, or direct-messaging
+              members to pitch outside offers.
+            </p>
+            <p>
+              All premium access for Crown Traders must run through the SWJ upgrade system. SWJ will provide each Crown
+              Trader with a Whop store link that unlocks their premium access inside SWJ. That link may include the
+              specific offers and pricing you choose, subject to SWJ approval, and it will also provide an option for
+              members to upgrade into the full SWJ package.
+            </p>
 
-            <p className="font-semibold text-foreground">4. Personal Responsibility</p>
-            <p>You agree to conduct your own research and due diligence before entering any trade. You should consult with a licensed financial advisor if you are unsure about any investment decision.</p>
+            <p className="font-semibold text-foreground">Scouts (Community Traders)</p>
+            <p>
+              Scouts are respected community traders but are not listed as featured Crown Traders. Scouts may still
+              contribute and post, but they are not ranked, highlighted, or promoted at the same level as Crown Traders.
+            </p>
+            <p>
+              Scouts may not advertise any personal brand, services, or outside communities inside SWJ. The only link a
+              Scout may share is an SWJ-approved upgrade or affiliate link, if they are part of the official SWJ
+              affiliate system.
+            </p>
 
-            <p className="font-semibold text-foreground">5. Confidentiality</p>
-            <p>All content, signals, and strategies shared on this platform are proprietary and confidential. You agree not to reproduce, distribute, or share any content from this platform without explicit written permission.</p>
+            <p className="font-semibold text-foreground">No Guaranteed Wins or Profit Promises</p>
+            <p>
+              As a Crown Trader or Scout, you agree to keep communication professional and responsible. You may not make
+              misleading promises, guarantee profits, or imply that trading is risk-free. Trading is risky and every
+              member is responsible for their own decisions and results.
+            </p>
 
-            <p className="font-semibold text-foreground">6. Account Usage</p>
-            <p>Your account is for your personal use only. Sharing login credentials or allowing others to access your account is strictly prohibited and may result in account termination.</p>
+            <p className="font-semibold text-foreground">Role-Based Access and Changes</p>
+            <p>
+              Crown Trader and Scout roles are privileges, not permanent entitlements. SWJ can adjust roles,
+              permissions, and access at any time to protect the community and maintain quality. If someone is not
+              aligned with these rules, SWJ may remove the role and adjust access immediately.
+            </p>
 
-            <p className="font-semibold text-foreground">7. Limitation of Liability</p>
-            <p>Crowned Trader and its operators shall not be held liable for any financial losses, damages, or claims arising from the use of this platform or reliance on information provided herein.</p>
-
-            <p className="font-semibold text-foreground">8. Modifications</p>
-            <p>We reserve the right to modify these terms at any time. Continued use of the platform constitutes acceptance of any updated terms.</p>
+            <p className="font-semibold text-foreground">Agreement Confirmation</p>
+            <p>
+              By continuing to hold a Crown Trader or Scout role inside SWJ and by using this platform, you confirm that
+              you understand and agree to these rules. If you do not agree, you must not continue to hold the role.
+            </p>
           </div>
         </ScrollArea>
 

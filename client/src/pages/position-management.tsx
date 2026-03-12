@@ -62,7 +62,12 @@ function PartialExitPreview({
   const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
   const strike = typeof data.strike === "number" ? String(data.strike) : (data.strike || "");
   const expiration = data.expiration || "";
-  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+  const rawEntry =
+    (isOption && data.entry_option_price != null ? data.entry_option_price : undefined) ??
+    data.entry_price ??
+    data.option_price ??
+    data.stock_price;
+  const entryPrice = typeof rawEntry === "number" ? rawEntry : parseFloat(String(rawEntry || "0"));
   const direction = data.direction || "Long";
   const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
 
@@ -71,8 +76,8 @@ function PartialExitPreview({
     levels = JSON.parse(data.take_profit_levels || "[]");
   } catch {}
 
-  const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, direction) : 0;
-  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, direction) : null;
+  const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, directionForPnl) : 0;
+  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, directionForPnl) : null;
   const tpIndex = hitTp?.level ?? 1;
   const hitLevel = hitTp ? levels[hitTp.index] : levels[0];
   const nextLevel = hitTp && hitTp.index + 1 < levels.length ? levels[hitTp.index + 1] : null;
@@ -214,7 +219,12 @@ function FullExitPreview({
   const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
   const strike = typeof data.strike === "number" ? String(data.strike) : (data.strike || "");
   const expiration = data.expiration || "";
-  const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
+  const rawEntry =
+    (isOption && data.entry_option_price != null ? data.entry_option_price : undefined) ??
+    data.entry_price ??
+    data.option_price ??
+    data.stock_price;
+  const entryPrice = typeof rawEntry === "number" ? rawEntry : parseFloat(String(rawEntry || "0"));
   const direction = data.direction || "Long";
   const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
 
@@ -223,8 +233,8 @@ function FullExitPreview({
     levels = JSON.parse(data.take_profit_levels || "[]");
   } catch {}
 
-  const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, direction) : 0;
-  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, direction) : null;
+  const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, directionForPnl) : 0;
+  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, directionForPnl) : null;
   const tpIndex = hitTp?.level ?? 1;
   const instrumentLabel = isOption ? "Options" : "Shares";
 
@@ -745,6 +755,8 @@ export default function PositionManagement() {
         status: isPartialExit ? "open" : "closed",
         closePrice: closePrice || undefined,
         closeNote: closeNote ? (isPartialExit ? `[Partial Exit] ${closeNote}` : closeNote) : (isPartialExit ? "[Partial Exit]" : undefined),
+        // For TradeSync: partial exits and full exits map to different APIs.
+        reason: isPartialExit ? "target_hit" : fullExitReason,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
       toast({ title: isPartialExit ? "Partial exit recorded" : "Position closed" });
@@ -1031,7 +1043,7 @@ export default function PositionManagement() {
                   </div>
 
                   <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    {isOpen ? (
+                    {isOpen && (
                       tracking === "Automatic" ? (
                         <Button
                           size="sm"
@@ -1065,16 +1077,6 @@ export default function PositionManagement() {
                           </Button>
                         </>
                       )
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs h-8 flex-1"
-                        onClick={() => handleReopen(signal)}
-                        data-testid={`button-reopen-${signal.id}`}
-                      >
-                        Reopen
-                      </Button>
                     )}
                   </div>
                 </div>
@@ -1161,7 +1163,7 @@ export default function PositionManagement() {
           ) : closeDialog ? (
             <div className="space-y-4 py-2">
               <div className="flex flex-wrap gap-2">
-                {(["take_profit", "stop_loss", "trailing_stop"] as FullExitReason[]).map((r) => {
+                {(["take_profit", "stop_loss"] as FullExitReason[]).map((r) => {
                   const labels: Record<FullExitReason, string> = {
                     take_profit: "Take Profit",
                     stop_loss: "Stop Loss",

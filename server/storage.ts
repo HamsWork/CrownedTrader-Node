@@ -121,6 +121,14 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(signals).orderBy(desc(signals.createdAt));
   }
 
+  async getSignalsByUser(userId: number): Promise<Signal[]> {
+    return db
+      .select()
+      .from(signals)
+      .where(eq(signals.userId, userId))
+      .orderBy(desc(signals.createdAt));
+  }
+
   async getSignal(id: number): Promise<Signal | undefined> {
     const [s] = await db.select().from(signals).where(eq(signals.id, id));
     return s;

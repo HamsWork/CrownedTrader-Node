@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
-import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack } from "./utils/tradesync";
+import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack, markTargetHit, markStopLossHit } from "./utils/tradesync";
 import { processSignalDelivery } from "./utils/signals";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import {
@@ -198,32 +198,104 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.get("/api/signals", requireAuth, async (_req, res) => {
-    const sigs = await storage.getSignals();
+  app.get("/api/signals", requireAuth, async (req, res) => {
+    const currentUser = (req as any).user;
+    const sigs = await storage.getSignalsByUser(currentUser.id);
     res.json(sigs);
   });
 
   app.patch("/api/signals/:id/status", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id ?? ""));
     if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
-    const { status, closePrice, closeNote } = req.body;
+    const { status, closePrice, closeNote, reason } = req.body as {
+      status: "open" | "closed";
+      closePrice?: string;
+      closeNote?: string;
+      reason?: string;
+    };
     if (!status || !["open", "closed"].includes(status)) {
       return res.status(400).json({ message: "Status must be 'open' or 'closed'" });
     }
     const updated = await storage.updateSignalStatus(id, status, closePrice, closeNote);
     if (!updated) return res.status(404).json({ message: "Signal not found" });
     res.json(updated);
+
+    // Fire-and-forget TradeSync updates (don't block response on these).
+    (async () => {
+      try {
+        const signal = await storage.getSignal(id);
+        if (!signal || !signal.data) return;
+
+        let data: any = signal.data;
+        if (typeof data === "string") {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            data = {};
+          }
+        }
+        const rawTsId = data.tradesync_id ?? data.tradesyncId;
+        if (!rawTsId) return;
+
+        // Map our status/reason to TradeSync events.
+        const tsId = rawTsId as string | number;
+
+        const syncFromTradeSync = async (tsResult: any) => {
+          if (!tsResult?.ok) return;
+          const body: any = tsResult.data;
+          const remote = body?.data;
+          if (!remote || typeof remote !== "object") return;
+          const merged = { ...data, ...remote };
+          try {
+            await storage.updateSignalData(id, merged as unknown as Record<string, string>);
+          } catch (err) {
+            console.warn("Failed to sync TradeSync state into signal.data", err);
+          }
+        };
+
+        // Partial exit: position remains open but TP was hit.
+        if (status === "open" && (reason === "target_hit" || (closeNote && String(closeNote).startsWith("[Partial Exit]")))) {
+          const result = await markTargetHit(tsId);
+          console.log("TradeSync target-hit result", result);
+          if (!result.ok) {
+            console.warn("TradeSync target-hit failed", result.error);
+          }
+          await syncFromTradeSync(result);
+          return;
+        }
+
+        if (status === "closed") {
+          if (reason === "take_profit") {
+            const result = await markTargetHit(tsId);
+            console.log("TradeSync target-hit (full exit) result", result);
+            if (!result.ok) {
+              console.warn("TradeSync target-hit (full exit) failed", result.error);
+            }
+            await syncFromTradeSync(result);
+          } else if (reason === "stop_loss") {
+            const result = await markStopLossHit(tsId);
+            console.log("TradeSync stop-loss-hit result", result);
+            if (!result.ok) {
+              console.warn("TradeSync stop-loss-hit failed", result.error);
+            }
+            await syncFromTradeSync(result);
+          }
+        }
+      } catch (err) {
+        console.warn("TradeSync status sync error", err);
+      }
+    })();
   });
 
   app.patch("/api/signals/:id/data", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id ?? ""));
     if (isNaN(id)) return res.status(400).json({ message: "Invalid signal ID" });
     const signal = await storage.getSignal(id);
     if (!signal) return res.status(404).json({ message: "Signal not found" });
-    const existingData = (signal.data ?? {}) as Record<string, string>;
-    const updates = req.body as Record<string, string>;
+    const existingData = (signal.data ?? {}) as Record<string, unknown>;
+    const updates = req.body as Record<string, unknown>;
     const merged = { ...existingData, ...updates };
-    const updated = await storage.updateSignalData(id, merged);
+    const updated = await storage.updateSignalData(id, merged as unknown as Record<string, string>);
     res.json(updated);
   });
 

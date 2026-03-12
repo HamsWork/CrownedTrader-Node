@@ -96,6 +96,54 @@ export async function stopAutoTrack(tradeSyncSignalId: string | number): Promise
   }
 }
 
+export async function markTargetHit(tradeSyncSignalId: string | number): Promise<TradeSyncResult> {
+  if (!TRADESYNC_API_KEY) {
+    return { ok: false, error: "TradeSync API key not configured" };
+  }
+  const idSegment = encodeURIComponent(String(tradeSyncSignalId));
+  try {
+    const res = await fetch(`${TRADESYNC_BASE_URL}/api/signals/${idSegment}/target-hit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+      },
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg = body?.message || `TradeSync API error (${res.status})`;
+      return { ok: false, error: msg };
+    }
+    return { ok: true, data: body };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Failed to reach TradeSync API" };
+  }
+}
+
+export async function markStopLossHit(tradeSyncSignalId: string | number): Promise<TradeSyncResult> {
+  if (!TRADESYNC_API_KEY) {
+    return { ok: false, error: "TradeSync API key not configured" };
+  }
+  const idSegment = encodeURIComponent(String(tradeSyncSignalId));
+  try {
+    const res = await fetch(`${TRADESYNC_BASE_URL}/api/signals/${idSegment}/stop-loss-hit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+      },
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg = body?.message || `TradeSync API error (${res.status})`;
+      return { ok: false, error: msg };
+    }
+    return { ok: true, data: body };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Failed to reach TradeSync API" };
+  }
+}
+
 export function buildTradeSyncPayload(
   data: Record<string, string>,
   levels: Array<{ levelPct: number; takeOffPct: number; raiseStopLossTo: string; customRaiseSLValue: string }>,

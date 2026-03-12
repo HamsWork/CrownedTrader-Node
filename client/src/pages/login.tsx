@@ -7,10 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useLogin } from "@/hooks/use-auth";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Crown } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function LoginPage() {
   const { toast } = useToast();
   const login = useLogin();
+  const [, navigate] = useLocation();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +21,8 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login.mutateAsync({ username, password });
+      // Always send user to Dashboard on first successful login
+      navigate("/");
     } catch (err: any) {
       toast({
         title: "Login failed",
