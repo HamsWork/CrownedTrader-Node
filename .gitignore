@@ -11,3 +11,4 @@ vite.config.ts.*
 replit.nix
 .upm
 uploads/
+attached_assets/
