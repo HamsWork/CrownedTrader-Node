@@ -176,8 +176,10 @@ export async function registerRoutes(
   app.get("/api/discord-templates/var-templates", requireAuth, async (_req, res) => {
     const tsResult = await fetchDiscordTemplatesFromTradeSync();
     if (!tsResult.ok) {
-      console.warn("Falling back to built-in DEFAULT_TEMPLATES because TradeSync template fetch failed:", tsResult.error);
-      return res.json(DEFAULT_TEMPLATES);
+      console.error("Failed to fetch Discord templates from TradeSync:", tsResult.error);
+      return res.status(502).json({
+        message: "Failed to fetch Discord templates from TradeSync. Please verify TradeSync connectivity and API key.",
+      });
     }
     res.json(tsResult.data);
   });

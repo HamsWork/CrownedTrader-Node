@@ -1,5 +1,11 @@
 import { renderTemplate } from "@shared/template-render";
-import type { TemplateField } from "@shared/template-definitions";
+import { normalizeSpacerField } from "@shared/discord-embed-fields";
+
+export interface TemplateField {
+  name: string;
+  value: string;
+  inline?: boolean;
+}
 
 export { renderTemplate } from "@shared/template-render";
 
@@ -8,8 +14,8 @@ export function renderFieldsWithData(
   data: Record<string, string>
 ): Array<{ name: string; value: string; inline: boolean }> {
   return fields.map((field) => {
-    const name = renderTemplate(field.name, data);
-    const value = renderTemplate(field.value, data);
+    const name = normalizeSpacerField(renderTemplate(field.name, data));
+    const value = normalizeSpacerField(renderTemplate(field.value, data));
     return { name, value, inline: field.inline ?? true };
   });
 }

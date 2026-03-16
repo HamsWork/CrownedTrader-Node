@@ -350,8 +350,9 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
   return vars;
 }
 
+const TRADESYNC_CHECK_MSG = "Check that TradeSync API URL and API key are set correctly in your environment.";
 function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
-  const { data: signalTypes = [], isLoading: isLoadingTemplates } = useDiscordVarTemplates();
+  const { data: signalTypes = [], isLoading: isLoadingTemplates, isError: templatesError } = useDiscordVarTemplates();
 
   const templateCategory = getTemplateCategory(tickerDetails, form.isOption);
 
@@ -396,10 +397,17 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
           <div className="rounded-lg bg-[#313338] p-6 text-center" data-testid="preview-loading">
             <p className="text-sm text-[#949ba4]">Loading template preview...</p>
           </div>
+        ) : templatesError ? (
+          <div className="rounded-lg bg-[#313338] p-6 text-center" data-testid="preview-tradesync-error">
+            <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+            <p className="text-sm text-[#949ba4] font-medium">Could not load Discord templates from TradeSync.</p>
+            <p className="text-xs text-[#949ba4] mt-2">{TRADESYNC_CHECK_MSG}</p>
+          </div>
         ) : !entryTemplate ? (
           <div className="rounded-lg bg-[#313338] p-6 text-center" data-testid="preview-missing">
             <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
-            <p className="text-sm text-[#949ba4]">No entry template found for {templateCategory}</p>
+            <p className="text-sm text-[#949ba4]">No entry template found for {templateCategory}.</p>
+            <p className="text-xs text-[#949ba4] mt-2">{TRADESYNC_CHECK_MSG}</p>
           </div>
         ) : embed ? (
           <div className="space-y-0">

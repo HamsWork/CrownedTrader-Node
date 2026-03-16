@@ -25,7 +25,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { SiDiscord } from "react-icons/si";
-import { CATEGORIES, SAMPLE_TICKERS } from "@shared/template-definitions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ZWSP, normalizeSpacerField } from "@shared/discord-embed-fields";
 import { buildPreviewEmbed } from "@/components/discord-templates";
 import {
   DiscordSendModal,
@@ -33,7 +34,19 @@ import {
   parsePayloadToEmbed,
 } from "@/components/discord-send-modal";
 
+const CATEGORIES = ["Options", "Shares", "LETF", "LETF Option", "Crypto"] as const;
 type Category = (typeof CATEGORIES)[number];
+
+const SAMPLE_TICKERS: Record<Category, string> = {
+  Options: "AAPL",
+  Shares: "AAPL",
+  LETF: "TQQQ",
+  "LETF Option": "SOXL",
+  Crypto: "BTC",
+};
+
+const TRADESYNC_CHECK_MSG =
+  "Check that TradeSync API URL and API key are set correctly in your environment.";
 type SignalType = NonNullable<
   ReturnType<typeof useDiscordVarTemplates>["data"]
 >[number];
@@ -131,7 +144,7 @@ function TemplateCard({
   const colorClass = SLUG_COLORS[template.slug] || "bg-muted text-muted-foreground border-border";
   const Icon = slugInfo.icon;
   const hasVars = JSON.stringify(template.fieldsTemplate).includes("{{");
-  const nonSpacerFields = fieldsArr.filter(f => f.name !== "\u200b" && f.name !== "");
+  const nonSpacerFields = fieldsArr.filter(f => normalizeSpacerField(f.name) !== ZWSP);
 
   const sampleData = buildSampleData(template);
   const embed = buildPreviewEmbed(
@@ -223,7 +236,7 @@ function TemplateCard({
 export default function DiscordTemplatesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const { data: signalTypes, isLoading } = useDiscordVarTemplates();
+  const { data: signalTypes, isLoading, isError } = useDiscordVarTemplates();
   const createSignal = useCreateSignal();
   const [activeCategory, setActiveCategory] = useState<Category>("Options");
   const [sendTemplate, setSendTemplate] = useState<SignalType | null>(null);
@@ -307,6 +320,28 @@ export default function DiscordTemplatesPage() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="p-4 sm:p-6 space-y-6" data-testid="page-discord-templates">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" data-testid="text-page-title">
+            <SiDiscord className="h-6 w-6 text-[#5865F2]" />
+            Discord Message Templates
+          </h1>
+        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Templates could not be loaded</AlertTitle>
+          <AlertDescription>
+            {TRADESYNC_CHECK_MSG}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const hasNoTemplates = !signalTypes?.length;
+
   return (
     <div className="p-4 sm:p-6 space-y-6" data-testid="page-discord-templates">
       <div>
@@ -339,6 +374,16 @@ export default function DiscordTemplatesPage() {
         ))}
       </div>
 
+      {hasNoTemplates ? (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>No Discord message templates</AlertTitle>
+          <AlertDescription>
+            {TRADESYNC_CHECK_MSG}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
       <p className="text-xs text-muted-foreground">
         Showing templates for <span className="font-medium text-foreground">{activeCategory}</span> using sample ticker <span className="font-mono font-medium text-foreground">{sampleTicker}</span>
       </p>
@@ -361,6 +406,8 @@ export default function DiscordTemplatesPage() {
           );
         })}
       </div>
+        </>
+      )}
 
       {sendTemplate && sendTemplateEmbed && (
         <DiscordSendModal

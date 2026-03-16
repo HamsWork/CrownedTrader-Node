@@ -1,3 +1,5 @@
+import { normalizeSpacerField } from "@shared/discord-embed-fields";
+
 const TRADESYNC_BASE_URL = process.env.TRADESYNC_BASE_URL || "https://3778bee5-d34e-4048-9502-5dd398f69e9e-00-38xggkppvlgnp.picard.replit.dev";
 const TRADESYNC_API_KEY = process.env.TRADESYNC_API_KEY || "ts_9c148863865d1a03f557954b8e8f89726444e1eb6bfdb9e5";
 
@@ -175,8 +177,8 @@ export async function fetchDiscordTemplatesFromTradeSync(): Promise<TradeSyncRes
         }));
 
         const fieldsTemplate = (tmpl.fields || []).map((f) => ({
-          name: f.name,
-          value: f.value,
+          name: normalizeSpacerField(f.name),
+          value: normalizeSpacerField(f.value),
           inline: f.inline,
         }));
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ZWSP, normalizeSpacerField } from "@shared/discord-embed-fields";
 
 export interface DiscordEmbedData {
   title: string;
@@ -17,9 +18,9 @@ export interface DiscordEmbedPreviewProps {
 }
 
 function isSpacerField(f: { name: string; value: string; inline?: boolean }): boolean {
-  const n = f.name.trim();
-  const v = f.value.trim();
-  return (n === "\u200b" || n === "") && (v === "" || v === "\u200b") && !f.inline;
+  const n = normalizeSpacerField(f.name).trim();
+  const v = normalizeSpacerField(f.value).trim();
+  return (n === ZWSP || n === "") && (v === "" || v === ZWSP) && !f.inline;
 }
 
 type Section = { type: "spacer" | "inline" | "block"; fields: DiscordEmbedData["fields"] };
@@ -89,8 +90,8 @@ export function DiscordEmbedPreview({
                   <div key={si} className="grid grid-cols-3 gap-2">
                     {section.fields.map((field, fi) => (
                       <div key={fi} className="min-w-0" data-testid={`preview-field-${si}-${fi}`}>
-                        <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{field.name}</p>
-                        <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words">{field.value || "\u200b"}</p>
+                        <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{normalizeSpacerField(field.name)}</p>
+                        <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words">{normalizeSpacerField(field.value)}</p>
                       </div>
                     ))}
                   </div>
@@ -99,8 +100,8 @@ export function DiscordEmbedPreview({
               const field = section.fields[0];
               return (
                 <div key={si} data-testid={`preview-field-block-${si}`}>
-                  <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{field.name}</p>
-                  <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed">{field.value || "\u200b"}</p>
+                  <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{normalizeSpacerField(field.name)}</p>
+                  <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed">{normalizeSpacerField(field.value)}</p>
                 </div>
               );
             })}

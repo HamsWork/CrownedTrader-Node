@@ -1,4 +1,5 @@
 import type { DiscordEmbedData } from "./discord-embed-preview";
+import { normalizeSpacerField } from "@shared/discord-embed-fields";
 
 function colorNameToDecimal(hex: string): number {
   const clean = hex.replace("#", "");
@@ -30,8 +31,8 @@ export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, con
 
   if (embed.fields.length > 0) {
     embedObj.fields = embed.fields.map(f => ({
-      name: f.name || "\u200b",
-      value: f.value || "\u200b",
+      name: normalizeSpacerField(f.name),
+      value: normalizeSpacerField(f.value),
       inline: f.inline ?? false,
     }));
   }
@@ -61,8 +62,8 @@ export function parsePayloadToEmbed(json: string): { embed: DiscordEmbedData; co
 
     const fields = Array.isArray(embedObj.fields)
       ? embedObj.fields.map((f: { name?: string; value?: string; inline?: boolean }) => ({
-          name: f.name || "",
-          value: f.value || "",
+          name: normalizeSpacerField(f.name ?? ""),
+          value: normalizeSpacerField(f.value ?? ""),
           inline: f.inline === true,
         }))
       : [];
