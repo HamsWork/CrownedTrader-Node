@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText, AlertCircle } from "lucide-react";
-import type { TradePlan, TakeProfitLevel } from "@shared/schema";
+import type { TradePlan, TakeProfitLevel, SignalType } from "@shared/schema";
+import { DiscordEmbedPreview } from "@/components/discord-send-modal/discord-embed-preview";
+import { buildPreviewEmbed } from "@/components/discord-templates/template-utils";
 import {
   TakeProfitLevelForm,
   TARGET_TYPES,
@@ -238,28 +241,146 @@ interface TradeForm {
   timeHorizon: string;
 }
 
-function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
-  const stockPrice = parseFloat(form.stockPrice) || 0;
+function getTemplateCategory(tickerDetails: TickerDetails | null, isOption: boolean): string {
+  const cat = tickerDetails?.category || "Stock";
+  if (cat === "Crypto") return "Crypto";
+  if (cat === "LETF") return isOption ? "LETF Option" : "LETF";
+  return isOption ? "Options" : "Shares";
+}
 
+function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null): string {
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+  const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
   const levels = form.customLevels;
   const slPct = parseFloat(form.customStopLossPct) || 10;
-  const hasPlan = !!form.tradePlanId;
-  const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
-
-  const category = tickerDetails?.category || "Stock";
-  const isLETF = category === "LETF";
-  const isCrypto = category === "Crypto";
-  const ticker = form.ticker || "TICKER";
-
-  const entryLabel = form.isOption ? "Options" : (isCrypto ? "Crypto" : "Shares");
-  const title = `🚨 ${ticker} ${entryLabel} Entry – TradeSync`;
-
   const stopLossPrice = isUnderlyingBased
     ? parseFloat(form.customStopLossPct || "0")
     : entry * (1 - slPct / 100);
-
   const timeStopDays = form.tradeType === "Scalp" ? 2 : form.tradeType === "Swing" ? 5 : 10;
+
+  const targetParts = isUnderlyingBased
+    ? levels.map(l => {
+        const pct = entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0";
+        return `$${l.levelPct.toFixed(2)} (${pct}%)`;
+      })
+    : levels.map(l => {
+        const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
+        return `$${price} (${l.levelPct.toFixed(1)}%)`;
+      });
+
+  const lines = [
+    `🎯 Targets: ${targetParts.join(", ")}`,
+    `🛑 Stop loss: $${stopLossPrice.toFixed(2)}`,
+    `🌐 Time Stop: ${timeStopDays} days`,
+  ];
+  if (form.timeHorizon) {
+    lines.push(`📅 Time Horizon: ${form.timeHorizon}`);
+  }
+  return lines.join("\n");
+}
+
+function buildTakeProfitPlanText(form: TradeForm): string {
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+  const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const levels = form.customLevels;
+
+  return levels.map((l, i) => {
+    const pricePart = isUnderlyingBased
+      ? `$${l.levelPct.toFixed(2)} (+${entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0"}%)`
+      : `+${l.levelPct.toFixed(1)}%`;
+    let line = `Take Profit (${i + 1}): At ${pricePart} take off ${l.takeOffPct}% of ${i === 0 ? "position" : "remaining position"}`;
+    if (l.raiseStopLossTo !== "Off") {
+      line += ` and raise stop loss to ${l.raiseStopLossTo === "Break even" ? "break even" : (isUnderlyingBased ? `$${l.customRaiseSLValue}` : `${l.customRaiseSLValue}%`)}`;
+    }
+    if (l.trailingStop === "On") {
+      line += ` with ${l.trailingStopPct}% trailing stop`;
+    }
+    return line + ".";
+  }).join("\n");
+}
+
+function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null): Record<string, string> {
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+  const stockPrice = parseFloat(form.stockPrice) || 0;
+  const ticker = form.ticker || "TICKER";
+  const hasPlan = !!form.tradePlanId;
+
+  const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const slPct = parseFloat(form.customStopLossPct) || 10;
+  const stopLossPrice = isUnderlyingBased
+    ? parseFloat(form.customStopLossPct || "0")
+    : entry * (1 - slPct / 100);
+  const timeStopDays = form.tradeType === "Scalp" ? 2 : form.tradeType === "Swing" ? 5 : 10;
+
+  const vars: Record<string, string> = {
+    app_name: "Crowned Trader",
+    ticker,
+    stock_price: `$${stockPrice.toFixed(2)}`,
+    direction: form.isOption ? (form.optionType === "CALL" ? "Call" : "Put") : form.direction,
+    entry_price: `$${entry.toFixed(2)}`,
+    stop_loss: `$${stopLossPrice.toFixed(2)}`,
+    time_stop: `${timeStopDays} days`,
+    trade_plan: hasPlan ? buildTradePlanText(form, tickerDetails) : "No trade plan selected",
+    take_profit_plan: hasPlan ? buildTakeProfitPlanText(form) : "—",
+  };
+
+  if (form.isOption) {
+    vars.expiration = form.expiration || "—";
+    vars.strike = form.strike || "—";
+    vars.option_price = `$${entry.toFixed(2)}`;
+  }
+
+  const cat = tickerDetails?.category;
+  if (cat === "Crypto") {
+    vars.coin = ticker;
+    vars.pair = "USDT";
+    vars.entry_price = `$${entry.toFixed(2)}`;
+  }
+
+  if (cat === "LETF") {
+    vars.underlying = tickerDetails?.underlying || ticker;
+    vars.leverage = tickerDetails?.leverage || "3";
+    vars.letf_ticker = ticker;
+    vars.letf_direction = "Bull";
+    vars.letf_entry = `$${entry.toFixed(2)}`;
+  }
+
+  return vars;
+}
+
+function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
+  const { data: signalTypes = [], isLoading: isLoadingTemplates } = useQuery<SignalType[]>({
+    queryKey: ["/api/signal-types"],
+  });
+
+  const templateCategory = getTemplateCategory(tickerDetails, form.isOption);
+
+  const entryTemplate = useMemo(() => {
+    return signalTypes.find(
+      (t) => t.slug === "signal_alert" && t.category === templateCategory
+    ) || null;
+  }, [signalTypes, templateCategory]);
+
+  const templateVars = useMemo(
+    () => buildTemplateVars(form, tickerDetails),
+    [form, tickerDetails]
+  );
+
+  const embed = useMemo(() => {
+    if (!entryTemplate) return null;
+    return buildPreviewEmbed(
+      {
+        color: entryTemplate.color,
+        titleTemplate: entryTemplate.titleTemplate,
+        descriptionTemplate: entryTemplate.descriptionTemplate,
+        fieldsTemplate: (entryTemplate.fieldsTemplate || []) as Array<{ name: string; value: string; inline?: boolean }>,
+        footerTemplate: entryTemplate.footerTemplate,
+        showTitleDefault: entryTemplate.showTitleDefault,
+        showDescriptionDefault: entryTemplate.showDescriptionDefault,
+      },
+      templateVars
+    );
+  }, [entryTemplate, templateVars]);
 
   return (
     <Card className="sticky top-20" data-testid="card-live-preview">
@@ -271,218 +392,38 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
           <h2 className="font-bold text-lg" data-testid="text-preview-title">Live Preview</h2>
         </div>
 
-        <div className="rounded-lg bg-[#1a1d23] border border-[#2a2d35] overflow-hidden">
-          <div className="p-4 text-sm text-[#dcddde]">
-            <p className="text-[#dcddde] text-sm font-medium mb-3" data-testid="text-preview-everyone">@everyone</p>
-
-            <div className="flex gap-1">
-              <div className="w-1 rounded-full bg-[#e74c3c] shrink-0" />
-              <div className="flex-1 pl-3 space-y-3">
-                <p className="font-bold text-white" data-testid="text-preview-embed-title">{title}</p>
-
-                {isCrypto ? (
-                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🟢 TICKER</span>
-                      <p className="text-white">{ticker}</p>
-                    </div>
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">📊 DIRECTION</span>
-                      <p className="text-white">{form.direction}</p>
-                    </div>
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💵 Entry Price</span>
-                      <p className="text-white">${entry.toFixed(2)}</p>
-                    </div>
-                  </div>
-                ) : isLETF && form.isOption ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">🟢 TICKER</span>
-                        <p className="text-white">{ticker}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">📊 LETF PRICE</span>
-                        <p className="text-white">${stockPrice.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">📈 LEVERAGED ETF</span>
-                        <p className="text-white">{tickerDetails?.underlying || ticker} ({tickerDetails?.leverage || "3x"} BULL)</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
-                        <p className="text-white">{form.expiration || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
-                        <p className="text-white">{form.strike || "—"} {form.optionType}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
-                        <p className="text-white">${entry.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </>
-                ) : isLETF && !form.isOption ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">🟢 TICKER</span>
-                        <p className="text-white">{ticker}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">📊 DIRECTION</span>
-                        <p className="text-white">{form.direction}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">✍️ LETF</span>
-                        <p className="text-white">{tickerDetails?.underlying || ticker} ({tickerDetails?.leverage || "3x"} BULL)</p>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">💵 LETF Entry</span>
-                      <p className="text-white">${entry.toFixed(2)}</p>
-                    </div>
-                  </>
-                ) : form.isOption ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">🟢 TICKER</span>
-                        <p className="text-white">{ticker}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">📊 STOCK PRICE</span>
-                        <p className="text-white">${stockPrice.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
-                        <p className="text-white">{form.optionType === "CALL" ? "Call" : "Put"}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">❌ EXPIRATION</span>
-                        <p className="text-white">{form.expiration || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">✍️ Strike</span>
-                        <p className="text-white">{form.strike || "—"} {form.optionType}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#72767d] text-xs font-semibold">💵 Option Price</span>
-                        <p className="text-white">${entry.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">🟢 TICKER</span>
-                      <p className="text-white">{ticker}</p>
-                    </div>
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">📊 STOCK PRICE</span>
-                      <p className="text-white">${stockPrice.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <span className="text-[#72767d] text-xs font-semibold">📈 DIRECTION</span>
-                      <p className="text-white">{form.direction}</p>
-                    </div>
-                  </div>
-                )}
-
-                {hasPlan ? (
-                  <>
-                    <div>
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <span>📋</span> TRADE PLAN
-                      </p>
-                      <p className="mt-1">
-                        <span>🎯</span>{" "}
-                        Targets: {isUnderlyingBased
-                          ? levels.map(l => {
-                              const pct = entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0";
-                              return `$${l.levelPct.toFixed(2)} (${pct}%)`;
-                            }).join(", ")
-                          : levels.map(l => {
-                              const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
-                              return `$${price} (${l.levelPct.toFixed(1)}%)`;
-                            }).join(", ")
-                        }
-                      </p>
-                      <p>
-                        <span>🔴</span>{" "}
-                        Stop loss: ${stopLossPrice.toFixed(2)}, ${entry.toFixed(2)}
-                      </p>
-                      <p>
-                        <span>🟢</span>{" "}
-                        Time Stop: {timeStopDays} days
-                      </p>
-                      {form.timeHorizon && (
-                        <p>
-                          <span>📅</span>{" "}
-                          Time Horizon: {form.timeHorizon}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <span>💰</span> TAKE PROFIT PLAN
-                      </p>
-                      {levels.map((l, i) => {
-                        const levelLabel = isUnderlyingBased
-                          ? `${entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0"}%`
-                          : `${l.levelPct.toFixed(1)}%`;
-                        return (
-                          <p key={i} className="text-xs mt-1 leading-relaxed">
-                            Take Profit ({i + 1}): At {levelLabel} take off {l.takeOffPct}% of {i === 0 ? "position" : "remaining position"}
-                            {l.raiseStopLossTo !== "Off" && ` and raise stop loss to ${l.raiseStopLossTo === "Break even" ? "break even" : (isUnderlyingBased ? `$${l.customRaiseSLValue}` : `${l.customRaiseSLValue}%`)}`}
-                            {l.trailingStop === "On" && ` with ${l.trailingStopPct}% trailing stop`}.
-                          </p>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <p className="font-bold text-white flex items-center gap-1.5">
-                      <span>📋</span> TRADE PLAN
-                    </p>
-                    <p className="text-xs mt-1 text-[#72767d] italic">No trade plan selected</p>
-                  </div>
-                )}
-
-                {form.showChartAnalysis && chartPreviewUrl && (
-                  <div>
-                    <p className="font-bold text-white flex items-center gap-1.5">
-                      <span>📊</span> Chart Analysis
-                    </p>
-                    {chartMediaType === "image" && (
-                      <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2">
-                        <img src={chartPreviewUrl} alt="Chart" className="w-full max-h-[200px] object-contain" data-testid="preview-chart-image" />
-                      </div>
-                    )}
-                    {chartMediaType === "video" && (
-                      <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25 mt-2">
-                        <video src={chartPreviewUrl} controls className="w-full max-h-[200px]" data-testid="preview-chart-video" />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-
-                <p className="text-[10px] text-[#72767d] italic pt-1">
-                  Disclaimer: Not financial advice. Trade at your own risk.
-                </p>
-              </div>
-            </div>
+        {isLoadingTemplates ? (
+          <div className="rounded-lg bg-[#313338] p-6 text-center" data-testid="preview-loading">
+            <p className="text-sm text-[#949ba4]">Loading template preview...</p>
           </div>
-        </div>
+        ) : !entryTemplate ? (
+          <div className="rounded-lg bg-[#313338] p-6 text-center" data-testid="preview-missing">
+            <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+            <p className="text-sm text-[#949ba4]">No entry template found for {templateCategory}</p>
+          </div>
+        ) : embed ? (
+          <div className="space-y-0">
+            <DiscordEmbedPreview
+              embed={embed}
+              content={entryTemplate.content || "@everyone"}
+            />
+
+            {form.showChartAnalysis && chartPreviewUrl && (
+              <div className="bg-[#313338] px-4 pb-4 -mt-0 rounded-b-md">
+                {chartMediaType === "image" && (
+                  <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25">
+                    <img src={chartPreviewUrl} alt="Chart" className="w-full max-h-[200px] object-contain" data-testid="preview-chart-image" />
+                  </div>
+                )}
+                {chartMediaType === "video" && (
+                  <div className="rounded-lg overflow-hidden border border-[#2a2d35] bg-black/25">
+                    <video src={chartPreviewUrl} controls className="w-full max-h-[200px]" data-testid="preview-chart-video" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

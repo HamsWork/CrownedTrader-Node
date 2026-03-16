@@ -32,7 +32,7 @@ client/src/
   pages/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview
-    send-signal.tsx        - Unified trade entry form with live Discord preview
+    send-signal.tsx        - Unified trade entry form with template-driven Discord preview
     send-ta.tsx            - Technical Analysis post with media upload and Discord preview
     trade-plans.tsx        - Trade plan tracking with target/stop-loss management
     position-management.tsx - Position management with open/close tracking and P&L
