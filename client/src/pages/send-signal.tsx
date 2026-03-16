@@ -297,7 +297,7 @@ function buildTakeProfitPlanText(form: TradeForm): string {
     const pricePart = isUnderlyingBased
       ? `$${l.levelPct.toFixed(2)}`
       : `$${(entry * (1 + l.levelPct / 100)).toFixed(2)} (+${l.levelPct.toFixed(2)}%)`;
-    let line = `Take Profit (${i + 1}): At ${pricePart} take off ${l.takeOffPct.toFixed(2)}% of ${i === 0 ? "position" : "remaining position"}`;
+    let line = `**Take Profit (${i + 1}):** At ${pricePart} take off ${l.takeOffPct.toFixed(2)}% of ${i === 0 ? "position" : "remaining position"}`;
     if (l.raiseStopLossTo !== "Off") {
       const slLabel = l.raiseStopLossTo === "Break even"
         ? `$${entry.toFixed(2)} (break even)`

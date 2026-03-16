@@ -91,7 +91,7 @@ export function DiscordEmbedPreview({
                     {section.fields.map((field, fi) => (
                       <div key={fi} className="min-w-0" data-testid={`preview-field-${si}-${fi}`}>
                         <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{normalizeSpacerField(field.name)}</p>
-                        <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words">{normalizeSpacerField(field.value)}</p>
+                        <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words">{renderMarkdown(normalizeSpacerField(field.value))}</p>
                       </div>
                     ))}
                   </div>
@@ -101,7 +101,7 @@ export function DiscordEmbedPreview({
               return (
                 <div key={si} data-testid={`preview-field-block-${si}`}>
                   <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{normalizeSpacerField(field.name)}</p>
-                  <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed">{normalizeSpacerField(field.value)}</p>
+                  <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed">{renderMarkdown(normalizeSpacerField(field.value))}</p>
                 </div>
               );
             })}
