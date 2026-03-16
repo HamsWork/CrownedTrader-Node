@@ -884,6 +884,8 @@ export default function SendSignal() {
         : tickerDetails?.category === "Crypto"
           ? "Crypto"
           : (form.isOption ? "Options" : "Shares"),
+      ...(tickerDetails?.underlying ? { underlying_ticker: tickerDetails.underlying } : {}),
+      ...(tickerDetails?.leverage ? { leverage: tickerDetails.leverage.replace(/x$/i, "") } : {}),
     };
 
     levels.forEach((l, i) => {

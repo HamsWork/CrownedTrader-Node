@@ -32,6 +32,7 @@ export interface SignalData {
   entry_underlying_price?: number | null;
   entry_letf_price?: number | null;
   underlying_ticker?: string | null;
+  leverage?: number;
   /** Optional TradeSync signal identifier returned from ingest API */
   tradesync_id?: number;
 }
@@ -89,16 +90,11 @@ function toTradeSyncApiPayload(signal: SignalData): Record<string, any> {
     }
   }
 
-  const isOption = signal.instrument_type === "Options" || signal.instrument_type === "LETF Option";
-  const entryPrice = signal.entry_price ?? 0;
-  const underlyingPrice = signal.entry_underlying_price ?? signal.entry_price ?? 0;
-
   const payload: Record<string, any> = {
     ticker: signal.ticker,
-    instrument_type: signal.instrument_type,
+    instrumentType: signal.instrument_type,
     direction: signal.direction,
-    entry_instrument_price: isOption ? (signal.entry_option_price ?? entryPrice) : entryPrice,
-    entry_tracking_price: isOption ? underlyingPrice : entryPrice,
+    entryPrice: signal.entry_price ?? 0,
   };
 
   if (signal.expiration) payload.expiration = signal.expiration;
@@ -108,8 +104,10 @@ function toTradeSyncApiPayload(signal: SignalData): Record<string, any> {
   if (signal.auto_track != null) payload.auto_track = signal.auto_track;
   if (signal.underlying_price_based != null) payload.underlying_price_based = signal.underlying_price_based;
   if (signal.time_stop) payload.time_stop = signal.time_stop;
-  if (signal.trade_type) payload.trade_type = signal.trade_type;
-  if (signal.discord_webhook_url) payload.discord_channel_webhook = signal.discord_webhook_url;
+  if (signal.trade_type) payload.tradeType = signal.trade_type;
+  if (signal.underlying_ticker) payload.underlying_ticker = signal.underlying_ticker;
+  if (signal.leverage != null) payload.leverage = signal.leverage;
+  if (signal.discord_webhook_url) payload.discord_webhook_url = signal.discord_webhook_url;
   if (Object.keys(apiTargets).length > 0) payload.targets = apiTargets;
 
   return payload;
@@ -375,6 +373,10 @@ export function buildTradeSyncPayload(
 
   if (data.underlying_ticker) {
     payload.underlying_ticker = data.underlying_ticker;
+  }
+
+  if (data.leverage) {
+    payload.leverage = parseFloat(data.leverage) || undefined;
   }
 
   payload.discord_webhook_url = webhookUrl || null;
