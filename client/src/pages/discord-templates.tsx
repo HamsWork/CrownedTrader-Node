@@ -83,7 +83,7 @@ function TemplateCard({
         </div>
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => onPreview(template)}
             className="text-xs gap-1.5"
