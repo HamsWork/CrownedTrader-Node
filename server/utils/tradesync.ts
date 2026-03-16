@@ -44,27 +44,34 @@ export interface TradeSyncResult {
   error?: string;
 }
 
-export interface TradeSyncTemplateRaw {
-  id: number;
+// Shapes based on TradeSync /api/discord-templates/var-templates response
+export interface TradeSyncTemplateField {
   name: string;
-  slug?: string;
-  category?: string;
-  content?: string;
-  color?: string;
-  variables?: Array<{ name: string; type: string; label?: string }>;
-  title_template?: string;
-  description_template?: string;
-  fields_template?: Array<{ name: string; value: string }>;
-  footer_template?: string;
-  show_title_default?: boolean;
-  show_description_default?: boolean;
-  titleTemplate?: string;
-  descriptionTemplate?: string;
-  fieldsTemplate?: Array<{ name: string; value: string }>;
-  footerTemplate?: string;
-  showTitleDefault?: boolean;
-  showDescriptionDefault?: boolean;
-  createdAt?: string;
+  value: string;
+  inline?: boolean;
+}
+
+export interface TradeSyncTemplateInner {
+  description: string;
+  color: string;
+  fields: TradeSyncTemplateField[];
+  footer: string;
+  timestamp?: boolean;
+}
+
+export interface TradeSyncTemplateItem {
+  type: string;          // e.g. "signal_alert", "target_hit"
+  label: string;         // human readable label
+  content: string;       // message content, e.g. "@everyone"
+  template: TradeSyncTemplateInner;
+  sampleVars?: Record<string, string>;
+  // preview / isCustom and other fields are ignored for now
+}
+
+export interface TradeSyncTemplateGroup {
+  instrumentType: string;           // "Options", "Shares", "LETF", "LETF Option", "Crypto"
+  ticker: string;
+  templates: TradeSyncTemplateItem[];
 }
 
 export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResult> {
@@ -115,28 +122,49 @@ export async function fetchDiscordTemplatesFromTradeSync(): Promise<TradeSyncRes
       return { ok: false, error: msg };
     }
 
-    const rawList: TradeSyncTemplateRaw[] = Array.isArray(body)
+    const groups: TradeSyncTemplateGroup[] = Array.isArray(body)
       ? body
       : Array.isArray(body?.data)
         ? body.data
         : [];
 
-    const normalized = rawList.map((t) => ({
-      id: t.id,
-      name: t.name,
-      slug: t.slug ?? "",
-      category: t.category ?? "Options",
-      content: t.content ?? "",
-      variables: t.variables ?? [],
-      titleTemplate: t.titleTemplate ?? t.title_template ?? "",
-      descriptionTemplate: t.descriptionTemplate ?? t.description_template ?? "",
-      color: t.color ?? "#22c55e",
-      fieldsTemplate: t.fieldsTemplate ?? t.fields_template ?? [],
-      footerTemplate: t.footerTemplate ?? t.footer_template ?? "",
-      showTitleDefault: t.showTitleDefault ?? t.show_title_default ?? true,
-      showDescriptionDefault: t.showDescriptionDefault ?? t.show_description_default ?? true,
-      createdAt: t.createdAt ?? new Date().toISOString(),
-    }));
+    let nextId = 1;
+    const normalized = groups.flatMap((group) => {
+      const instrumentType = group.instrumentType || "Options";
+      return (group.templates || []).map((tpl) => {
+        const tmpl = tpl.template;
+        const sampleVars = tpl.sampleVars || {};
+
+        const variables = Object.keys(sampleVars).map((name) => ({
+          name,
+          type: "string",
+          label: name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        }));
+
+        const fieldsTemplate = (tmpl.fields || []).map((f) => ({
+          name: f.name,
+          value: f.value,
+        }));
+
+        return {
+          id: nextId++,
+          name: tpl.label,
+          slug: tpl.type,
+          category: instrumentType,
+          content: tpl.content || "",
+          variables,
+          // TradeSync templates only have description; we render it as descriptionTemplate
+          titleTemplate: "",
+          descriptionTemplate: tmpl.description || "",
+          color: tmpl.color || "#22c55e",
+          fieldsTemplate,
+          footerTemplate: tmpl.footer || "",
+          showTitleDefault: false,
+          showDescriptionDefault: true,
+          createdAt: new Date().toISOString(),
+        };
+      });
+    });
 
     return { ok: true, data: normalized };
   } catch (err: any) {

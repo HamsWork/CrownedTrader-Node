@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
+import { DEFAULT_TEMPLATES } from "@shared/template-definitions";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
 import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack, markTargetHit, markStopLossHit, fetchDiscordTemplatesFromTradeSync } from "./utils/tradesync";
 import { processSignalDelivery } from "./utils/signals";
@@ -175,7 +176,8 @@ export async function registerRoutes(
   app.get("/api/discord-templates/var-templates", requireAdmin, async (_req, res) => {
     const tsResult = await fetchDiscordTemplatesFromTradeSync();
     if (!tsResult.ok) {
-      return res.status(502).json({ message: tsResult.error || "Failed to fetch templates from TradeSync" });
+      console.warn("Falling back to built-in DEFAULT_TEMPLATES because TradeSync template fetch failed:", tsResult.error);
+      return res.json(DEFAULT_TEMPLATES);
     }
     res.json(tsResult.data);
   });

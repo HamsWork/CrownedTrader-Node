@@ -122,6 +122,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      log("Project update: dev server (re)started");
     },
   );
 })();
