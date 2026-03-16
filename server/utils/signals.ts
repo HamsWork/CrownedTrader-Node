@@ -44,8 +44,6 @@ export async function processSignalDelivery(
       tradeSyncError = tsResult.error;
       await storage.updateSignalTradeSyncError(signal.id, tradeSyncError || "Unknown error");
     } else {
-      // Persist the TradeSync payload as the canonical signal data (SignalData shape),
-      // enriched with the TradeSync signal id when available.
       let tradesyncId: string | number | undefined;
       const resultData: any = tsResult.data;
       if (resultData?.signal?.id != null) {
@@ -57,13 +55,13 @@ export async function processSignalDelivery(
       if (tradesyncId !== undefined && tradesyncId !== null) {
         enriched.tradesync_id = tradesyncId;
       }
-      // Position Management reads data.trade_tracking ("Automatic" | "Manual updates") for the badge
       if (typeof enriched.auto_track === "boolean") {
         enriched.trade_tracking = enriched.auto_track ? "Automatic" : "Manual updates";
       }
 
       await storage.updateSignalData(signal.id, enriched);
       await storage.updateSignalTradeSyncError(signal.id, "");
+      await storage.updateSignalTradeSyncResponse(signal.id, JSON.stringify(tsResult.data));
       signal.data = enriched;
     }
   } catch (err: any) {

@@ -126,6 +126,7 @@ export const signals = pgTable("signals", {
   closePrice: text("close_price"),
   closeNote: text("close_note"),
   tradeSyncError: text("trade_sync_error"),
+  tradeSyncResponse: text("trade_sync_response"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

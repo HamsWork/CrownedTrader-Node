@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { History, Search, CheckCircle, XCircle, ChevronDown, ChevronUp, Copy, FileText, ArrowUpRight, ArrowDownRight, X, AlertTriangle } from "lucide-react";
+import { History, Search, CheckCircle, XCircle, ChevronDown, ChevronUp, Copy, FileText, ArrowUpRight, ArrowDownRight, X, AlertTriangle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Signal } from "@shared/schema";
@@ -692,6 +692,7 @@ function DiscordPreviewModal({ signal, onClose }: { signal: Signal; onClose: () 
 
 function SignalCard({ signal }: { signal: Signal }) {
   const [expanded, setExpanded] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
   const f = getSignalFields(signal);
@@ -821,36 +822,31 @@ function SignalCard({ signal }: { signal: Signal }) {
           </div>
         </div>
 
-        {signal.tradeSyncError && signal.tradeSyncError.length > 0 && (
-          <div className="border-t border-red-500/30 px-4 py-3 bg-red-500/10" data-testid={`error-tradesync-${signal.id}`}>
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-red-400 mb-1">TradeSync Failed</p>
-                <pre className="text-[11px] font-mono text-red-300/80 whitespace-pre-wrap break-all overflow-x-auto max-h-40 overflow-y-auto">
-                  {(() => {
-                    try {
-                      const parsed = JSON.parse(signal.tradeSyncError!);
-                      return JSON.stringify(parsed, null, 2);
-                    } catch {
-                      return signal.tradeSyncError;
-                    }
-                  })()}
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="border-t border-border px-4 py-2 flex items-center justify-between bg-muted/10">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            data-testid={`button-toggle-payload-${signal.id}`}
-          >
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            Show Raw Payload
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              data-testid={`button-toggle-payload-${signal.id}`}
+            >
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              Payload
+            </button>
+            <button
+              onClick={() => setShowResponse(!showResponse)}
+              className={`flex items-center gap-1 text-xs transition-colors ${
+                signal.tradeSyncError && signal.tradeSyncError.length > 0
+                  ? "text-red-400 hover:text-red-300"
+                  : signal.tradeSyncResponse
+                    ? "text-green-400 hover:text-green-300"
+                    : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid={`button-toggle-response-${signal.id}`}
+            >
+              {showResponse ? <ChevronUp className="h-3 w-3" /> : <Send className="h-3 w-3" />}
+              Response
+            </button>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopy}
@@ -878,6 +874,45 @@ function SignalCard({ signal }: { signal: Signal }) {
           <div className="border-t border-border px-4 py-3 bg-muted/20">
             <pre className="text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap" data-testid={`text-payload-${signal.id}`}>
               {JSON.stringify(signal.data, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {showResponse && (
+          <div className={`border-t px-4 py-3 ${
+            signal.tradeSyncError && signal.tradeSyncError.length > 0
+              ? "border-red-500/30 bg-red-500/5"
+              : "border-green-500/30 bg-green-500/5"
+          }`} data-testid={`response-tradesync-${signal.id}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Send className={`h-3.5 w-3.5 ${
+                signal.tradeSyncError && signal.tradeSyncError.length > 0
+                  ? "text-red-400" : "text-green-400"
+              }`} />
+              <span className={`text-xs font-semibold ${
+                signal.tradeSyncError && signal.tradeSyncError.length > 0
+                  ? "text-red-400" : "text-green-400"
+              }`}>
+                TradeSync {signal.tradeSyncError && signal.tradeSyncError.length > 0 ? "Error" : "Success"}
+              </span>
+              {(signal.data as any)?.tradesync_id && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-green-500/10 text-green-400 border-green-500/30">
+                  ID: {(signal.data as any).tradesync_id}
+                </Badge>
+              )}
+            </div>
+            <pre className="text-[11px] font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-60 overflow-y-auto text-muted-foreground">
+              {(() => {
+                const raw = signal.tradeSyncError && signal.tradeSyncError.length > 0
+                  ? signal.tradeSyncError
+                  : signal.tradeSyncResponse;
+                if (!raw) return "No response data available";
+                try {
+                  return JSON.stringify(JSON.parse(raw), null, 2);
+                } catch {
+                  return raw;
+                }
+              })()}
             </pre>
           </div>
         )}

@@ -40,6 +40,7 @@ export interface IStorage {
   updateSignalStatus(id: number, status: string, closePrice?: string, closeNote?: string): Promise<Signal | undefined>;
   updateSignalData(id: number, data: Record<string, string>): Promise<Signal | undefined>;
   updateSignalTradeSyncError(id: number, error: string): Promise<void>;
+  updateSignalTradeSyncResponse(id: number, response: string): Promise<void>;
 
   getTradePlans(): Promise<TradePlan[]>;
   getTradePlansByUser(userId: number): Promise<TradePlan[]>;
@@ -151,6 +152,10 @@ export class DatabaseStorage implements IStorage {
 
   async updateSignalTradeSyncError(id: number, error: string): Promise<void> {
     await db.update(signals).set({ tradeSyncError: error }).where(eq(signals.id, id));
+  }
+
+  async updateSignalTradeSyncResponse(id: number, response: string): Promise<void> {
+    await db.update(signals).set({ tradeSyncResponse: response }).where(eq(signals.id, id));
   }
 
   async updateSignalStatus(id: number, status: string, closePrice?: string, closeNote?: string): Promise<Signal | undefined> {
