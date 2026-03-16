@@ -235,8 +235,6 @@ interface TradeForm {
   customStopLossPct: string;
   customLevels: TakeProfitLevel[];
   showChartAnalysis: boolean;
-  showRiskManagement: boolean;
-  riskManagement: string;
   timeHorizon: string;
 }
 
@@ -477,14 +475,6 @@ function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: {
                   </div>
                 )}
 
-                {form.showRiskManagement && form.riskManagement.trim() && (
-                  <div>
-                    <p className="font-bold text-white flex items-center gap-1.5">
-                      <span>🛡️</span> Risk Management
-                    </p>
-                    <p className="text-xs mt-1 whitespace-pre-wrap leading-relaxed">{form.riskManagement}</p>
-                  </div>
-                )}
 
                 <p className="text-[10px] text-[#72767d] italic pt-1">
                   Disclaimer: Not financial advice. Trade at your own risk.
@@ -528,8 +518,6 @@ export default function SendSignal() {
     customStopLossPct: "10.00",
     customLevels: [...DEFAULT_LEVELS_SYMBOL],
     showChartAnalysis: false,
-    showRiskManagement: false,
-    riskManagement: "",
     timeHorizon: "",
   });
 
@@ -911,9 +899,6 @@ export default function SendSignal() {
       signalData.direction = form.direction;
     }
 
-    if (form.showRiskManagement && form.riskManagement.trim()) {
-      signalData.risk_management = form.riskManagement.trim();
-    }
 
     try {
       let responseData: any;
@@ -968,9 +953,7 @@ export default function SendSignal() {
         optionPrice: "",
         stockPrice: "",
         entryPrice: "",
-        riskManagement: "",
         showChartAnalysis: false,
-        showRiskManagement: false,
       }));
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to send signal", variant: "destructive" });
@@ -1524,17 +1507,9 @@ export default function SendSignal() {
                         if (!next) clearChart();
                       }}>Chart Analysis</Label>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={form.showRiskManagement}
-                        onCheckedChange={v => update("showRiskManagement", v)}
-                        data-testid="switch-risk-management"
-                      />
-                      <Label className="font-medium text-sm cursor-pointer" onClick={() => update("showRiskManagement", !form.showRiskManagement)}>Risk Management</Label>
-                    </div>
                   </div>
 
-                  {(form.showChartAnalysis || form.showRiskManagement) && (
+                  {form.showChartAnalysis && (
                     <>
                       <Separator />
 
@@ -1593,18 +1568,6 @@ export default function SendSignal() {
                         </div>
                       )}
 
-                      {form.showRiskManagement && (
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Risk Management</Label>
-                          <Textarea
-                            value={form.riskManagement}
-                            onChange={e => update("riskManagement", e.target.value)}
-                            placeholder="Enter Risk Management (e.g., position size, 0DTE rules, due diligence)"
-                            rows={4}
-                            data-testid="textarea-risk-management"
-                          />
-                        </div>
-                      )}
                     </>
                   )}
                 </div>
