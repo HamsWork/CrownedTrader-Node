@@ -111,8 +111,8 @@ function PlanPreview({
         }
         desc += ".";
         return (
-          <p key={i} className="text-muted-foreground leading-relaxed" data-testid={`text-tp-desc-${i}`}>
-            Take Profit ({i + 1}): {desc}
+          <p key={i} className="text-[#dbdee1] leading-relaxed" data-testid={`text-tp-desc-${i}`}>
+            <strong>Take Profit ({i + 1}):</strong> {desc}
           </p>
         );
       })}
@@ -556,8 +556,8 @@ function PlanFormModal({
                         }
                         desc += ".";
                         return (
-                          <p key={i} className="text-[#72767d] leading-relaxed mt-0.5">
-                            Take Profit ({i + 1}): {desc}
+                          <p key={i} className="text-[#dbdee1] leading-relaxed mt-0.5">
+                            <strong>Take Profit ({i + 1}):</strong> {desc}
                           </p>
                         );
                       })}
