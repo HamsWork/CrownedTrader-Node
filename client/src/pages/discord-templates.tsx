@@ -62,7 +62,7 @@ function TemplateCard({
   onPreview: (t: SignalType) => void;
   onSendManual: (t: SignalType) => void;
 }) {
-  const fieldsArr = template.fieldsTemplate as Array<{ name: string; value: string }>;
+  const fieldsArr = (template.fieldsTemplate ?? []) as Array<{ name: string; value: string }>;
   const slugInfo = SLUG_ICONS[template.slug] || { icon: MessageSquare, className: "text-muted-foreground" };
   const Icon = slugInfo.icon;
 
