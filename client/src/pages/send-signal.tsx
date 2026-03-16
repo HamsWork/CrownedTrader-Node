@@ -250,9 +250,17 @@ function getTemplateCategory(tickerDetails: TickerDetails | null, isOption: bool
   return isOption ? "Options" : "Shares";
 }
 
+function getTradeEntryPrice(form: TradeForm): number {
+  return parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+}
+
+function getUnderlyingEntry(form: TradeForm): number {
+  return parseFloat(form.stockPrice) || 0;
+}
+
 function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null): string {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
   const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const entry = isUnderlyingBased ? getUnderlyingEntry(form) : getTradeEntryPrice(form);
   const levels = form.customLevels;
   const slPct = parseFloat(form.customStopLossPct) || 10;
   const stopLossPrice = isUnderlyingBased
@@ -260,18 +268,19 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
     : entry * (1 - slPct / 100);
 
   const targetParts = isUnderlyingBased
-    ? levels.map(l => {
-        const pct = entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0";
-        return `$${l.levelPct.toFixed(2)} (${pct}%)`;
-      })
+    ? levels.map(l => `$${l.levelPct.toFixed(2)}`)
     : levels.map(l => {
         const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
         return `$${price} (${l.levelPct.toFixed(1)}%)`;
       });
 
+  const stopLossPart = isUnderlyingBased
+    ? `$${stopLossPrice.toFixed(2)}, $${entry.toFixed(2)}`
+    : `$${stopLossPrice.toFixed(2)}`;
+
   const lines = [
     `🎯 Targets: ${targetParts.join(", ")}`,
-    `🛑 Stop loss: $${stopLossPrice.toFixed(2)}`,
+    `🔴 Stop Loss: ${stopLossPart}`,
   ];
   if (form.timeHorizon) {
     lines.push(`🌐 Time Stop: ${form.timeHorizon}`);
@@ -280,17 +289,20 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
 }
 
 function buildTakeProfitPlanText(form: TradeForm): string {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
   const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const entry = isUnderlyingBased ? getUnderlyingEntry(form) : getTradeEntryPrice(form);
   const levels = form.customLevels;
 
   return levels.map((l, i) => {
     const pricePart = isUnderlyingBased
-      ? `$${l.levelPct.toFixed(2)} (+${entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0"}%)`
-      : `+${l.levelPct.toFixed(1)}%`;
-    let line = `Take Profit (${i + 1}): At ${pricePart} take off ${l.takeOffPct}% of ${i === 0 ? "position" : "remaining position"}`;
+      ? `$${l.levelPct.toFixed(2)}`
+      : `$${(entry * (1 + l.levelPct / 100)).toFixed(2)} (+${l.levelPct.toFixed(2)}%)`;
+    let line = `Take Profit (${i + 1}): At ${pricePart} take off ${l.takeOffPct.toFixed(2)}% of ${i === 0 ? "position" : "remaining position"}`;
     if (l.raiseStopLossTo !== "Off") {
-      line += ` and raise stop loss to ${l.raiseStopLossTo === "Break even" ? "break even" : (isUnderlyingBased ? `$${l.customRaiseSLValue}` : `${l.customRaiseSLValue}%`)}`;
+      const slLabel = l.raiseStopLossTo === "Break even"
+        ? `$${entry.toFixed(2)} (break even)`
+        : (isUnderlyingBased ? `$${l.customRaiseSLValue}` : `${l.customRaiseSLValue}%`);
+      line += ` and raise stop loss to ${slLabel}`;
     }
     if (l.trailingStop === "On") {
       line += ` with ${l.trailingStopPct}% trailing stop`;
@@ -313,6 +325,9 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
   const stopLossPrice = isUnderlyingBased
     ? parseFloat(form.customStopLossPct || "0")
     : entry * (1 - slPct / 100);
+  const stopLossDisplay = isUnderlyingBased
+    ? `$${stopLossPrice.toFixed(2)}, $${stockPrice.toFixed(2)}`
+    : `$${stopLossPrice.toFixed(2)}`;
 
   const vars: Record<string, string> = {
     app_name: "Crowned Trader",
@@ -322,7 +337,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
     stock_price: `$${stockPrice.toFixed(2)}`,
     direction,
     entry_price: `$${entry.toFixed(2)}`,
-    stop_loss: `$${stopLossPrice.toFixed(2)}`,
+    stop_loss: stopLossDisplay,
     time_stop: form.timeHorizon || "",
     trade_type: form.tradeType || "Scalp",
     targets_summary: hasPlan ? buildTargetsSummary(form, tickerDetails) : "—",
@@ -348,14 +363,13 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
 }
 
 function buildTargetsSummary(form: TradeForm, tickerDetails: TickerDetails | null): string {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
   const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const entry = isUnderlyingBased ? getUnderlyingEntry(form) : getTradeEntryPrice(form);
   const levels = form.customLevels;
 
   return levels.map(l => {
     if (isUnderlyingBased) {
-      const pct = entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0";
-      return `$${l.levelPct.toFixed(2)} (${pct}%)`;
+      return `$${l.levelPct.toFixed(2)}`;
     } else {
       const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
       return `$${price} (${l.levelPct.toFixed(1)}%)`;
