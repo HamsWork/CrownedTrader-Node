@@ -24,6 +24,11 @@ client/src/
     discord-templates/           - Discord template utilities
       index.ts                   - Module barrel export
       template-utils.ts          - Client-side preview rendering (uses shared/template-render)
+    discord-send-modal/          - Reusable Discord send modal library
+      index.ts                   - Module barrel export
+      discord-send-modal.tsx     - Full send modal (channel selector, variables, payload view, preview, send/cancel)
+      discord-embed-preview.tsx  - Discord embed preview component (bot avatar, embed card with fields)
+      discord-payload-view.tsx   - JSON payload renderer for Discord API format
   pages/
     login.tsx              - Login page (no public registration)
     dashboard.tsx          - Dashboard with stats overview

@@ -10,15 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Eye,
@@ -32,18 +23,9 @@ import {
 import { SiDiscord } from "react-icons/si";
 import { CATEGORIES, SAMPLE_TICKERS } from "@shared/template-definitions";
 import { buildPreviewEmbed } from "@/components/discord-templates";
+import { DiscordSendModal, DiscordEmbedPreview } from "@/components/discord-send-modal";
 import type { SignalType } from "@shared/schema";
 import type { Category } from "@shared/template-definitions";
-
-function renderDiscordMarkdown(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-}
 
 const SLUG_ICONS: Record<string, { icon: typeof Rocket; className: string }> = {
   signal_alert: { icon: Rocket, className: "text-green-400" },
@@ -178,7 +160,7 @@ function PreviewDialog({
     else sampleData[v.name] = v.name;
   });
 
-  const preview = buildPreviewEmbed(
+  const embed = buildPreviewEmbed(
     { ...template, fieldsTemplate: template.fieldsTemplate as Array<{ name: string; value: string }> },
     sampleData
   );
@@ -189,192 +171,10 @@ function PreviewDialog({
         <DialogHeader>
           <DialogTitle>Discord Preview — {template.name}</DialogTitle>
         </DialogHeader>
-        <div className="rounded-md bg-[#313338] p-4" data-testid="preview-embed-container">
-          {template.content && (
-            <p className="text-sm text-white mb-3" data-testid="preview-content">{template.content}</p>
-          )}
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#CCB167] text-black font-bold text-xs flex-shrink-0">
-              CT
-            </div>
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-white">Crowned Trader</span>
-                <span className="text-[10px] bg-[#5865F2] text-white px-1 py-0 rounded-sm font-medium">BOT</span>
-              </div>
-              <div
-                className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31] mt-1"
-                style={{ borderLeftColor: preview.color }}
-                data-testid="preview-embed"
-              >
-                {preview.title && (
-                  <p className="font-bold text-sm text-white" data-testid="preview-title">{preview.title}</p>
-                )}
-                {preview.description && (
-                  <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">{renderDiscordMarkdown(preview.description)}</p>
-                )}
-                {preview.fields.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 pt-1" data-testid="preview-fields">
-                    {preview.fields.map((f, i) => (
-                      <div key={i} data-testid={`preview-field-${i}`}>
-                        <p className="text-xs font-semibold text-gray-400">{f.name}</p>
-                        <p className="text-sm text-gray-200">{f.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {preview.footer && (
-                  <p className="text-xs text-gray-500 pt-2 border-t border-gray-600" data-testid="preview-footer">
-                    {preview.footer}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SendManualDialog({
-  template,
-  open,
-  onOpenChange,
-}: {
-  template: SignalType | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { data: currentUser } = useAuth();
-  const createSignal = useCreateSignal();
-  const { toast } = useToast();
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [channelName, setChannelName] = useState<string>("");
-  const userChannels = currentUser?.discordChannels || [];
-
-  if (!template) return null;
-
-  const vars = template.variables as Array<{ name: string; type: string; label?: string }>;
-
-  const preview = buildPreviewEmbed(
-    { ...template, fieldsTemplate: template.fieldsTemplate as Array<{ name: string; value: string }> },
-    formData
-  );
-
-  async function handleSend() {
-    if (!template) return;
-    const missingFields = vars.filter(v => !formData[v.name]?.trim());
-    if (missingFields.length > 0) {
-      toast({
-        title: "Missing fields",
-        description: `Please fill in: ${missingFields.map(v => v.label || v.name).join(", ")}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await createSignal.mutateAsync({
-        signalTypeId: template.id,
-        data: formData,
-        discordChannelName: channelName || null,
-      });
-      toast({ title: "Signal sent", description: "Your trading signal has been sent successfully." });
-      setFormData({});
-      setChannelName("");
-      onOpenChange(false);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to send signal";
-      toast({ title: "Error", description: message, variant: "destructive" });
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Send Manual — {template.name} ({template.category})</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            {vars.map(v => (
-              <div key={v.name} className="space-y-1">
-                <Label htmlFor={`manual-${v.name}`} className="text-xs">{v.label || v.name}</Label>
-                <Input
-                  id={`manual-${v.name}`}
-                  placeholder={v.label || v.name}
-                  value={formData[v.name] || ""}
-                  onChange={e => setFormData(prev => ({ ...prev, [v.name]: e.target.value }))}
-                  data-testid={`input-manual-${v.name}`}
-                />
-              </div>
-            ))}
-            <div className="space-y-1">
-              <Label className="text-xs">Discord Channel</Label>
-              <Select value={channelName} onValueChange={setChannelName}>
-                <SelectTrigger data-testid="select-manual-channel">
-                  <SelectValue placeholder="Select channel (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {userChannels.map((ch, i) => (
-                    <SelectItem key={i} value={ch.name} data-testid={`option-channel-${i}`}>
-                      # {ch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleSend}
-              disabled={createSignal.isPending}
-              data-testid="button-confirm-send"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {createSignal.isPending ? "Sending..." : "Send Signal"}
-            </Button>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">Live Preview</p>
-            <div className="rounded-md bg-[#313338] p-3">
-              {template.content && (
-                <p className="text-xs text-white mb-2">{template.content}</p>
-              )}
-              <div className="flex items-start gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#CCB167] text-black font-bold text-[10px] flex-shrink-0">
-                  CT
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-xs text-white">Crowned Trader</span>
-                    <span className="text-[8px] bg-[#5865F2] text-white px-1 rounded-sm">BOT</span>
-                  </div>
-                  <div
-                    className="rounded border-l-[3px] p-2 space-y-1.5 bg-[#2b2d31] mt-0.5"
-                    style={{ borderLeftColor: preview.color }}
-                  >
-                    {preview.title && <p className="font-bold text-xs text-white">{preview.title}</p>}
-                    {preview.description && <p className="text-[11px] text-gray-300 whitespace-pre-wrap">{renderDiscordMarkdown(preview.description)}</p>}
-                    {preview.fields.length > 0 && (
-                      <div className="grid grid-cols-2 gap-1 pt-1">
-                        {preview.fields.map((f, i) => (
-                          <div key={i}>
-                            <p className="text-[10px] font-semibold text-gray-400">{f.name}</p>
-                            <p className="text-xs text-gray-200">{f.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {preview.footer && (
-                      <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-600">{preview.footer}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DiscordEmbedPreview
+          embed={embed}
+          content={template.content || undefined}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -382,9 +182,14 @@ function SendManualDialog({
 
 export default function DiscordTemplatesPage() {
   const { data: signalTypes, isLoading } = useSignalTypes();
+  const { data: currentUser } = useAuth();
+  const createSignal = useCreateSignal();
+  const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState<Category>("Options");
   const [previewTemplate, setPreviewTemplate] = useState<SignalType | null>(null);
   const [sendTemplate, setSendTemplate] = useState<SignalType | null>(null);
+
+  const userChannels = currentUser?.discordChannels || [];
 
   const templatesByCategory = signalTypes?.reduce<Record<string, SignalType[]>>((acc, t) => {
     const cat = t.category || "Options";
@@ -400,6 +205,33 @@ export default function DiscordTemplatesPage() {
 
   const activeTemplates = templatesByCategory[activeCategory] ?? [];
   const sampleTicker = SAMPLE_TICKERS[activeCategory];
+
+  async function handleSendSignal(data: Record<string, string>, channelName: string) {
+    if (!sendTemplate) return;
+    const vars = sendTemplate.variables as Array<{ name: string; type: string; label?: string }>;
+    const missingFields = vars.filter(v => !data[v.name]?.trim());
+    if (missingFields.length > 0) {
+      toast({
+        title: "Missing fields",
+        description: `Please fill in: ${missingFields.map(v => v.label || v.name).join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createSignal.mutateAsync({
+        signalTypeId: sendTemplate.id,
+        data,
+        discordChannelName: channelName || null,
+      });
+      toast({ title: "Signal sent", description: "Your trading signal has been sent successfully." });
+      setSendTemplate(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send signal";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
+  }
 
   if (isLoading) {
     return (
@@ -480,11 +312,22 @@ export default function DiscordTemplatesPage() {
         onOpenChange={(open) => { if (!open) setPreviewTemplate(null); }}
       />
 
-      <SendManualDialog
-        template={sendTemplate}
-        open={!!sendTemplate}
-        onOpenChange={(open) => { if (!open) setSendTemplate(null); }}
-      />
+      {sendTemplate && (
+        <DiscordSendModal
+          open={!!sendTemplate}
+          onOpenChange={(open) => { if (!open) setSendTemplate(null); }}
+          title={sendTemplate.name}
+          content={sendTemplate.content || undefined}
+          variables={sendTemplate.variables as Array<{ name: string; type: string; label?: string }>}
+          channels={userChannels}
+          buildEmbed={(data) => buildPreviewEmbed(
+            { ...sendTemplate, fieldsTemplate: sendTemplate.fieldsTemplate as Array<{ name: string; value: string }> },
+            data
+          )}
+          onSend={handleSendSignal}
+          isSending={createSignal.isPending}
+        />
+      )}
     </div>
   );
 }
