@@ -97,7 +97,7 @@ function TemplateCard({
           <Button
             size="sm"
             onClick={() => onSendManual(template)}
-            className="text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="text-xs gap-1.5"
             data-testid={`button-send-manual-${template.id}`}
           >
             <Send className="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ function PreviewDialog({
             <p className="text-sm text-white mb-3" data-testid="preview-content">{template.content}</p>
           )}
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-xs flex-shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#CCB167] text-black font-bold text-xs flex-shrink-0">
               CT
             </div>
             <div className="flex-1 space-y-1">
@@ -307,7 +307,7 @@ function SendManualDialog({
               </Select>
             </div>
             <Button
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="w-full"
               onClick={handleSend}
               disabled={createSignal.isPending}
               data-testid="button-confirm-send"
@@ -323,7 +323,7 @@ function SendManualDialog({
                 <p className="text-xs text-white mb-2">{template.content}</p>
               )}
               <div className="flex items-start gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-[10px] flex-shrink-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#CCB167] text-black font-bold text-[10px] flex-shrink-0">
                   CT
                 </div>
                 <div className="flex-1 space-y-1">

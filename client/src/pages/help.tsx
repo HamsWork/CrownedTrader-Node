@@ -80,7 +80,7 @@ const HELP_SECTIONS: HelpSection[] = [
     id: "tos",
     title: "Terms of Service",
     icon: FileText,
-    color: "bg-indigo-500",
+    color: "bg-amber-600",
     screenshot: "/help/tos.png",
     summary: "One-time agreement screen shown on first login, covering disclaimers and platform rules.",
     details: [
