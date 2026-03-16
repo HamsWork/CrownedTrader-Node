@@ -29,55 +29,49 @@ function renderDiscordMarkdown(text: string): ReactNode[] {
 export function DiscordEmbedPreview({
   embed,
   content,
-  botName = "Crowned Trader",
-  botInitials = "CT",
-  botAvatarColor = "#CCB167",
 }: DiscordEmbedPreviewProps) {
   return (
     <div className="h-full rounded-md bg-[#313338] p-4" data-testid="discord-embed-preview">
       {content && (
         <p className="text-sm text-white mb-3" data-testid="preview-content">{content}</p>
       )}
-      <div>
-        <div
-          className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31]"
-          style={{ borderLeftColor: embed.color }}
-          data-testid="preview-embed"
-        >
-            {embed.title && (
-              <p className="font-bold text-sm text-white" data-testid="preview-title">{embed.title}</p>
-            )}
-            {embed.description && (
-              <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">
-                {renderDiscordMarkdown(embed.description)}
-              </p>
-            )}
-            {embed.fields.length > 0 && (
-              <div className="grid grid-cols-3 gap-x-4 gap-y-2 pt-1" data-testid="preview-fields">
-                {embed.fields.map((f, i) => {
-                  const isInline = f.inline !== false;
-                  return (
-                    <div
-                      key={i}
-                      className={isInline ? "" : "col-span-3"}
-                      data-testid={`preview-field-${i}`}
-                    >
-                      <p className="text-xs font-semibold text-gray-400">{f.name}</p>
-                      {f.value && (
-                        <p className="text-sm text-gray-200">{renderDiscordMarkdown(f.value)}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {embed.footer && (
-              <p className="text-xs text-gray-500 pt-2 border-t border-gray-600" data-testid="preview-footer">
-                {embed.footer}
-              </p>
-            )}
+      <div
+        className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31]"
+        style={{ borderLeftColor: embed.color }}
+        data-testid="preview-embed"
+      >
+        {embed.title && (
+          <p className="font-bold text-sm text-white" data-testid="preview-title">{embed.title}</p>
+        )}
+        {embed.description && (
+          <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">
+            {renderDiscordMarkdown(embed.description)}
+          </p>
+        )}
+        {embed.fields.length > 0 && (
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2 pt-1" data-testid="preview-fields">
+            {embed.fields.map((f, i) => {
+              const isInline = f.inline !== false;
+              return (
+                <div
+                  key={i}
+                  className={isInline ? "" : "col-span-3"}
+                  data-testid={`preview-field-${i}`}
+                >
+                  <p className="text-xs font-semibold text-gray-400">{f.name}</p>
+                  {f.value && (
+                    <p className="text-sm text-gray-200">{renderDiscordMarkdown(f.value)}</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
+        {embed.footer && (
+          <p className="text-xs text-gray-500 pt-2 border-t border-gray-600" data-testid="preview-footer">
+            {embed.footer}
+          </p>
+        )}
       </div>
     </div>
   );
