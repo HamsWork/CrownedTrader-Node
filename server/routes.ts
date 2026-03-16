@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSignalTypeSchema, insertSignalSchema, insertTradePlanSchema, registerSchema, loginSchema, discordChannelSchema } from "@shared/schema";
 import { buildEmbed, sendToDiscord, sendFileToDiscord, type DiscordEmbed } from "./utils/discord";
-import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack, markTargetHit, markStopLossHit } from "./utils/tradesync";
+import { sendToTradeSync, buildTradeSyncPayload, stopAutoTrack, markTargetHit, markStopLossHit, fetchDiscordTemplatesFromTradeSync } from "./utils/tradesync";
 import { processSignalDelivery } from "./utils/signals";
 import { isValidDiscordWebhookUrl } from "./utils/validation";
 import {
@@ -169,6 +169,15 @@ export async function registerRoutes(
   app.get("/api/signal-types", requireAuth, async (_req, res) => {
     const types = await storage.getSignalTypes();
     res.json(types);
+  });
+
+  // Discord template management (admin) - fetched from TradeSync API
+  app.get("/api/discord-templates/var-templates", requireAdmin, async (_req, res) => {
+    const tsResult = await fetchDiscordTemplatesFromTradeSync();
+    if (!tsResult.ok) {
+      return res.status(502).json({ message: tsResult.error || "Failed to fetch templates from TradeSync" });
+    }
+    res.json(tsResult.data);
   });
 
   app.get("/api/signal-types/:id", requireAuth, async (req, res) => {
@@ -676,9 +685,9 @@ export async function registerRoutes(
         const st = userStats[uid];
         st.trades++;
 
-        const data = (signal.data ?? {}) as Record<string, string>;
-        const entryPrice = parseFloat(data.entry_price || data.option_price || "0");
-        const direction = data.direction || "Long";
+        const data: any = signal.data ?? {};
+        const entryPrice = parseFloat(String(data.entry_price ?? data.option_price ?? 0));
+        const direction = String(data.direction ?? "Long");
 
         if (signal.status === "closed" && signal.closePrice) {
           const exitPrice = parseFloat(signal.closePrice);
@@ -733,7 +742,7 @@ export async function registerRoutes(
 
   app.get("/api/audit", requireAuth, async (req, res) => {
     try {
-      const user = req.user as any;
+      const user = (req as any).user as any;
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Admin only" });
       }
@@ -845,7 +854,7 @@ export async function registerRoutes(
         "package.json": "Project dependencies — stable",
       };
 
-      function categorize(filePath: string): string {
+      const categorize = (filePath: string): string => {
         if (filePath.startsWith("server/utils/")) return "Server Utilities";
         if (filePath.startsWith("server/")) return "Server Core";
         if (filePath.startsWith("shared/")) return "Shared / Schema";
@@ -853,15 +862,15 @@ export async function registerRoutes(
         if (filePath.startsWith("client/src/components/") && !filePath.includes("/ui/")) return "Client Components";
         if (filePath.startsWith("client/src/hooks/") || filePath.startsWith("client/src/lib/")) return "Client Hooks & Libs";
         return "Config";
-      }
+      };
 
-      function countLines(fullPath: string): number {
+      const countLines = (fullPath: string): number => {
         try { return fs.readFileSync(fullPath, "utf-8").split("\n").length; } catch { return 0; }
-      }
+      };
 
-      function getModTime(fullPath: string): string {
+      const getModTime = (fullPath: string): string => {
         try { return fs.statSync(fullPath).mtime.toISOString(); } catch { return new Date().toISOString(); }
-      }
+      };
 
       const categories: Record<string, { files: any[] }> = {
         "Server Core": { files: [] },

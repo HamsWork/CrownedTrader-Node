@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSignalTypes, useCreateSignal } from "@/hooks/use-signals";
+import { useDiscordVarTemplates, useCreateSignal } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -381,7 +381,7 @@ function SendManualDialog({
 }
 
 export default function DiscordTemplatesPage() {
-  const { data: signalTypes, isLoading } = useSignalTypes();
+  const { data: signalTypes, isLoading } = useDiscordVarTemplates();
   const [activeCategory, setActiveCategory] = useState<Category>("Options");
   const [previewTemplate, setPreviewTemplate] = useState<SignalType | null>(null);
   const [sendTemplate, setSendTemplate] = useState<SignalType | null>(null);

@@ -44,6 +44,29 @@ export interface TradeSyncResult {
   error?: string;
 }
 
+export interface TradeSyncTemplateRaw {
+  id: number;
+  name: string;
+  slug?: string;
+  category?: string;
+  content?: string;
+  color?: string;
+  variables?: Array<{ name: string; type: string; label?: string }>;
+  title_template?: string;
+  description_template?: string;
+  fields_template?: Array<{ name: string; value: string }>;
+  footer_template?: string;
+  show_title_default?: boolean;
+  show_description_default?: boolean;
+  titleTemplate?: string;
+  descriptionTemplate?: string;
+  fieldsTemplate?: Array<{ name: string; value: string }>;
+  footerTemplate?: string;
+  showTitleDefault?: boolean;
+  showDescriptionDefault?: boolean;
+  createdAt?: string;
+}
+
 export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResult> {
   if (!TRADESYNC_API_KEY) {
     return { ok: false, error: "TradeSync API key not configured" };
@@ -67,6 +90,55 @@ export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResu
     }
 
     return { ok: true, data: body };
+  } catch (err: any) {
+    return { ok: false, error: err.message || "Failed to reach TradeSync API" };
+  }
+}
+
+export async function fetchDiscordTemplatesFromTradeSync(): Promise<TradeSyncResult> {
+  if (!TRADESYNC_API_KEY) {
+    return { ok: false, error: "TradeSync API key not configured" };
+  }
+
+  try {
+    const res = await fetch(`${TRADESYNC_BASE_URL}/api/discord-templates/var-templates`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+      },
+    });
+
+    const body = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      const msg = body?.message || `TradeSync API error (${res.status})`;
+      return { ok: false, error: msg };
+    }
+
+    const rawList: TradeSyncTemplateRaw[] = Array.isArray(body)
+      ? body
+      : Array.isArray(body?.data)
+        ? body.data
+        : [];
+
+    const normalized = rawList.map((t) => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug ?? "",
+      category: t.category ?? "Options",
+      content: t.content ?? "",
+      variables: t.variables ?? [],
+      titleTemplate: t.titleTemplate ?? t.title_template ?? "",
+      descriptionTemplate: t.descriptionTemplate ?? t.description_template ?? "",
+      color: t.color ?? "#22c55e",
+      fieldsTemplate: t.fieldsTemplate ?? t.fields_template ?? [],
+      footerTemplate: t.footerTemplate ?? t.footer_template ?? "",
+      showTitleDefault: t.showTitleDefault ?? t.show_title_default ?? true,
+      showDescriptionDefault: t.showDescriptionDefault ?? t.show_description_default ?? true,
+      createdAt: t.createdAt ?? new Date().toISOString(),
+    }));
+
+    return { ok: true, data: normalized };
   } catch (err: any) {
     return { ok: false, error: err.message || "Failed to reach TradeSync API" };
   }

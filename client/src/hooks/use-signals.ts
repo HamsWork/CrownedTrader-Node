@@ -8,6 +8,13 @@ export function useSignalTypes() {
   });
 }
 
+// Admin endpoint for discord variable templates (fetched from TradeSync)
+export function useDiscordVarTemplates() {
+  return useQuery<SignalType[]>({
+    queryKey: ["/api/discord-templates/var-templates"],
+  });
+}
+
 export function useSignals() {
   return useQuery<Signal[]>({
     queryKey: ["/api/signals"],
