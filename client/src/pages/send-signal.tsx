@@ -276,7 +276,7 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
 
   const stopLossPart = isUnderlyingBased
     ? `$${stopLossPrice.toFixed(2)}, $${entry.toFixed(2)}`
-    : `$${stopLossPrice.toFixed(2)}`;
+    : `$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`;
 
   const lines = [
     `🎯 Targets: ${targetParts.join(", ")}`,
@@ -327,7 +327,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
     : entry * (1 - slPct / 100);
   const stopLossDisplay = isUnderlyingBased
     ? `$${stopLossPrice.toFixed(2)}, $${stockPrice.toFixed(2)}`
-    : `$${stopLossPrice.toFixed(2)}`;
+    : `$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`;
 
   const vars: Record<string, string> = {
     app_name: "Crowned Trader",
