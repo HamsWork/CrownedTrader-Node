@@ -67,7 +67,7 @@ export function DiscordSendModal({
   useEffect(() => {
     if (open) {
       const payload = buildPayloadJson(initialEmbed, content);
-      const text = JSON.stringify(payload, null, 2);
+      const text = JSON.stringify(payload, null, 2).replace(/\u200b/g, "\\u200b");
       setJsonText(text);
       setLiveEmbed(initialEmbed);
       setLiveContent(content);
