@@ -133,27 +133,31 @@ export function DiscordSendModal({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="flex flex-col">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">
                 Rendered Payload
               </Label>
-              <EditablePayloadView
-                value={jsonText}
-                onChange={handleJsonChange}
-                hasError={jsonError}
-              />
+              <div className="flex-1 min-h-0">
+                <EditablePayloadView
+                  value={jsonText}
+                  onChange={handleJsonChange}
+                  hasError={jsonError}
+                />
+              </div>
             </div>
-            <div>
+            <div className="flex flex-col">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">
                 Preview
               </Label>
-              <DiscordEmbedPreview
-                embed={liveEmbed}
-                content={liveContent}
-                botName={botName}
-                botInitials={botInitials}
-                botAvatarColor={botAvatarColor}
-              />
+              <div className="flex-1 min-h-0">
+                <DiscordEmbedPreview
+                  embed={liveEmbed}
+                  content={liveContent}
+                  botName={botName}
+                  botInitials={botInitials}
+                  botAvatarColor={botAvatarColor}
+                />
+              </div>
             </div>
           </div>
         </div>

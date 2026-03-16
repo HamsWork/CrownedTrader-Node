@@ -34,7 +34,7 @@ export function DiscordEmbedPreview({
   botAvatarColor = "#CCB167",
 }: DiscordEmbedPreviewProps) {
   return (
-    <div className="rounded-md bg-[#313338] p-4" data-testid="discord-embed-preview">
+    <div className="h-full rounded-md bg-[#313338] p-4" data-testid="discord-embed-preview">
       {content && (
         <p className="text-sm text-white mb-3" data-testid="preview-content">{content}</p>
       )}

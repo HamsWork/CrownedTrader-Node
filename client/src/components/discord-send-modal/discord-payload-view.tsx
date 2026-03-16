@@ -89,13 +89,13 @@ export interface EditablePayloadViewProps {
 export function EditablePayloadView({ value, onChange, hasError }: EditablePayloadViewProps) {
   return (
     <div
-      className={`rounded-md bg-[#1e1f22] border p-0 font-mono text-xs text-gray-300 overflow-hidden ${
+      className={`h-full flex flex-col rounded-md bg-[#1e1f22] border p-0 font-mono text-xs text-gray-300 overflow-hidden ${
         hasError ? "border-red-500/50" : "border-[#2b2d31]"
       }`}
       data-testid="discord-payload-view"
     >
       <textarea
-        className="w-full h-[400px] bg-transparent p-4 font-mono text-xs text-gray-300 resize-none outline-none"
+        className="w-full flex-1 min-h-[300px] bg-transparent p-4 font-mono text-xs text-gray-300 resize-none outline-none"
         value={value}
         onChange={e => onChange(e.target.value)}
         spellCheck={false}
