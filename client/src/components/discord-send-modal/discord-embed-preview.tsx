@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export interface DiscordEmbedData {
   title: string;
   description: string;
-  fields: Array<{ name: string; value: string }>;
+  fields: Array<{ name: string; value: string; inline?: boolean }>;
   footer: string;
   color: string;
 }
@@ -64,13 +64,22 @@ export function DiscordEmbedPreview({
               </p>
             )}
             {embed.fields.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-1" data-testid="preview-fields">
-                {embed.fields.map((f, i) => (
-                  <div key={i} data-testid={`preview-field-${i}`}>
-                    <p className="text-xs font-semibold text-gray-400">{f.name}</p>
-                    <p className="text-sm text-gray-200">{renderDiscordMarkdown(f.value)}</p>
-                  </div>
-                ))}
+              <div className="grid grid-cols-3 gap-x-4 gap-y-2 pt-1" data-testid="preview-fields">
+                {embed.fields.map((f, i) => {
+                  const isInline = f.inline !== false;
+                  return (
+                    <div
+                      key={i}
+                      className={isInline ? "" : "col-span-3"}
+                      data-testid={`preview-field-${i}`}
+                    >
+                      <p className="text-xs font-semibold text-gray-400">{f.name}</p>
+                      {f.value && (
+                        <p className="text-sm text-gray-200">{renderDiscordMarkdown(f.value)}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {embed.footer && (

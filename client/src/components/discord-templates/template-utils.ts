@@ -6,11 +6,13 @@ export { renderTemplate } from "@shared/template-render";
 export function renderFieldsWithData(
   fields: TemplateField[],
   data: Record<string, string>
-): Array<{ name: string; value: string }> {
-  return fields.map((field) => ({
-    name: renderTemplate(field.name, data),
-    value: renderTemplate(field.value, data),
-  }));
+): Array<{ name: string; value: string; inline: boolean }> {
+  return fields.map((field) => {
+    const name = renderTemplate(field.name, data);
+    const value = renderTemplate(field.value, data);
+    const isBlank = (!name || name === "\u200b") && (!value || value === "\u200b");
+    return { name, value, inline: !isBlank };
+  });
 }
 
 export function buildPreviewEmbed(

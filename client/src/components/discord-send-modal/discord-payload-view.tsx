@@ -29,11 +29,14 @@ export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, con
   embedObj.color = colorNameToDecimal(embed.color);
 
   if (embed.fields.length > 0) {
-    embedObj.fields = embed.fields.map(f => ({
-      name: f.name,
-      value: f.value,
-      inline: true,
-    }));
+    embedObj.fields = embed.fields.map(f => {
+      const isBlank = (!f.value || f.value === "\u200b") && (!f.name || f.name === "\u200b");
+      return {
+        name: f.name || "\u200b",
+        value: f.value || "\u200b",
+        inline: !isBlank,
+      };
+    });
   }
 
   if (embed.footer) {
@@ -60,9 +63,10 @@ export function parsePayloadToEmbed(json: string): { embed: DiscordEmbedData; co
     const color = typeof embedObj.color === "number" ? decimalToHex(embedObj.color) : "#CCB167";
 
     const fields = Array.isArray(embedObj.fields)
-      ? embedObj.fields.map((f: { name?: string; value?: string }) => ({
+      ? embedObj.fields.map((f: { name?: string; value?: string; inline?: boolean }) => ({
           name: f.name || "",
           value: f.value || "",
+          inline: f.inline !== false,
         }))
       : [];
 
