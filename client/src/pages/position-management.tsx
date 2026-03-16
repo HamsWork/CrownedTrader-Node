@@ -48,12 +48,51 @@ function findHitTpLevel(
   return { level: hitIndex + 1, index: hitIndex };
 }
 
+interface PartialExitOverrides {
+  takeOffPct?: number;
+  raiseSLMode?: string;
+  raiseSLValue?: string;
+  trailingStop?: boolean;
+  trailingStopPct?: string;
+}
+
+function getPartialExitDefaults(signal: Signal, currentPrice: number) {
+  const data = (signal.data ?? {}) as any;
+  const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+  const isOption = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+  const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+  const rawEntry =
+    (isOption && data.entry_option_price != null ? data.entry_option_price : undefined) ??
+    data.entry_price ?? data.option_price ?? data.stock_price;
+  const entryPrice = typeof rawEntry === "number" ? rawEntry : parseFloat(String(rawEntry || "0"));
+  const direction = data.direction || "Long";
+  const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
+
+  let levels: TakeProfitLevel[] = [];
+  try { levels = JSON.parse(data.take_profit_levels || "[]"); } catch {}
+
+  const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, directionForPnl) : null;
+  const hitLevel = hitTp ? levels[hitTp.index] : levels[0];
+
+  return {
+    takeOffPct: hitLevel?.takeOffPct ?? 50,
+    raiseSLMode: hitLevel?.raiseStopLossTo || "Off",
+    raiseSLValue: hitLevel?.customRaiseSLValue || "",
+    trailingStop: hitLevel?.trailingStop === "On",
+    trailingStopPct: hitLevel?.trailingStopPct || "",
+    tpIndex: hitTp?.level ?? 1,
+    levels,
+  };
+}
+
 function PartialExitPreview({
   signal,
   currentPrice,
+  overrides,
 }: {
   signal: Signal;
   currentPrice: number;
+  overrides?: PartialExitOverrides;
 }) {
   const data = (signal.data ?? {}) as any;
   const ticker = data.ticker || "—";
@@ -64,34 +103,37 @@ function PartialExitPreview({
   const expiration = data.expiration || "";
   const rawEntry =
     (isOption && data.entry_option_price != null ? data.entry_option_price : undefined) ??
-    data.entry_price ??
-    data.option_price ??
-    data.stock_price;
+    data.entry_price ?? data.option_price ?? data.stock_price;
   const entryPrice = typeof rawEntry === "number" ? rawEntry : parseFloat(String(rawEntry || "0"));
   const direction = data.direction || "Long";
   const directionForPnl = isOption ? (optionType === "PUT" || data.right === "P" ? "Short" : "Long") : direction;
 
   let levels: TakeProfitLevel[] = [];
-  try {
-    levels = JSON.parse(data.take_profit_levels || "[]");
-  } catch {}
+  try { levels = JSON.parse(data.take_profit_levels || "[]"); } catch {}
 
   const profitPct = currentPrice > 0 ? getPnlPct(entryPrice, currentPrice, directionForPnl) : 0;
   const hitTp = currentPrice > 0 ? findHitTpLevel(entryPrice, currentPrice, levels, directionForPnl) : null;
   const tpIndex = hitTp?.level ?? 1;
   const hitLevel = hitTp ? levels[hitTp.index] : levels[0];
   const nextLevel = hitTp && hitTp.index + 1 < levels.length ? levels[hitTp.index + 1] : null;
-  const takeOffPct = hitLevel?.takeOffPct ?? 50;
+
+  const takeOffPct = overrides?.takeOffPct ?? hitLevel?.takeOffPct ?? 50;
   const remainPct = 100 - takeOffPct;
-  const raiseSL = hitLevel?.raiseStopLossTo || "Off";
+  const raiseSLMode = overrides?.raiseSLMode ?? hitLevel?.raiseStopLossTo ?? "Off";
+  const raiseSLValue = overrides?.raiseSLValue ?? hitLevel?.customRaiseSLValue ?? "";
+  const trailingOn = overrides?.trailingStop ?? (hitLevel?.trailingStop === "On");
+  const trailingPct = overrides?.trailingStopPct ?? hitLevel?.trailingStopPct ?? "";
+
   const nextTpPrice = nextLevel
     ? (entryPrice * (1 + nextLevel.levelPct / 100)).toFixed(2)
     : null;
-  const newSLLabel = raiseSL === "Break even"
+  const newSLLabel = raiseSLMode === "Break even"
     ? `$${entryPrice.toFixed(2)} (break even)`
-    : raiseSL !== "Off"
-      ? `$${raiseSL}`
-      : null;
+    : raiseSLMode === "Custom Level" && raiseSLValue
+      ? `$${raiseSLValue}`
+      : raiseSLMode !== "Off" && raiseSLMode !== "Custom Level"
+        ? `$${raiseSLMode}`
+        : null;
 
   const instrumentLabel = isOption ? "Options" : "Shares";
 
@@ -180,14 +222,21 @@ function PartialExitPreview({
               )}
             </div>
 
-            {newSLLabel && (
+            {(newSLLabel || trailingOn) && (
               <div>
                 <p className="font-bold text-white flex items-center gap-1.5">
                   <span>🛡️</span> Risk Management
                 </p>
-                <p className="text-xs mt-1 leading-relaxed">
-                  Raising stop loss to {newSLLabel} on remaining position to secure gains while allowing room to run.
-                </p>
+                {newSLLabel && (
+                  <p className="text-xs mt-1 leading-relaxed">
+                    Raising stop loss to {newSLLabel} on remaining position to secure gains while allowing room to run.
+                  </p>
+                )}
+                {trailingOn && trailingPct && (
+                  <p className="text-xs mt-1 leading-relaxed">
+                    📉 Trailing stop activated at {trailingPct}% below current price on remaining position.
+                  </p>
+                )}
               </div>
             )}
 
@@ -543,6 +592,11 @@ export default function PositionManagement() {
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
   const [fullExitReason, setFullExitReason] = useState<FullExitReason>("take_profit");
   const [lastDialogPriceUpdate, setLastDialogPriceUpdate] = useState<Date | null>(null);
+  const [peTakeOffPct, setPeTakeOffPct] = useState(50);
+  const [peRaiseSLMode, setPeRaiseSLMode] = useState("Off");
+  const [peRaiseSLValue, setPeRaiseSLValue] = useState("");
+  const [peTrailingStop, setPeTrailingStop] = useState(false);
+  const [peTrailingStopPct, setPeTrailingStopPct] = useState("");
   const { toast } = useToast();
 
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -750,13 +804,34 @@ export default function PositionManagement() {
 
   async function handleClose() {
     if (!closeDialog) return;
+
+    if (isPartialExit) {
+      if (peRaiseSLMode === "Custom Level" && (!peRaiseSLValue || isNaN(parseFloat(peRaiseSLValue)) || parseFloat(peRaiseSLValue) <= 0)) {
+        toast({ title: "Enter a valid stop loss price", variant: "destructive" });
+        return;
+      }
+      if (peTrailingStop && (!peTrailingStopPct || isNaN(parseFloat(peTrailingStopPct)) || parseFloat(peTrailingStopPct) <= 0)) {
+        toast({ title: "Enter a valid trailing stop percentage", variant: "destructive" });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
+      let note = closeNote;
+      if (isPartialExit) {
+        const meta = JSON.stringify({
+          takeOffPct: peTakeOffPct,
+          raiseSL: peRaiseSLMode === "Custom Level" ? peRaiseSLValue : peRaiseSLMode,
+          trailingStop: peTrailingStop,
+          trailingStopPct: peTrailingStop ? peTrailingStopPct : undefined,
+        });
+        note = `[Partial Exit] ${meta}${closeNote ? " " + closeNote : ""}`;
+      }
       await apiRequest("PATCH", `/api/signals/${closeDialog.id}/status`, {
         status: isPartialExit ? "open" : "closed",
         closePrice: closePrice || undefined,
-        closeNote: closeNote ? (isPartialExit ? `[Partial Exit] ${closeNote}` : closeNote) : (isPartialExit ? "[Partial Exit]" : undefined),
-        // For TradeSync: partial exits and full exits map to different APIs.
+        closeNote: note || (isPartialExit ? "[Partial Exit]" : undefined),
         reason: isPartialExit ? "target_hit" : fullExitReason,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
@@ -795,6 +870,29 @@ export default function PositionManagement() {
     setIsPartialExit(partial);
     setUseManualPrice(false);
     setFullExitReason("take_profit");
+
+    if (partial) {
+      const data = (signal.data ?? {}) as any;
+      const ticker = data.ticker;
+      const instrumentType = data.instrument_type || (data.is_option === "true" ? "Options" : "Shares");
+      const isOpt = data.is_option === "true" || instrumentType === "Options" || instrumentType === "LETF Option";
+      const expiration = data.expiration ?? "";
+      const strikeStr = typeof data.strike === "number" ? String(data.strike) : (data.strike ?? "");
+      const optionType = data.option_type || (data.right === "P" ? "PUT" : data.right === "C" ? "CALL" : "");
+      const hasOptionFields = isOpt && !!expiration && !!strikeStr && !!optionType;
+      const priceKey = hasOptionFields
+        ? `opt:${ticker}:${expiration}:${strikeStr}:${optionType}`
+        : `stock:${ticker}`;
+      const currentPriceForDefaults = livePrices[priceKey] ?? 0;
+
+      const defaults = getPartialExitDefaults(signal, currentPriceForDefaults);
+      setPeTakeOffPct(defaults.takeOffPct);
+      setPeRaiseSLMode(defaults.raiseSLMode);
+      setPeRaiseSLValue(defaults.raiseSLValue);
+      setPeTrailingStop(defaults.trailingStop);
+      setPeTrailingStopPct(defaults.trailingStopPct);
+    }
+
     setCloseDialog(signal);
   }
 
@@ -807,6 +905,11 @@ export default function PositionManagement() {
     setLivePrice(null);
     setLastDialogPriceUpdate(null);
     setFullExitReason("take_profit");
+    setPeTakeOffPct(50);
+    setPeRaiseSLMode("Off");
+    setPeRaiseSLValue("");
+    setPeTrailingStop(false);
+    setPeTrailingStopPct("");
   }
 
   if (signalsLoading || typesLoading) {
@@ -1136,14 +1239,114 @@ export default function PositionManagement() {
                       }}
                       data-testid="switch-manual-price"
                     />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">Use Manual Price</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Manual</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">Position Settings</Label>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Take Off</span>
+                    <span className="text-xs font-semibold text-foreground" data-testid="text-takeoff-value">{peTakeOffPct}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={5}
+                      max={100}
+                      step={5}
+                      value={peTakeOffPct}
+                      onChange={(e) => setPeTakeOffPct(Number(e.target.value))}
+                      className="flex-1 h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                      data-testid="slider-takeoff-pct"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>5%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-3 space-y-2">
+                  <span className="text-xs text-muted-foreground">Raise Stop Loss</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Off", "Break even", "Custom Level"].map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setPeRaiseSLMode(opt)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                          peRaiseSLMode === opt
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                        }`}
+                        data-testid={`button-sl-mode-${opt.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                  {peRaiseSLMode === "Custom Level" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={peRaiseSLValue}
+                        onChange={(e) => setPeRaiseSLValue(e.target.value)}
+                        placeholder="Stop loss price"
+                        className="text-sm h-8"
+                        data-testid="input-custom-sl-value"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Trailing Stop</span>
+                    <Switch
+                      checked={peTrailingStop}
+                      onCheckedChange={setPeTrailingStop}
+                      data-testid="switch-trailing-stop"
+                    />
+                  </div>
+                  {peTrailingStop && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min={0.5}
+                        value={peTrailingStopPct}
+                        onChange={(e) => setPeTrailingStopPct(e.target.value)}
+                        placeholder="Trail %"
+                        className="text-sm h-8 w-24"
+                        data-testid="input-trailing-stop-pct"
+                      />
+                      <span className="text-xs text-muted-foreground">% below current price</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase text-muted-foreground">Discord Preview</Label>
-                <PartialExitPreview signal={closeDialog} currentPrice={currentPriceNum} />
+                <PartialExitPreview
+                  signal={closeDialog}
+                  currentPrice={currentPriceNum}
+                  overrides={{
+                    takeOffPct: peTakeOffPct,
+                    raiseSLMode: peRaiseSLMode,
+                    raiseSLValue: peRaiseSLValue,
+                    trailingStop: peTrailingStop,
+                    trailingStopPct: peTrailingStopPct,
+                  }}
+                />
               </div>
 
               <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
