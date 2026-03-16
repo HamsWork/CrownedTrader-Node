@@ -270,14 +270,12 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
         return `$${price} (${l.levelPct.toFixed(1)}%)`;
       });
 
+  const timeStopLabel = form.timeHorizon || `${timeStopDays} days`;
   const lines = [
     `🎯 Targets: ${targetParts.join(", ")}`,
     `🛑 Stop loss: $${stopLossPrice.toFixed(2)}`,
-    `🌐 Time Stop: ${timeStopDays} days`,
+    `🌐 Time Stop: ${timeStopLabel}`,
   ];
-  if (form.timeHorizon) {
-    lines.push(`📅 Time Horizon: ${form.timeHorizon}`);
-  }
   return lines.join("\n");
 }
 
@@ -302,10 +300,13 @@ function buildTakeProfitPlanText(form: TradeForm): string {
 }
 
 function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null): Record<string, string> {
-  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+  const optionPrice = parseFloat(form.optionPrice) || 0;
   const stockPrice = parseFloat(form.stockPrice) || 0;
+  const entry = form.isOption ? optionPrice : stockPrice;
   const ticker = form.ticker || "TICKER";
   const hasPlan = !!form.tradePlanId;
+  const cat = tickerDetails?.category;
+  const direction = form.isOption ? (form.optionType === "CALL" ? "Call" : "Put") : form.direction;
 
   const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
   const slPct = parseFloat(form.customStopLossPct) || 10;
@@ -317,37 +318,50 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
   const vars: Record<string, string> = {
     app_name: "Crowned Trader",
     ticker,
+    instrument_type: cat === "LETF" ? (form.isOption ? "LETF Option" : "LETF") : cat === "Crypto" ? "Crypto" : (form.isOption ? "Options" : "Shares"),
+    instrument_label: cat === "LETF" ? (form.isOption ? "LETF Option" : "LETF") : cat === "Crypto" ? "Crypto" : (form.isOption ? "Options" : "Shares"),
     stock_price: `$${stockPrice.toFixed(2)}`,
-    direction: form.isOption ? (form.optionType === "CALL" ? "Call" : "Put") : form.direction,
+    direction,
     entry_price: `$${entry.toFixed(2)}`,
     stop_loss: `$${stopLossPrice.toFixed(2)}`,
-    time_stop: `${timeStopDays} days`,
+    time_stop: form.timeHorizon || `${timeStopDays} days`,
+    trade_type: form.tradeType || "Scalp",
+    targets_summary: hasPlan ? buildTargetsSummary(form, tickerDetails) : "—",
     trade_plan: hasPlan ? buildTradePlanText(form, tickerDetails) : "No trade plan selected",
     take_profit_plan: hasPlan ? buildTakeProfitPlanText(form) : "—",
+    expiry: form.isOption ? (form.expiration || "—") : "—",
+    strike: form.isOption ? (form.strike || "—") : "—",
+    right: form.isOption ? (form.optionType === "CALL" ? "CALL" : "PUT") : "—",
+    option_price: form.isOption ? `$${optionPrice.toFixed(2)}` : "—",
+    underlying: cat === "LETF" ? (tickerDetails?.underlying || ticker) : ticker,
+    leverage: tickerDetails?.leverage || "—",
+    letf_ticker: cat === "LETF" ? ticker : "—",
+    letf_direction: cat === "LETF" ? "Bull" : "—",
+    letf_entry: cat === "LETF" ? `$${entry.toFixed(2)}` : "—",
   };
 
-  if (form.isOption) {
-    vars.expiration = form.expiration || "—";
-    vars.strike = form.strike || "—";
-    vars.option_price = `$${entry.toFixed(2)}`;
-  }
-
-  const cat = tickerDetails?.category;
   if (cat === "Crypto") {
     vars.coin = ticker;
     vars.pair = "USDT";
-    vars.entry_price = `$${entry.toFixed(2)}`;
-  }
-
-  if (cat === "LETF") {
-    vars.underlying = tickerDetails?.underlying || ticker;
-    vars.leverage = tickerDetails?.leverage || "3";
-    vars.letf_ticker = ticker;
-    vars.letf_direction = "Bull";
-    vars.letf_entry = `$${entry.toFixed(2)}`;
   }
 
   return vars;
+}
+
+function buildTargetsSummary(form: TradeForm, tickerDetails: TickerDetails | null): string {
+  const entry = parseFloat(form.isOption ? form.optionPrice : form.stockPrice) || 0;
+  const isUnderlyingBased = form.customTargetType === "Underlying Price Based";
+  const levels = form.customLevels;
+
+  return levels.map(l => {
+    if (isUnderlyingBased) {
+      const pct = entry > 0 ? (((l.levelPct - entry) / entry) * 100).toFixed(1) : "0.0";
+      return `$${l.levelPct.toFixed(2)} (${pct}%)`;
+    } else {
+      const price = (entry * (1 + l.levelPct / 100)).toFixed(2);
+      return `$${price} (${l.levelPct.toFixed(1)}%)`;
+    }
+  }).join(", ");
 }
 
 const TRADESYNC_CHECK_MSG = "Check that TradeSync API URL and API key are set correctly in your environment.";
