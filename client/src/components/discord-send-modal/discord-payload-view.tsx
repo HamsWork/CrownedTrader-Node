@@ -9,7 +9,9 @@ function decimalToHex(decimal: number): string {
   return "#" + decimal.toString(16).padStart(6, "0");
 }
 
-export function buildPayloadJson(embed: DiscordEmbedData, content?: string) {
+export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, content?: string) {
+  if (!embed) return { embeds: [{}] };
+
   const payload: Record<string, unknown> = {};
 
   if (content) {
