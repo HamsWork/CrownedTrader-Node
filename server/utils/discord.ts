@@ -34,7 +34,7 @@ export function buildEmbed(
     embed.description = renderTemplate(signalType.descriptionTemplate, data);
   }
 
-  const fieldsArr = signalType.fieldsTemplate as Array<{ name: string; value: string }>;
+  const fieldsArr = signalType.fieldsTemplate as Array<{ name: string; value: string; inline?: boolean }>;
   if (fieldsArr && fieldsArr.length > 0) {
     embed.fields = renderFieldsTemplate(fieldsArr, data);
   }

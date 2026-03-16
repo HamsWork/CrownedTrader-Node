@@ -89,8 +89,8 @@ function buildSampleData(template: SignalType): Record<string, string> {
     else if (v.name === "take_off_pct") data[v.name] = "50%";
     else if (v.name === "r_multiple") data[v.name] = "2.1R";
     else if (v.name === "risk_value") data[v.name] = "Risk-Free";
-    else if (v.name === "risk_mgmt") data[v.name] = "Trail stop to entry";
-    else if (v.name === "position_mgmt") data[v.name] = "Take 50% off, trail remainder";
+    else if (v.name === "risk_mgmt") data[v.name] = "Raising stop loss to $145.50 (break even) on remaining position to secure gains while allowing room to run.";
+    else if (v.name === "position_mgmt") data[v.name] = "✅ Reduce position by 50% (lock in profit)\n🎯 Let remaining 50% ride to TP2 ($162.00)";
     else if (v.name === "is_break_even") data[v.name] = "Yes";
     else if (v.name === "app_name") data[v.name] = "Crowned Trader";
     else if (v.name === "instrument_type") data[v.name] = category;
@@ -99,8 +99,8 @@ function buildSampleData(template: SignalType): Record<string, string> {
     else if (v.name === "letf_ticker") data[v.name] = "TQQQ";
     else if (v.name === "letf_direction") data[v.name] = "Bull";
     else if (v.name === "letf_entry") data[v.name] = "52.30";
-    else if (v.name === "trade_plan") data[v.name] = "Breakout above resistance with volume confirmation";
-    else if (v.name === "take_profit_plan") data[v.name] = "TP1: 50% at +10%, TP2: 25% at +20%, Trail rest";
+    else if (v.name === "trade_plan") data[v.name] = "🎯 Targets: $155.00, $162.00\n🛑 Stop loss: $140.00\n🌐 Time Stop: 3 days";
+    else if (v.name === "take_profit_plan") data[v.name] = "Take Profit (1): At $155.00 (+6.5%) take off 50% of position and raise stop loss to break even.\nTake Profit (2): At $162.00 (+11.3%) take off 100% of remaining position.";
     else if (v.name === "targets_summary") data[v.name] = "TP1: 155 | TP2: 162 | TP3: 170";
     else if (v.name === "time_stop") data[v.name] = "3 days";
     else if (v.name === "notes") data[v.name] = "Strong breakout above resistance";

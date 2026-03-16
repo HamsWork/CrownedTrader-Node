@@ -8,12 +8,12 @@ export function renderTemplate(
 }
 
 export function renderFieldsTemplate(
-  fields: Array<{ name: string; value: string }>,
+  fields: Array<{ name: string; value: string; inline?: boolean }>,
   data: Record<string, string>
 ): Array<{ name: string; value: string; inline: boolean }> {
   return fields.map((field) => ({
     name: renderTemplate(field.name, data),
     value: renderTemplate(field.value, data),
-    inline: true,
+    inline: field.inline ?? true,
   }));
 }

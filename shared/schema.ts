@@ -97,7 +97,7 @@ export const signalTypes = pgTable("signal_types", {
   titleTemplate: text("title_template").notNull().default(""),
   descriptionTemplate: text("description_template").notNull().default(""),
   color: varchar("color", { length: 7 }).notNull().default("#CCB167"),
-  fieldsTemplate: jsonb("fields_template").$type<Array<{ name: string; value: string }>>().default([]).notNull(),
+  fieldsTemplate: jsonb("fields_template").$type<Array<{ name: string; value: string; inline?: boolean }>>().default([]).notNull(),
   footerTemplate: text("footer_template").notNull().default(""),
   showTitleDefault: boolean("show_title_default").notNull().default(true),
   showDescriptionDefault: boolean("show_description_default").notNull().default(true),
@@ -106,7 +106,7 @@ export const signalTypes = pgTable("signal_types", {
 
 export const insertSignalTypeSchema = createInsertSchema(signalTypes, {
   variables: z.array(z.object({ name: z.string(), type: z.string(), label: z.string().optional() })).default([]),
-  fieldsTemplate: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
+  fieldsTemplate: z.array(z.object({ name: z.string(), value: z.string(), inline: z.boolean().optional() })).default([]),
 }).omit({
   id: true,
   createdAt: true,

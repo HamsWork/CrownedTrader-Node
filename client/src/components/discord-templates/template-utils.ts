@@ -10,8 +10,7 @@ export function renderFieldsWithData(
   return fields.map((field) => {
     const name = renderTemplate(field.name, data);
     const value = renderTemplate(field.value, data);
-    const isBlank = (!name || name === "\u200b") && (!value || value === "\u200b");
-    return { name, value, inline: !isBlank };
+    return { name, value, inline: field.inline ?? true };
   });
 }
 
