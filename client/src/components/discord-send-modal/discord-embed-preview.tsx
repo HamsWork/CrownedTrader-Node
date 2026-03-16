@@ -38,23 +38,12 @@ export function DiscordEmbedPreview({
       {content && (
         <p className="text-sm text-white mb-3" data-testid="preview-content">{content}</p>
       )}
-      <div className="flex items-start gap-3">
+      <div>
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-xs flex-shrink-0"
-          style={{ backgroundColor: botAvatarColor, color: "#000" }}
+          className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31]"
+          style={{ borderLeftColor: embed.color }}
+          data-testid="preview-embed"
         >
-          {botInitials}
-        </div>
-        <div className="flex-1 space-y-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm text-white">{botName}</span>
-            <span className="text-[10px] bg-[#5865F2] text-white px-1 py-0 rounded-sm font-medium">BOT</span>
-          </div>
-          <div
-            className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31] mt-1"
-            style={{ borderLeftColor: embed.color }}
-            data-testid="preview-embed"
-          >
             {embed.title && (
               <p className="font-bold text-sm text-white" data-testid="preview-title">{embed.title}</p>
             )}
