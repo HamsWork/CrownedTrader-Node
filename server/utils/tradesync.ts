@@ -134,8 +134,10 @@ export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResu
     const body = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const msg = body?.message || `TradeSync API error (${res.status})`;
-      return { ok: false, error: msg };
+      const errorDetail = body?.message
+        ? (typeof body.message === "string" ? body.message : JSON.stringify(body.message))
+        : (body ? JSON.stringify(body) : `TradeSync API error (${res.status})`);
+      return { ok: false, error: errorDetail };
     }
 
     return { ok: true, data: body };

@@ -42,6 +42,7 @@ export async function processSignalDelivery(
     console.log("TradeSync result", JSON.stringify(tsResult));
     if (!tsResult.ok) {
       tradeSyncError = tsResult.error;
+      await storage.updateSignalTradeSyncError(signal.id, tradeSyncError || "Unknown error");
     } else {
       // Persist the TradeSync payload as the canonical signal data (SignalData shape),
       // enriched with the TradeSync signal id when available.
@@ -62,10 +63,14 @@ export async function processSignalDelivery(
       }
 
       await storage.updateSignalData(signal.id, enriched);
+      await storage.updateSignalTradeSyncError(signal.id, "");
       signal.data = enriched;
     }
   } catch (err: any) {
     tradeSyncError = err?.message || "TradeSync integration error";
+    try {
+      await storage.updateSignalTradeSyncError(signal.id, tradeSyncError!);
+    } catch (_) {}
   }
 
   return { signal, tradeSyncError };

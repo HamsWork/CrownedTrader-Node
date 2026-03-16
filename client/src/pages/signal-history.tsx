@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { History, Search, CheckCircle, XCircle, ChevronDown, ChevronUp, Copy, FileText, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import { History, Search, CheckCircle, XCircle, ChevronDown, ChevronUp, Copy, FileText, ArrowUpRight, ArrowDownRight, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Signal } from "@shared/schema";
@@ -821,6 +821,27 @@ function SignalCard({ signal }: { signal: Signal }) {
           </div>
         </div>
 
+        {signal.tradeSyncError && signal.tradeSyncError.length > 0 && (
+          <div className="border-t border-red-500/30 px-4 py-3 bg-red-500/10" data-testid={`error-tradesync-${signal.id}`}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-red-400 mb-1">TradeSync Failed</p>
+                <pre className="text-[11px] font-mono text-red-300/80 whitespace-pre-wrap break-all overflow-x-auto max-h-40 overflow-y-auto">
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(signal.tradeSyncError!);
+                      return JSON.stringify(parsed, null, 2);
+                    } catch {
+                      return signal.tradeSyncError;
+                    }
+                  })()}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="border-t border-border px-4 py-2 flex items-center justify-between bg-muted/10">
           <button
             onClick={() => setExpanded(!expanded)}
@@ -875,8 +896,8 @@ export default function SignalHistory() {
 
   const allSignals = signals ?? [];
   const totalSent = allSignals.length;
-  const successCount = allSignals.filter(s => s.sentToDiscord).length;
-  const failedCount = totalSent - successCount;
+  const successCount = allSignals.filter(s => !s.tradeSyncError).length;
+  const failedCount = allSignals.filter(s => !!s.tradeSyncError).length;
 
   const filtered = allSignals.filter(signal => {
     const f = getSignalFields(signal);
