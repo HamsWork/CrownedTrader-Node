@@ -12,7 +12,10 @@ import { queryClient } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText, AlertCircle } from "lucide-react";
+import { Send, Settings, Rocket, Info, Search, ChevronDown, ChevronUp, Plus, ClipboardList, Upload, X, ImageIcon, Video, FileText, AlertCircle, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parse, addDays, addWeeks, addMonths } from "date-fns";
 import type { TradePlan, TakeProfitLevel, SignalType } from "@shared/schema";
 import { DiscordEmbedPreview } from "@/components/discord-send-modal/discord-embed-preview";
 import { buildPreviewEmbed } from "@/components/discord-templates/template-utils";
@@ -1404,12 +1407,54 @@ export default function SendSignal() {
                 {(form.tradeType === "Swing" || form.tradeType === "Leap") && (
                   <div className="space-y-2">
                     <Label className="font-semibold text-sm">Time Horizon</Label>
-                    <Input
-                      type="date"
-                      value={form.timeHorizon}
-                      onChange={e => update("timeHorizon", e.target.value)}
-                      data-testid="input-time-horizon"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={`w-full justify-start text-left font-normal ${!form.timeHorizon ? "text-muted-foreground" : ""}`}
+                          data-testid="input-time-horizon"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 text-amber-400" />
+                          {form.timeHorizon
+                            ? format(parse(form.timeHorizon, "yyyy-MM-dd", new Date()), "MMMM d, yyyy")
+                            : "Select date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="flex gap-1 p-2 border-b border-border">
+                          {[
+                            { label: "1W", fn: () => addWeeks(new Date(), 1) },
+                            { label: "2W", fn: () => addWeeks(new Date(), 2) },
+                            { label: "1M", fn: () => addMonths(new Date(), 1) },
+                            { label: "3M", fn: () => addMonths(new Date(), 3) },
+                            { label: "6M", fn: () => addMonths(new Date(), 6) },
+                            { label: "1Y", fn: () => addMonths(new Date(), 12) },
+                          ].map((preset) => (
+                            <Button
+                              key={preset.label}
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs hover:bg-amber-400/10 hover:text-amber-400"
+                              data-testid={`time-horizon-preset-${preset.label}`}
+                              onClick={() => {
+                                update("timeHorizon", format(preset.fn(), "yyyy-MM-dd"));
+                              }}
+                            >
+                              {preset.label}
+                            </Button>
+                          ))}
+                        </div>
+                        <Calendar
+                          mode="single"
+                          selected={form.timeHorizon ? parse(form.timeHorizon, "yyyy-MM-dd", new Date()) : undefined}
+                          onSelect={(date) => {
+                            if (date) update("timeHorizon", format(date, "yyyy-MM-dd"));
+                          }}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <p className="text-xs text-muted-foreground">
                       {form.tradeType === "Swing"
                         ? "Defaults to 1 month from today"
