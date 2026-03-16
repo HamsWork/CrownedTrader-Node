@@ -258,7 +258,6 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
   const stopLossPrice = isUnderlyingBased
     ? parseFloat(form.customStopLossPct || "0")
     : entry * (1 - slPct / 100);
-  const timeStopDays = form.tradeType === "Scalp" ? 2 : form.tradeType === "Swing" ? 5 : 10;
 
   const targetParts = isUnderlyingBased
     ? levels.map(l => {
@@ -270,12 +269,13 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
         return `$${price} (${l.levelPct.toFixed(1)}%)`;
       });
 
-  const timeStopLabel = form.timeHorizon || `${timeStopDays} days`;
   const lines = [
     `🎯 Targets: ${targetParts.join(", ")}`,
     `🛑 Stop loss: $${stopLossPrice.toFixed(2)}`,
-    `🌐 Time Stop: ${timeStopLabel}`,
   ];
+  if (form.timeHorizon) {
+    lines.push(`🌐 Time Stop: ${form.timeHorizon}`);
+  }
   return lines.join("\n");
 }
 
@@ -313,7 +313,6 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
   const stopLossPrice = isUnderlyingBased
     ? parseFloat(form.customStopLossPct || "0")
     : entry * (1 - slPct / 100);
-  const timeStopDays = form.tradeType === "Scalp" ? 2 : form.tradeType === "Swing" ? 5 : 10;
 
   const vars: Record<string, string> = {
     app_name: "Crowned Trader",
@@ -324,7 +323,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
     direction,
     entry_price: `$${entry.toFixed(2)}`,
     stop_loss: `$${stopLossPrice.toFixed(2)}`,
-    time_stop: form.timeHorizon || `${timeStopDays} days`,
+    time_stop: form.timeHorizon || "",
     trade_type: form.tradeType || "Scalp",
     targets_summary: hasPlan ? buildTargetsSummary(form, tickerDetails) : "—",
     trade_plan: hasPlan ? buildTradePlanText(form, tickerDetails) : "No trade plan selected",
