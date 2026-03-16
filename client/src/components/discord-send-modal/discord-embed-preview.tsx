@@ -16,62 +16,102 @@ export interface DiscordEmbedPreviewProps {
   botAvatarColor?: string;
 }
 
-function renderDiscordMarkdown(text: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+function isSpacerField(f: { name: string; value: string; inline?: boolean }): boolean {
+  const n = f.name.trim();
+  const v = f.value.trim();
+  return (n === "\u200b" || n === "") && (v === "" || v === "\u200b") && !f.inline;
+}
+
+type Section = { type: "spacer" | "inline" | "block"; fields: DiscordEmbedData["fields"] };
+
+function buildSections(fields: DiscordEmbedData["fields"]): Section[] {
+  const sections: Section[] = [];
+  let currentInline: DiscordEmbedData["fields"] = [];
+
+  const flushInline = () => {
+    if (currentInline.length > 0) {
+      sections.push({ type: "inline", fields: [...currentInline] });
+      currentInline = [];
     }
-    return part;
-  });
+  };
+
+  for (const f of fields) {
+    if (isSpacerField(f)) {
+      flushInline();
+      sections.push({ type: "spacer", fields: [] });
+    } else if (f.inline) {
+      currentInline.push(f);
+    } else {
+      flushInline();
+      sections.push({ type: "block", fields: [f] });
+    }
+  }
+  flushInline();
+  return sections;
+}
+
+function renderMarkdown(text: string): ReactNode[] {
+  return text.split(/\*\*(.*?)\*\*/).map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+  );
 }
 
 export function DiscordEmbedPreview({
   embed,
   content,
 }: DiscordEmbedPreviewProps) {
+  const sections = buildSections(embed.fields);
+
   return (
     <div className="h-full rounded-md bg-[#313338] p-4" data-testid="discord-embed-preview">
       {content && (
-        <p className="text-sm text-white mb-3" data-testid="preview-content">{content}</p>
+        <p className="text-[13px] text-white mb-3" data-testid="preview-content">{content}</p>
       )}
-      <div
-        className="rounded-md border-l-4 p-3 space-y-2 bg-[#2b2d31]"
-        style={{ borderLeftColor: embed.color }}
-        data-testid="preview-embed"
-      >
-        {embed.title && (
-          <p className="font-bold text-sm text-white" data-testid="preview-title">{embed.title}</p>
-        )}
-        {embed.description && (
-          <p className="text-sm text-gray-300 whitespace-pre-wrap" data-testid="preview-description">
-            {renderDiscordMarkdown(embed.description)}
-          </p>
-        )}
-        {embed.fields.length > 0 && (
-          <div className="grid grid-cols-3 gap-x-4 gap-y-2 pt-1" data-testid="preview-fields">
-            {embed.fields.map((f, i) => {
-              const isInline = f.inline !== false;
+      <div className="rounded-md overflow-hidden bg-[#2b2d31] border border-[#1e1f22]" data-testid="preview-embed">
+        <div className="flex">
+          <div className="w-1 shrink-0" style={{ backgroundColor: embed.color }} />
+          <div className="p-3 flex-1 min-w-0 space-y-2">
+            {embed.title && (
+              <p className="text-[13px] font-bold text-[#dbdee1]" data-testid="preview-title">{embed.title}</p>
+            )}
+            {embed.description && (
+              <p className="text-[13px] text-[#dbdee1] font-medium leading-snug whitespace-pre-wrap" data-testid="preview-description">
+                {renderMarkdown(embed.description)}
+              </p>
+            )}
+
+            {sections.map((section, si) => {
+              if (section.type === "spacer") {
+                return <div key={si} className="h-1" />;
+              }
+              if (section.type === "inline") {
+                return (
+                  <div key={si} className="grid grid-cols-3 gap-2">
+                    {section.fields.map((field, fi) => (
+                      <div key={fi} className="min-w-0" data-testid={`preview-field-${si}-${fi}`}>
+                        <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{field.name}</p>
+                        <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words">{field.value || "\u200b"}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              const field = section.fields[0];
               return (
-                <div
-                  key={i}
-                  className={isInline ? "" : "col-span-3"}
-                  data-testid={`preview-field-${i}`}
-                >
-                  <p className="text-xs font-semibold text-gray-400">{f.name}</p>
-                  {f.value && (
-                    <p className="text-sm text-gray-200">{renderDiscordMarkdown(f.value)}</p>
-                  )}
+                <div key={si} data-testid={`preview-field-block-${si}`}>
+                  <p className="text-[11px] font-semibold text-[#b5bac1] uppercase tracking-wide">{field.name}</p>
+                  <p className="text-[12px] text-[#dbdee1] whitespace-pre-wrap break-words leading-relaxed">{field.value || "\u200b"}</p>
                 </div>
               );
             })}
+
+            {embed.footer && (
+              <p className="text-[10px] text-[#949ba4] pt-1 border-t border-[#3f4147]" data-testid="preview-footer">
+                {embed.footer}
+              </p>
+            )}
           </div>
-        )}
-        {embed.footer && (
-          <p className="text-xs text-gray-500 pt-2 border-t border-gray-600" data-testid="preview-footer">
-            {embed.footer}
-          </p>
-        )}
+        </div>
       </div>
     </div>
   );

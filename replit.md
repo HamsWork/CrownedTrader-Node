@@ -76,8 +76,9 @@ shared/
   - Delete confirmation via AlertDialog
 - **Discord Message Templates**: 30 templates organized by 5 categories (Options, Shares, LETF, LETF Option, Crypto) × 6 action types (Entry Signal, Target TP1 Hit, Target TP2 Hit, SL Raised, Stop Loss Hit, Trade Closed)
   - Category tabs with count badges
-  - Template cards with Preview and Send Manual buttons
-  - Preview dialog shows full Discord embed with sample data
+  - Template cards with expandable inline Discord embed preview (eye icon toggle) and Send button
+  - Section-based embed rendering: spacer fields → thin gap dividers, inline fields → 3-col grid, block fields → full-width
+  - Thin `w-1` left color strip on embed (Discord-accurate), Discord colors (#313338 bg, #2b2d31 embed, #dbdee1 text, #b5bac1 labels)
   - Send Manual dialog with form fields, channel selector, and live preview
 - **Signal Submission**: Unified trade entry form with live Discord embed preview, collapsible trade plan section with Live Custom (full form matching Edit Trade Plan) or saved presets
   - Auto-fetches stock price from Polygon when ticker is selected

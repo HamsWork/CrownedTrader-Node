@@ -19,6 +19,10 @@ import {
   CircleAlert,
   TriangleAlert,
   MessageSquare,
+  Target,
+  ShieldAlert,
+  AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import { SiDiscord } from "react-icons/si";
 import { CATEGORIES, SAMPLE_TICKERS } from "@shared/template-definitions";
@@ -28,15 +32,26 @@ import {
   DiscordEmbedPreview,
   parsePayloadToEmbed,
 } from "@/components/discord-send-modal";
-import type { SignalType } from "@shared/schema";
-import type { Category } from "@shared/template-definitions";
+
+type Category = (typeof CATEGORIES)[number];
+type SignalType = NonNullable<
+  ReturnType<typeof useDiscordVarTemplates>["data"]
+>[number];
 
 const SLUG_ICONS: Record<string, { icon: typeof Rocket; className: string }> = {
-  signal_alert: { icon: Rocket, className: "text-green-400" },
-  target_hit: { icon: CircleCheck, className: "text-green-400" },
-  target_hit_tp2: { icon: CircleCheck, className: "text-green-400" },
-  stop_loss_raised: { icon: CircleAlert, className: "text-amber-400" },
-  stop_loss_hit: { icon: TriangleAlert, className: "text-red-400" },
+  signal_alert: { icon: TrendingUp, className: "text-green-500" },
+  target_hit: { icon: Target, className: "text-green-500" },
+  target_hit_tp2: { icon: Target, className: "text-green-500" },
+  stop_loss_raised: { icon: ShieldAlert, className: "text-amber-500" },
+  stop_loss_hit: { icon: AlertTriangle, className: "text-red-500" },
+};
+
+const SLUG_COLORS: Record<string, string> = {
+  signal_alert: "bg-green-500/10 text-green-500 border-green-500/20",
+  target_hit: "bg-green-500/10 text-green-500 border-green-500/20",
+  target_hit_tp2: "bg-green-500/10 text-green-500 border-green-500/20",
+  stop_loss_raised: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  stop_loss_hit: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
 function buildSampleData(template: SignalType): Record<string, string> {
@@ -53,22 +68,42 @@ function buildSampleData(template: SignalType): Record<string, string> {
     else if (v.name === "pair") data[v.name] = "USDT";
     else if (v.name === "contract") data[v.name] = `${sampleTicker} 150C 01/17`;
     else if (v.name === "strike") data[v.name] = "150";
-    else if (v.name === "expiration") data[v.name] = "01/17/2026";
+    else if (v.name === "expiration" || v.name === "expiry") data[v.name] = "01/17/2026";
     else if (v.name === "direction") data[v.name] = "Call";
+    else if (v.name === "right") data[v.name] = "Call";
     else if (v.name === "action") data[v.name] = "Buy";
-    else if (v.name === "leverage") data[v.name] = "3x";
+    else if (v.name === "leverage") data[v.name] = "3";
     else if (v.name === "entry_price") data[v.name] = "145.50";
     else if (v.name === "exit_price") data[v.name] = "162.30";
-    else if (v.name === "stop_loss" || v.name === "old_stop_loss")
-      data[v.name] = "140.00";
+    else if (v.name === "stock_price") data[v.name] = "148.25";
+    else if (v.name === "option_price") data[v.name] = "3.45";
+    else if (v.name === "stop_loss" || v.name === "old_stop_loss") data[v.name] = "140.00";
     else if (v.name === "new_stop_loss") data[v.name] = "148.00";
     else if (v.name === "take_profit") data[v.name] = "165.00";
     else if (v.name === "quantity") data[v.name] = "100";
-    else if (v.name === "profit_pct") data[v.name] = "11.5";
-    else if (v.name === "loss_pct") data[v.name] = "-3.8";
-    else if (v.name === "pnl") data[v.name] = "+$1,680";
-    else if (v.name === "notes")
-      data[v.name] = "Strong breakout above resistance";
+    else if (v.name === "profit_pct") data[v.name] = "+11.5%";
+    else if (v.name === "loss_pct") data[v.name] = "-3.8%";
+    else if (v.name === "pnl" || v.name === "pnl_dollar") data[v.name] = "+$1,680";
+    else if (v.name === "tp_number") data[v.name] = "1";
+    else if (v.name === "tp_price") data[v.name] = "155.00";
+    else if (v.name === "take_off_pct") data[v.name] = "50%";
+    else if (v.name === "r_multiple") data[v.name] = "2.1R";
+    else if (v.name === "risk_value") data[v.name] = "Risk-Free";
+    else if (v.name === "risk_mgmt") data[v.name] = "Trail stop to entry";
+    else if (v.name === "position_mgmt") data[v.name] = "Take 50% off, trail remainder";
+    else if (v.name === "is_break_even") data[v.name] = "Yes";
+    else if (v.name === "app_name") data[v.name] = "Crowned Trader";
+    else if (v.name === "instrument_type") data[v.name] = category;
+    else if (v.name === "instrument_label") data[v.name] = category;
+    else if (v.name === "underlying") data[v.name] = sampleTicker;
+    else if (v.name === "letf_ticker") data[v.name] = "TQQQ";
+    else if (v.name === "letf_direction") data[v.name] = "Bull";
+    else if (v.name === "letf_entry") data[v.name] = "52.30";
+    else if (v.name === "trade_plan") data[v.name] = "Breakout above resistance with volume confirmation";
+    else if (v.name === "take_profit_plan") data[v.name] = "TP1: 50% at +10%, TP2: 25% at +20%, Trail rest";
+    else if (v.name === "targets_summary") data[v.name] = "TP1: 155 | TP2: 162 | TP3: 170";
+    else if (v.name === "time_stop") data[v.name] = "3 days";
+    else if (v.name === "notes") data[v.name] = "Strong breakout above resistance";
     else data[v.name] = v.name;
   });
   return data;
@@ -76,12 +111,14 @@ function buildSampleData(template: SignalType): Record<string, string> {
 
 function TemplateCard({
   template,
-  onPreview,
   onSendManual,
+  isExpanded,
+  onToggleExpand,
 }: {
   template: SignalType;
-  onPreview: (t: SignalType) => void;
   onSendManual: (t: SignalType) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const fieldsArr = (template.fieldsTemplate ?? []) as Array<{
     name: string;
@@ -91,123 +128,95 @@ function TemplateCard({
     icon: MessageSquare,
     className: "text-muted-foreground",
   };
+  const colorClass = SLUG_COLORS[template.slug] || "bg-muted text-muted-foreground border-border";
   const Icon = slugInfo.icon;
-
-  return (
-    <div
-      className="rounded-lg border border-border/50 bg-card p-4 flex flex-col gap-3"
-      data-testid={`card-template-${template.id}`}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted/60 shrink-0">
-          <Icon className={`h-4 w-4 ${slugInfo.className}`} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3
-            className="font-semibold text-sm truncate"
-            data-testid={`text-template-name-${template.id}`}
-          >
-            {template.name}
-          </h3>
-          <p className="text-xs text-muted-foreground font-mono truncate">
-            {template.slug}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPreview(template)}
-            className="text-xs gap-1.5"
-            data-testid={`button-preview-${template.id}`}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Preview
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => onSendManual(template)}
-            className="text-xs gap-1.5"
-            data-testid={`button-send-manual-${template.id}`}
-          >
-            <Send className="h-3.5 w-3.5" />
-            Send Manual
-          </Button>
-        </div>
-      </div>
-      <div className="flex sm:hidden items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPreview(template)}
-          className="text-xs gap-1.5 flex-1"
-          data-testid={`button-preview-mobile-${template.id}`}
-        >
-          <Eye className="h-3.5 w-3.5" />
-          Preview
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => onSendManual(template)}
-          className="text-xs gap-1.5 flex-1"
-          data-testid={`button-send-manual-mobile-${template.id}`}
-        >
-          <Send className="h-3.5 w-3.5" />
-          Send Manual
-        </Button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {template.content && (
-          <Badge variant="secondary" className="text-[10px] font-mono">
-            content: {template.content}
-          </Badge>
-        )}
-        <Badge variant="secondary" className="text-[10px] font-mono">
-          color: {template.color}
-        </Badge>
-        <Badge variant="secondary" className="text-[10px] font-mono">
-          {fieldsArr.length} fields
-        </Badge>
-      </div>
-    </div>
-  );
-}
-
-function PreviewDialog({
-  template,
-  open,
-  onOpenChange,
-}: {
-  template: SignalType | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  if (!template) return null;
+  const hasVars = JSON.stringify(template.fieldsTemplate).includes("{{");
+  const nonSpacerFields = fieldsArr.filter(f => f.name !== "\u200b" && f.name !== "");
 
   const sampleData = buildSampleData(template);
   const embed = buildPreviewEmbed(
     {
       ...template,
-      fieldsTemplate: template.fieldsTemplate as Array<{
-        name: string;
-        value: string;
-      }>,
+      fieldsTemplate: fieldsArr,
     },
     sampleData,
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Discord Preview — {template.name}</DialogTitle>
-        </DialogHeader>
-        <DiscordEmbedPreview
-          embed={embed}
-          content={template.content || undefined}
-        />
-      </DialogContent>
-    </Dialog>
+    <div
+      className="rounded-lg border border-border bg-card overflow-hidden"
+      data-testid={`card-template-${template.id}`}
+    >
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`p-1.5 rounded-md border shrink-0 ${colorClass}`}>
+              <Icon className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p
+                className="text-sm font-semibold truncate"
+                data-testid={`text-template-name-${template.id}`}
+              >
+                {template.name}
+              </p>
+              <p className="text-[10px] text-muted-foreground font-mono">
+                {template.slug}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onToggleExpand}
+              data-testid={`button-preview-${template.id}`}
+              title={isExpanded ? "Hide Preview" : "Preview"}
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-7 w-7 bg-[#5865F2] hover:bg-[#4752C4] text-white"
+              onClick={() => onSendManual(template)}
+              data-testid={`button-send-manual-${template.id}`}
+              title="Send to Discord"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {template.content && (
+            <Badge variant="outline" className="text-[10px]">
+              content: {template.content}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[10px]">
+            color: {template.color}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {nonSpacerFields.length} fields
+          </Badge>
+          {hasVars && (
+            <Badge variant="outline" className="text-[10px] bg-blue-500/5 text-blue-400 border-blue-500/20">
+              {"{{variables}}"}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-border bg-[#313338] p-4">
+          <DiscordEmbedPreview
+            embed={embed}
+            content={template.content || undefined}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -217,10 +226,8 @@ export default function DiscordTemplatesPage() {
   const { data: signalTypes, isLoading } = useDiscordVarTemplates();
   const createSignal = useCreateSignal();
   const [activeCategory, setActiveCategory] = useState<Category>("Options");
-  const [previewTemplate, setPreviewTemplate] = useState<SignalType | null>(
-    null,
-  );
   const [sendTemplate, setSendTemplate] = useState<SignalType | null>(null);
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
 
   const userChannels = currentUser?.discordChannels || [];
 
@@ -246,7 +253,7 @@ export default function DiscordTemplatesPage() {
     return buildPreviewEmbed(
       {
         ...sendTemplate,
-        fieldsTemplate: sendTemplate.fieldsTemplate as Array<{
+        fieldsTemplate: (sendTemplate.fieldsTemplate ?? []) as Array<{
           name: string;
           value: string;
         }>,
@@ -289,17 +296,11 @@ export default function DiscordTemplatesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 space-y-6">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="h-4 w-96" />
-        <div className="flex gap-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-28" />
-          ))}
-        </div>
+      <div className="p-4 sm:p-6 space-y-4">
+        <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-28" />
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-40" />
           ))}
         </div>
       </div>
@@ -307,77 +308,59 @@ export default function DiscordTemplatesPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-start gap-3">
-        <SiDiscord className="h-6 w-6 sm:h-7 sm:w-7 text-[#5865F2] shrink-0 mt-1" />
-        <div>
-          <h1
-            className="text-xl sm:text-2xl font-bold tracking-tight"
-            data-testid="text-page-title"
-          >
-            Discord Message Templates
-          </h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-            All available Discord message templates by instrument type. Click
-            any template to send it manually.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 space-y-6" data-testid="page-discord-templates">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" data-testid="text-page-title">
+          <SiDiscord className="h-6 w-6 text-[#5865F2]" />
+          Discord Message Templates
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Default templates with {"{{variable}}"} placeholders for each instrument type and signal.
+        </p>
       </div>
 
-      <div className="flex flex-wrap gap-2" data-testid="category-tabs">
+      <div className="flex items-center gap-2 flex-wrap" data-testid="tabs-categories">
         {categoryCounts.map(({ name, count }) => (
-          <button
+          <Button
             key={name}
-            onClick={() => setActiveCategory(name as Category)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors border ${
-              activeCategory === name
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:bg-muted"
-            }`}
-            data-testid={`tab-${name.toLowerCase().replace(/\s+/g, "-")}`}
+            variant={activeCategory === name ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setActiveCategory(name as Category);
+              setExpandedTemplate(null);
+            }}
+            data-testid={`tab-category-${name.toLowerCase().replace(/\s+/g, "-")}`}
           >
             {name}
-            <span
-              className={`inline-flex items-center justify-center h-5 min-w-5 px-1 rounded text-[11px] font-semibold ${
-                activeCategory === name
-                  ? "bg-primary-foreground/20 text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">
               {count}
-            </span>
-          </button>
+            </Badge>
+          </Button>
         ))}
       </div>
 
-      <p
-        className="text-sm text-muted-foreground"
-        data-testid="text-category-info"
-      >
-        Showing templates for{" "}
-        <span className="font-semibold text-foreground">{activeCategory}</span>{" "}
-        using sample ticker{" "}
-        <span className="font-semibold text-foreground">{sampleTicker}</span>
+      <p className="text-xs text-muted-foreground">
+        Showing templates for <span className="font-medium text-foreground">{activeCategory}</span> using sample ticker <span className="font-mono font-medium text-foreground">{sampleTicker}</span>
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {activeTemplates.map((template) => (
-          <TemplateCard
-            key={template.id}
-            template={template}
-            onPreview={setPreviewTemplate}
-            onSendManual={setSendTemplate}
-          />
-        ))}
+        {activeTemplates.map((template) => {
+          const templateKey = `${activeCategory}-${template.id}`;
+          return (
+            <TemplateCard
+              key={template.id}
+              template={template}
+              onSendManual={setSendTemplate}
+              isExpanded={expandedTemplate === templateKey}
+              onToggleExpand={() =>
+                setExpandedTemplate(
+                  expandedTemplate === templateKey ? null : templateKey
+                )
+              }
+            />
+          );
+        })}
       </div>
-
-      <PreviewDialog
-        template={previewTemplate}
-        open={!!previewTemplate}
-        onOpenChange={(open) => {
-          if (!open) setPreviewTemplate(null);
-        }}
-      />
 
       {sendTemplate && sendTemplateEmbed && (
         <DiscordSendModal
