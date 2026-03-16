@@ -71,19 +71,17 @@ function TemplateCard({
       className="rounded-lg border border-border/50 bg-card p-4 flex flex-col gap-3"
       data-testid={`card-template-${template.id}`}
     >
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted/60 shrink-0">
-            <Icon className={`h-4 w-4 ${slugInfo.className}`} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-semibold text-sm truncate" data-testid={`text-template-name-${template.id}`}>
-              {template.name}
-            </h3>
-            <p className="text-xs text-muted-foreground font-mono truncate">{template.slug}</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted/60 shrink-0">
+          <Icon className={`h-4 w-4 ${slugInfo.className}`} />
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-12 sm:ml-0">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-sm truncate" data-testid={`text-template-name-${template.id}`}>
+            {template.name}
+          </h3>
+          <p className="text-xs text-muted-foreground font-mono truncate">{template.slug}</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -104,6 +102,27 @@ function TemplateCard({
             Send Manual
           </Button>
         </div>
+      </div>
+      <div className="flex sm:hidden items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onPreview(template)}
+          className="text-xs gap-1.5 flex-1"
+          data-testid={`button-preview-mobile-${template.id}`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Preview
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => onSendManual(template)}
+          className="text-xs gap-1.5 flex-1"
+          data-testid={`button-send-manual-mobile-${template.id}`}
+        >
+          <Send className="h-3.5 w-3.5" />
+          Send Manual
+        </Button>
       </div>
       <div className="flex flex-wrap gap-2">
         {template.content && (
@@ -415,12 +434,12 @@ export default function DiscordTemplatesPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2" data-testid="category-tabs">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible" data-testid="category-tabs">
         {categoryCounts.map(({ name, count }) => (
           <button
             key={name}
             onClick={() => setActiveCategory(name as Category)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors border whitespace-nowrap shrink-0 ${
               activeCategory === name
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-card text-muted-foreground border-border hover:bg-muted"
