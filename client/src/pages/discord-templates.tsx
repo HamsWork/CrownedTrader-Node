@@ -191,7 +191,7 @@ function TemplateCard({
             </Button>
             <Button
               size="icon"
-              className="h-7 w-7 bg-[#5865F2] hover:bg-[#4752C4] text-white"
+              className="h-7 w-7 bg-[#CCB167] hover:bg-[#b89d55] text-black"
               onClick={() => onSendManual(template)}
               data-testid={`button-send-manual-${template.id}`}
               title="Send to Discord"
