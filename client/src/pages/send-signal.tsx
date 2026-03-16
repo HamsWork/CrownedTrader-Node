@@ -757,7 +757,7 @@ export default function SendSignal() {
   useEffect(() => {
     const today = new Date();
     if (form.tradeType === "Scalp") {
-      setForm(prev => ({ ...prev, timeHorizon: prev.expiration || "" }));
+      setForm(prev => ({ ...prev, timeHorizon: "" }));
     } else if (form.tradeType === "Swing") {
       const oneMonth = new Date(today);
       oneMonth.setMonth(oneMonth.getMonth() + 1);
@@ -769,11 +769,6 @@ export default function SendSignal() {
     }
   }, [form.tradeType]);
 
-  useEffect(() => {
-    if (form.tradeType === "Scalp" && form.expiration) {
-      setForm(prev => ({ ...prev, timeHorizon: form.expiration }));
-    }
-  }, [form.expiration, form.tradeType]);
 
   useEffect(() => {
     if (!form.isOption || !form.manualContract) {
@@ -1468,22 +1463,22 @@ export default function SendSignal() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="font-semibold text-sm">Time Horizon</Label>
-                  <Input
-                    type="date"
-                    value={form.timeHorizon}
-                    onChange={e => update("timeHorizon", e.target.value)}
-                    data-testid="input-time-horizon"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {form.tradeType === "Scalp"
-                      ? "Defaults to expiration of option contract"
-                      : form.tradeType === "Swing"
+                {(form.tradeType === "Swing" || form.tradeType === "Leap") && (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-sm">Time Horizon</Label>
+                    <Input
+                      type="date"
+                      value={form.timeHorizon}
+                      onChange={e => update("timeHorizon", e.target.value)}
+                      data-testid="input-time-horizon"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {form.tradeType === "Swing"
                         ? "Defaults to 1 month from today"
                         : "Defaults to 1 year from today"}
-                  </p>
-                </div>
+                    </p>
+                  </div>
+                )}
 
                 <div className="rounded-lg border border-border p-4 space-y-4">
                   <div className="flex items-center gap-2">
