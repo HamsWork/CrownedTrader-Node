@@ -434,12 +434,12 @@ export default function DiscordTemplatesPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible" data-testid="category-tabs">
+      <div className="flex flex-wrap gap-2" data-testid="category-tabs">
         {categoryCounts.map(({ name, count }) => (
           <button
             key={name}
             onClick={() => setActiveCategory(name as Category)}
-            className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors border whitespace-nowrap shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors border ${
               activeCategory === name
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-card text-muted-foreground border-border hover:bg-muted"
