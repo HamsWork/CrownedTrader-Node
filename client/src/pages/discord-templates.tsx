@@ -136,6 +136,7 @@ function TemplateCard({
   const fieldsArr = (template.fieldsTemplate ?? []) as Array<{
     name: string;
     value: string;
+    inline?: boolean;
   }>;
   const slugInfo = SLUG_ICONS[template.slug] || {
     icon: MessageSquare,
@@ -269,6 +270,7 @@ export default function DiscordTemplatesPage() {
         fieldsTemplate: (sendTemplate.fieldsTemplate ?? []) as Array<{
           name: string;
           value: string;
+          inline?: boolean;
         }>,
       },
       sampleData,

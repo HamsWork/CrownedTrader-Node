@@ -1,5 +1,5 @@
 import type { DiscordEmbedData } from "./discord-embed-preview";
-import { normalizeSpacerField } from "@shared/discord-embed-fields";
+import { ZWSP, normalizeSpacerField } from "@shared/discord-embed-fields";
 
 function colorNameToDecimal(hex: string): number {
   const clean = hex.replace("#", "");
@@ -8,6 +8,15 @@ function colorNameToDecimal(hex: string): number {
 
 function decimalToHex(decimal: number): string {
   return "#" + decimal.toString(16).padStart(6, "0");
+}
+
+function isSpacerValue(s: string | undefined | null): boolean {
+  return !s || s === "" || s === ZWSP || s === "\\u200b";
+}
+
+function toPayloadFieldStr(s: string): string {
+  if (!s || s === ZWSP) return "\u200b";
+  return s;
 }
 
 export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, content?: string) {
@@ -30,11 +39,17 @@ export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, con
   embedObj.color = colorNameToDecimal(embed.color);
 
   if (embed.fields.length > 0) {
-    embedObj.fields = embed.fields.map(f => ({
-      name: normalizeSpacerField(f.name),
-      value: normalizeSpacerField(f.value),
-      inline: f.inline ?? false,
-    }));
+    embedObj.fields = embed.fields.map(f => {
+      const isSpacer = isSpacerValue(f.name) && isSpacerValue(f.value) && !f.inline;
+      if (isSpacer) {
+        return { name: "\u200b", value: "", inline: false };
+      }
+      return {
+        name: toPayloadFieldStr(f.name),
+        value: toPayloadFieldStr(f.value),
+        inline: f.inline ?? false,
+      };
+    });
   }
 
   if (embed.footer) {
