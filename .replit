@@ -42,4 +42,4 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
-TRADESYNC_BASE_URL = "http://162.218.114.93:5001"
+TRADESYNC_BASE_URL = " https://3778bee5-d34e-4048-9502-5dd398f69e9e-00-38xggkppvlgnp.picard.replit.dev"

@@ -113,21 +113,75 @@ function toTradeSyncApiPayload(signal: SignalData): Record<string, any> {
   return payload;
 }
 
-export async function sendToTradeSync(signal: SignalData): Promise<TradeSyncResult> {
+export interface ChartFileRef {
+  path: string;
+  originalname?: string;
+  mimetype?: string;
+}
+
+export async function sendToTradeSync(
+  signal: SignalData,
+  chartFile?: ChartFileRef | null,
+): Promise<TradeSyncResult> {
   if (!TRADESYNC_API_KEY) {
     return { ok: false, error: "TradeSync API key not configured" };
   }
 
   try {
     const apiPayload = toTradeSyncApiPayload(signal);
-    const res = await fetch(`${TRADESYNC_BASE_URL}/api/ingest/signals`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
-      },
-      body: JSON.stringify(apiPayload),
-    });
+    let res: Response;
+
+    if (chartFile) {
+      const fs = await import("fs");
+      const path = await import("path");
+
+      if (!fs.existsSync(chartFile.path)) {
+        console.warn("[TradeSync] Chart file not found at", chartFile.path);
+        res = await fetch(`${TRADESYNC_BASE_URL}/api/ingest/signals`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+          },
+          body: JSON.stringify(apiPayload),
+        });
+      } else {
+        const fileBuffer = fs.readFileSync(chartFile.path);
+        const filename = chartFile.originalname || path.basename(chartFile.path);
+        const mimetype = chartFile.mimetype || "image/png";
+
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(apiPayload)) {
+          if (typeof value === "object" && value !== null) {
+            formData.append(key, JSON.stringify(value));
+          } else if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        }
+
+        const blob = new Blob([fileBuffer], { type: mimetype });
+        formData.append("chartMedia", blob, filename);
+
+        res = await fetch(`${TRADESYNC_BASE_URL}/api/ingest/signals`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+          },
+          body: formData,
+        });
+
+        try { fs.unlinkSync(chartFile.path); } catch {}
+      }
+    } else {
+      res = await fetch(`${TRADESYNC_BASE_URL}/api/ingest/signals`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${TRADESYNC_API_KEY}`,
+        },
+        body: JSON.stringify(apiPayload),
+      });
+    }
 
     const body = await res.json().catch(() => null);
 

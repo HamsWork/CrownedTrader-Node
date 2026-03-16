@@ -1,11 +1,11 @@
 import { storage } from "../storage";
 import type { Signal, User, UserDiscordChannel } from "@shared/schema";
-import { buildTradeSyncPayload, sendToTradeSync } from "./tradesync";
+import { buildTradeSyncPayload, sendToTradeSync, type ChartFileRef } from "./tradesync";
 
 interface ProcessSignalOptions {
   signal: Signal;
   currentUser: User & { discordChannels?: UserDiscordChannel[] };
-  chartFile?: { path: string; originalname?: string } | null;
+  chartFile?: ChartFileRef | null;
 }
 
 interface ProcessSignalResult {
@@ -38,7 +38,11 @@ export async function processSignalDelivery(
 
     const tsPayload = buildTradeSyncPayload(data, levelsRaw, webhookUrl);
     console.log("TradeSync payload", JSON.stringify(tsPayload));
-    const tsResult = await sendToTradeSync(tsPayload);
+    const chartRef = options.chartFile ?? null;
+    if (chartRef) {
+      console.log("TradeSync: sending with chart media", chartRef.originalname || chartRef.path);
+    }
+    const tsResult = await sendToTradeSync(tsPayload, chartRef);
     console.log("TradeSync result", JSON.stringify(tsResult));
     if (!tsResult.ok) {
       tradeSyncError = tsResult.error;
