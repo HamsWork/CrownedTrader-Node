@@ -213,7 +213,9 @@ function PreviewDialog({
 
 export default function DiscordTemplatesPage() {
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   const { data: signalTypes, isLoading } = useDiscordVarTemplates();
+  const createSignal = useCreateSignal();
   const [activeCategory, setActiveCategory] = useState<Category>("Options");
   const [previewTemplate, setPreviewTemplate] = useState<SignalType | null>(
     null,
