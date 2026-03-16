@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSignalTypes, useCreateSignal } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +23,7 @@ import {
 import { SiDiscord } from "react-icons/si";
 import { CATEGORIES, SAMPLE_TICKERS } from "@shared/template-definitions";
 import { buildPreviewEmbed } from "@/components/discord-templates";
-import { DiscordSendModal, DiscordEmbedPreview } from "@/components/discord-send-modal";
+import { DiscordSendModal, DiscordEmbedPreview, parsePayloadToEmbed } from "@/components/discord-send-modal";
 import type { SignalType } from "@shared/schema";
 import type { Category } from "@shared/template-definitions";
 
@@ -34,6 +34,35 @@ const SLUG_ICONS: Record<string, { icon: typeof Rocket; className: string }> = {
   stop_loss_raised: { icon: CircleAlert, className: "text-amber-400" },
   stop_loss_hit: { icon: TriangleAlert, className: "text-red-400" },
 };
+
+function buildSampleData(template: SignalType): Record<string, string> {
+  const category = template.category as Category;
+  const sampleTicker = SAMPLE_TICKERS[category] || "AAPL";
+  const vars = template.variables as Array<{ name: string; type: string; label?: string }>;
+  const data: Record<string, string> = {};
+  vars.forEach(v => {
+    if (v.name === "ticker" || v.name === "coin") data[v.name] = sampleTicker;
+    else if (v.name === "pair") data[v.name] = "USDT";
+    else if (v.name === "contract") data[v.name] = `${sampleTicker} 150C 01/17`;
+    else if (v.name === "strike") data[v.name] = "150";
+    else if (v.name === "expiration") data[v.name] = "01/17/2026";
+    else if (v.name === "direction") data[v.name] = "Call";
+    else if (v.name === "action") data[v.name] = "Buy";
+    else if (v.name === "leverage") data[v.name] = "3x";
+    else if (v.name === "entry_price") data[v.name] = "145.50";
+    else if (v.name === "exit_price") data[v.name] = "162.30";
+    else if (v.name === "stop_loss" || v.name === "old_stop_loss") data[v.name] = "140.00";
+    else if (v.name === "new_stop_loss") data[v.name] = "148.00";
+    else if (v.name === "take_profit") data[v.name] = "165.00";
+    else if (v.name === "quantity") data[v.name] = "100";
+    else if (v.name === "profit_pct") data[v.name] = "11.5";
+    else if (v.name === "loss_pct") data[v.name] = "-3.8";
+    else if (v.name === "pnl") data[v.name] = "+$1,680";
+    else if (v.name === "notes") data[v.name] = "Strong breakout above resistance";
+    else data[v.name] = v.name;
+  });
+  return data;
+}
 
 function TemplateCard({
   template,
@@ -134,32 +163,7 @@ function PreviewDialog({
 }) {
   if (!template) return null;
 
-  const category = template.category as Category;
-  const sampleTicker = SAMPLE_TICKERS[category] || "AAPL";
-  const vars = template.variables as Array<{ name: string; type: string; label?: string }>;
-  const sampleData: Record<string, string> = {};
-  vars.forEach(v => {
-    if (v.name === "ticker" || v.name === "coin") sampleData[v.name] = sampleTicker;
-    else if (v.name === "pair") sampleData[v.name] = "USDT";
-    else if (v.name === "contract") sampleData[v.name] = `${sampleTicker} 150C 01/17`;
-    else if (v.name === "strike") sampleData[v.name] = "150";
-    else if (v.name === "expiration") sampleData[v.name] = "01/17/2026";
-    else if (v.name === "direction") sampleData[v.name] = "Call";
-    else if (v.name === "action") sampleData[v.name] = "Buy";
-    else if (v.name === "leverage") sampleData[v.name] = "3x";
-    else if (v.name === "entry_price") sampleData[v.name] = "145.50";
-    else if (v.name === "exit_price") sampleData[v.name] = "162.30";
-    else if (v.name === "stop_loss" || v.name === "old_stop_loss") sampleData[v.name] = "140.00";
-    else if (v.name === "new_stop_loss") sampleData[v.name] = "148.00";
-    else if (v.name === "take_profit") sampleData[v.name] = "165.00";
-    else if (v.name === "quantity") sampleData[v.name] = "100";
-    else if (v.name === "profit_pct") sampleData[v.name] = "11.5";
-    else if (v.name === "loss_pct") sampleData[v.name] = "-3.8";
-    else if (v.name === "pnl") sampleData[v.name] = "+$1,680";
-    else if (v.name === "notes") sampleData[v.name] = "Strong breakout above resistance";
-    else sampleData[v.name] = v.name;
-  });
-
+  const sampleData = buildSampleData(template);
   const embed = buildPreviewEmbed(
     { ...template, fieldsTemplate: template.fieldsTemplate as Array<{ name: string; value: string }> },
     sampleData
@@ -206,23 +210,29 @@ export default function DiscordTemplatesPage() {
   const activeTemplates = templatesByCategory[activeCategory] ?? [];
   const sampleTicker = SAMPLE_TICKERS[activeCategory];
 
-  async function handleSendSignal(data: Record<string, string>, channelName: string) {
+  const sendTemplateEmbed = useMemo(() => {
+    if (!sendTemplate) return null;
+    const sampleData = buildSampleData(sendTemplate);
+    return buildPreviewEmbed(
+      { ...sendTemplate, fieldsTemplate: sendTemplate.fieldsTemplate as Array<{ name: string; value: string }> },
+      sampleData
+    );
+  }, [sendTemplate]);
+
+  async function handleSendSignal(payloadJson: string, channelName: string) {
     if (!sendTemplate) return;
-    const vars = sendTemplate.variables as Array<{ name: string; type: string; label?: string }>;
-    const missingFields = vars.filter(v => !data[v.name]?.trim());
-    if (missingFields.length > 0) {
-      toast({
-        title: "Missing fields",
-        description: `Please fill in: ${missingFields.map(v => v.label || v.name).join(", ")}`,
-        variant: "destructive",
-      });
+
+    const parsed = parsePayloadToEmbed(payloadJson);
+    if (!parsed) {
+      toast({ title: "Invalid JSON", description: "The payload JSON is invalid.", variant: "destructive" });
       return;
     }
 
     try {
+      const sampleData = buildSampleData(sendTemplate);
       await createSignal.mutateAsync({
         signalTypeId: sendTemplate.id,
-        data,
+        data: sampleData,
         discordChannelName: channelName || null,
       });
       toast({ title: "Signal sent", description: "Your trading signal has been sent successfully." });
@@ -312,18 +322,14 @@ export default function DiscordTemplatesPage() {
         onOpenChange={(open) => { if (!open) setPreviewTemplate(null); }}
       />
 
-      {sendTemplate && (
+      {sendTemplate && sendTemplateEmbed && (
         <DiscordSendModal
           open={!!sendTemplate}
           onOpenChange={(open) => { if (!open) setSendTemplate(null); }}
           title={sendTemplate.name}
           content={sendTemplate.content || undefined}
-          variables={sendTemplate.variables as Array<{ name: string; type: string; label?: string }>}
+          initialEmbed={sendTemplateEmbed}
           channels={userChannels}
-          buildEmbed={(data) => buildPreviewEmbed(
-            { ...sendTemplate, fieldsTemplate: sendTemplate.fieldsTemplate as Array<{ name: string; value: string }> },
-            data
-          )}
           onSend={handleSendSignal}
           isSending={createSignal.isPending}
         />

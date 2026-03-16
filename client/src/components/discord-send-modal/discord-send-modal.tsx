@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,12 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Send } from "lucide-react";
 import { SiDiscord } from "react-icons/si";
 import { DiscordEmbedPreview, type DiscordEmbedData } from "./discord-embed-preview";
-import { DiscordPayloadView } from "./discord-payload-view";
+import { EditablePayloadView, buildPayloadJson, parsePayloadToEmbed } from "./discord-payload-view";
 
 export interface DiscordChannel {
   name: string;
@@ -37,10 +36,9 @@ export interface DiscordSendModalProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   content?: string;
-  variables: DiscordSendVariable[];
+  initialEmbed: DiscordEmbedData;
   channels: DiscordChannel[];
-  buildEmbed: (data: Record<string, string>) => DiscordEmbedData;
-  onSend: (data: Record<string, string>, channelName: string) => Promise<void>;
+  onSend: (payloadJson: string, channelName: string) => Promise<void>;
   isSending?: boolean;
   botName?: string;
   botInitials?: string;
@@ -52,34 +50,52 @@ export function DiscordSendModal({
   onOpenChange,
   title,
   content,
-  variables,
+  initialEmbed,
   channels,
-  buildEmbed,
   onSend,
   isSending = false,
   botName,
   botInitials,
   botAvatarColor,
 }: DiscordSendModalProps) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [channelName, setChannelName] = useState<string>("");
+  const [jsonText, setJsonText] = useState("");
+  const [channelName, setChannelName] = useState("");
+  const [jsonError, setJsonError] = useState(false);
+  const [liveEmbed, setLiveEmbed] = useState<DiscordEmbedData>(initialEmbed);
+  const [liveContent, setLiveContent] = useState<string | undefined>(content);
 
   useEffect(() => {
-    if (!open) {
-      setFormData({});
+    if (open) {
+      const payload = buildPayloadJson(initialEmbed, content);
+      const text = JSON.stringify(payload, null, 2);
+      setJsonText(text);
+      setLiveEmbed(initialEmbed);
+      setLiveContent(content);
+      setJsonError(false);
       setChannelName("");
     }
-  }, [open]);
+  }, [open, initialEmbed, content]);
 
-  const embed = buildEmbed(formData);
+  const handleJsonChange = useCallback((value: string) => {
+    setJsonText(value);
+    const parsed = parsePayloadToEmbed(value);
+    if (parsed) {
+      setLiveEmbed(parsed.embed);
+      setLiveContent(parsed.content);
+      setJsonError(false);
+    } else {
+      setJsonError(true);
+    }
+  }, []);
 
   async function handleSend() {
-    await onSend(formData, channelName);
+    if (jsonError) return;
+    await onSend(jsonText, channelName);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="sm:max-w-5xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader className="px-6 pt-6 pb-0">
           <div className="flex items-center gap-3">
             <SiDiscord className="h-6 w-6 text-[#5865F2] shrink-0" />
@@ -116,45 +132,24 @@ export function DiscordSendModal({
             </Select>
           </div>
 
-          {variables.length > 0 && (
-            <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">
-                Variables
-              </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {variables.map(v => (
-                  <div key={v.name} className="space-y-1">
-                    <Label htmlFor={`send-var-${v.name}`} className="text-xs text-muted-foreground">
-                      {v.label || v.name}
-                    </Label>
-                    <Input
-                      id={`send-var-${v.name}`}
-                      placeholder={v.label || v.name}
-                      value={formData[v.name] || ""}
-                      onChange={e => setFormData(prev => ({ ...prev, [v.name]: e.target.value }))}
-                      className="bg-[#1e1f22] border-[#3f4147]"
-                      data-testid={`input-send-${v.name}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">
                 Rendered Payload
               </Label>
-              <DiscordPayloadView embed={embed} content={content} />
+              <EditablePayloadView
+                value={jsonText}
+                onChange={handleJsonChange}
+                hasError={jsonError}
+              />
             </div>
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">
                 Preview
               </Label>
               <DiscordEmbedPreview
-                embed={embed}
-                content={content}
+                embed={liveEmbed}
+                content={liveContent}
                 botName={botName}
                 botInitials={botInitials}
                 botAvatarColor={botAvatarColor}
@@ -173,7 +168,7 @@ export function DiscordSendModal({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={isSending}
+            disabled={isSending || jsonError}
             className="gap-2"
             data-testid="button-confirm-send"
           >

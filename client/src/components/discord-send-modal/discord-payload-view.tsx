@@ -1,13 +1,12 @@
 import type { DiscordEmbedData } from "./discord-embed-preview";
 
-export interface DiscordPayloadViewProps {
-  embed: DiscordEmbedData;
-  content?: string;
-}
-
 function colorNameToDecimal(hex: string): number {
   const clean = hex.replace("#", "");
   return parseInt(clean, 16);
+}
+
+function decimalToHex(decimal: number): string {
+  return "#" + decimal.toString(16).padStart(6, "0");
 }
 
 export function buildPayloadJson(embed: DiscordEmbedData, content?: string) {
@@ -44,17 +43,61 @@ export function buildPayloadJson(embed: DiscordEmbedData, content?: string) {
   return payload;
 }
 
-export function DiscordPayloadView({ embed, content }: DiscordPayloadViewProps) {
-  const payload = buildPayloadJson(embed, content);
+export function parsePayloadToEmbed(json: string): { embed: DiscordEmbedData; content?: string } | null {
+  try {
+    const payload = JSON.parse(json);
+    const content = payload.content || undefined;
+    const embedObj = payload.embeds?.[0];
+    if (!embedObj) return null;
 
+    const desc = (embedObj.description || "") as string;
+    const boldMatch = desc.match(/^\*\*(.+?)\*\*\n?([\s\S]*)$/);
+    const title = boldMatch ? boldMatch[1] : "";
+    const description = boldMatch ? boldMatch[2] : desc;
+
+    const color = typeof embedObj.color === "number" ? decimalToHex(embedObj.color) : "#CCB167";
+
+    const fields = Array.isArray(embedObj.fields)
+      ? embedObj.fields.map((f: { name?: string; value?: string }) => ({
+          name: f.name || "",
+          value: f.value || "",
+        }))
+      : [];
+
+    const footer = typeof embedObj.footer === "object" && embedObj.footer?.text
+      ? String(embedObj.footer.text)
+      : "";
+
+    return { embed: { title, description, fields, footer, color }, content };
+  } catch {
+    return null;
+  }
+}
+
+export interface EditablePayloadViewProps {
+  value: string;
+  onChange: (value: string) => void;
+  hasError: boolean;
+}
+
+export function EditablePayloadView({ value, onChange, hasError }: EditablePayloadViewProps) {
   return (
     <div
-      className="rounded-md bg-[#1e1f22] border border-[#2b2d31] p-4 font-mono text-xs text-gray-300 overflow-auto max-h-[400px]"
+      className={`rounded-md bg-[#1e1f22] border p-0 font-mono text-xs text-gray-300 overflow-hidden ${
+        hasError ? "border-red-500/50" : "border-[#2b2d31]"
+      }`}
       data-testid="discord-payload-view"
     >
-      <pre className="whitespace-pre-wrap break-words">
-        {JSON.stringify(payload, null, 2)}
-      </pre>
+      <textarea
+        className="w-full h-[400px] bg-transparent p-4 font-mono text-xs text-gray-300 resize-none outline-none"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        spellCheck={false}
+        data-testid="textarea-payload-json"
+      />
+      {hasError && (
+        <p className="text-[10px] text-red-400 px-4 pb-2">Invalid JSON — preview not updated</p>
+      )}
     </div>
   );
 }
