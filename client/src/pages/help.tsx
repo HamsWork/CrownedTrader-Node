@@ -62,7 +62,7 @@ const HELP_SECTIONS: HelpSection[] = [
     id: "login",
     title: "Login",
     icon: LogIn,
-    color: "bg-blue-500",
+    color: "bg-amber-500",
     screenshot: "/help/login.png",
     summary: "Secure login screen — no public registration. Only admins can create user accounts.",
     details: [

@@ -96,7 +96,7 @@ export const signalTypes = pgTable("signal_types", {
   variables: jsonb("variables").$type<Array<{ name: string; type: string; label?: string }>>().default([]).notNull(),
   titleTemplate: text("title_template").notNull().default(""),
   descriptionTemplate: text("description_template").notNull().default(""),
-  color: varchar("color", { length: 7 }).notNull().default("#3B82F6"),
+  color: varchar("color", { length: 7 }).notNull().default("#CCB167"),
   fieldsTemplate: jsonb("fields_template").$type<Array<{ name: string; value: string }>>().default([]).notNull(),
   footerTemplate: text("footer_template").notNull().default(""),
   showTitleDefault: boolean("show_title_default").notNull().default(true),

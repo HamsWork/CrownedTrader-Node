@@ -22,7 +22,7 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
     <Card className="sticky top-20" data-testid="card-ta-live-preview">
       <CardContent className="pt-5">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20">
             <span className="text-sm">🔮</span>
           </div>
           <h2 className="font-bold text-lg" data-testid="text-ta-preview-title">Live Preview</h2>
@@ -69,8 +69,8 @@ function TALivePreview({ commentary, mediaPreviewUrl, mediaType }: {
           </div>
 
           <div className="bg-[#12141a] border-t border-[#2a2d35] px-4 py-3 flex items-start gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/30 shrink-0 mt-0.5">
-              <Info className="h-3 w-3 text-blue-400" />
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/30 shrink-0 mt-0.5">
+              <Info className="h-3 w-3 text-amber-400" />
             </div>
             <p className="text-xs text-[#72767d]">
               This is how your TA will appear in Discord. Update the form to see changes in real-time.
@@ -200,8 +200,8 @@ export default function SendTA() {
           <Card>
             <CardContent className="pt-6 space-y-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                  <ImageIcon className="h-4 w-4 text-blue-500" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                  <ImageIcon className="h-4 w-4 text-amber-500" />
                 </div>
                 <h3 className="font-semibold text-lg">Technical Analysis</h3>
               </div>

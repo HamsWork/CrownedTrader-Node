@@ -93,7 +93,7 @@ const featureIcons: Record<string, typeof Shield> = {
 };
 
 const categoryColors: Record<string, string> = {
-  "Core": "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  "Core": "bg-amber-500/10 text-amber-400 border-amber-500/30",
   "Trading": "bg-green-500/10 text-green-400 border-green-500/30",
   "Integration": "bg-purple-500/10 text-purple-400 border-purple-500/30",
   "Analytics": "bg-amber-500/10 text-amber-400 border-amber-500/30",

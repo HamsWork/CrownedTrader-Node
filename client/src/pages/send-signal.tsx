@@ -49,7 +49,7 @@ interface TickerDetails {
 }
 
 const CATEGORY_BADGES: Record<string, { label: string; color: string }> = {
-  Stock: { label: "Stock", color: "bg-blue-500/20 text-blue-400" },
+  Stock: { label: "Stock", color: "bg-amber-500/20 text-amber-400" },
   ETF: { label: "ETF", color: "bg-cyan-500/20 text-cyan-400" },
   LETF: { label: "LETF", color: "bg-orange-500/20 text-orange-400" },
   Crypto: { label: "Crypto", color: "bg-purple-500/20 text-purple-400" },
@@ -986,8 +986,8 @@ export default function SendSignal() {
           <Card data-testid="card-signal-config">
             <CardContent className="pt-5">
               <div className="flex items-center gap-2 mb-5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
-                  <Settings className="h-4 w-4 text-blue-400" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20">
+                  <Settings className="h-4 w-4 text-amber-400" />
                 </div>
                 <h2 className="font-bold text-lg">Signal Configuration</h2>
               </div>
@@ -1113,7 +1113,7 @@ export default function SendSignal() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground font-medium">{tickerDetails.underlying || "Underlying"} Price:</span>
                         {underlyingPrice !== null ? (
-                          <span className="text-sm font-semibold text-blue-400" data-testid="text-underlying-price">${underlyingPrice.toFixed(2)}</span>
+                          <span className="text-sm font-semibold text-amber-400" data-testid="text-underlying-price">${underlyingPrice.toFixed(2)}</span>
                         ) : (
                           <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
                         )}
@@ -1204,7 +1204,7 @@ export default function SendSignal() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground font-medium">Option Price:</span>
-                            <span className="text-sm font-semibold text-blue-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
+                            <span className="text-sm font-semibold text-amber-400" data-testid="text-option-price">${parseFloat(form.optionPrice).toFixed(2)}</span>
                           </div>
                           {lastOptionPriceUpdate && (
                             <span className="text-[10px] text-muted-foreground tabular-nums" data-testid="text-option-price-updated">
@@ -1239,7 +1239,7 @@ export default function SendSignal() {
 
                 <div className="rounded-lg border border-border p-4 space-y-4">
                   <div className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-blue-400" />
+                    <ClipboardList className="h-4 w-4 text-amber-400" />
                     <span className="font-semibold text-sm">Trade Plan</span>
                   </div>
 
@@ -1289,7 +1289,7 @@ export default function SendSignal() {
                         {tradePlans.map(plan => (
                           <SelectItem key={plan.id} value={plan.id.toString()} data-testid={`option-trade-plan-${plan.id}`}>
                             <span className="flex items-center gap-2">
-                              <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                              <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
                               {plan.name} {plan.isDefault ? "(Default)" : ""}
                             </span>
                           </SelectItem>

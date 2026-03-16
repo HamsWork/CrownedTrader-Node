@@ -11,7 +11,7 @@ interface SignalCardProps {
 
 export function SignalCard({ signal, signalType }: SignalCardProps) {
   const data = (signal.data ?? {}) as Record<string, string>;
-  const color = signalType?.color ?? "#3B82F6";
+  const color = signalType?.color ?? "#CCB167";
 
   return (
     <Card data-testid={`card-signal-${signal.id}`}>

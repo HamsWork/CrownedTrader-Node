@@ -359,8 +359,8 @@ function PlanFormModal({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 sm:gap-6 mt-4 items-start">
           <div className="space-y-4 sm:space-y-5">
             <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/20">
-                <ClipboardList className="h-4 w-4 text-blue-400" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20">
+                <ClipboardList className="h-4 w-4 text-amber-400" />
               </div>
               <h2 className="font-bold text-base">Trade Plan</h2>
             </div>
@@ -569,8 +569,8 @@ function PlanFormModal({
                   </div>
 
                   <div className="bg-[#12141a] border-t border-[#2a2d35] px-3 py-2 flex items-start gap-2">
-                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/30 shrink-0 mt-0.5">
-                      <Info className="h-2.5 w-2.5 text-blue-400" />
+                    <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/30 shrink-0 mt-0.5">
+                      <Info className="h-2.5 w-2.5 text-amber-400" />
                     </div>
                     <p className="text-[10px] text-[#72767d]">
                       This is how your signal will appear in Discord. Update the form to see changes in real-time.

@@ -8,7 +8,7 @@ export const VARIABLE_TYPES = [
 
 export const SIGNAL_COLORS = [
   "#22C55E",
-  "#3B82F6",
+  "#CCB167",
   "#EF4444",
   "#F59E0B",
   "#8B5CF6",
