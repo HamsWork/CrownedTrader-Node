@@ -114,8 +114,9 @@ function buildSampleData(template: SignalType): Record<string, string> {
     else if (v.name === "letf_entry") data[v.name] = "52.30";
     else if (v.name === "trade_plan") data[v.name] = "🎯 Targets: $155.00, $162.00\n🛑 Stop loss: $140.00\n🌐 Time Stop: 3 days";
     else if (v.name === "take_profit_plan") data[v.name] = "Take Profit (1): At $155.00 (+6.5%) take off 50% of position and raise stop loss to break even.\nTake Profit (2): At $162.00 (+11.3%) take off 100% of remaining position.";
-    else if (v.name === "targets_summary") data[v.name] = "TP1: 155 | TP2: 162 | TP3: 170";
+    else if (v.name === "trade_type") data[v.name] = "Swing";
     else if (v.name === "time_stop") data[v.name] = "3 days";
+    else if (v.name === "targets_summary") data[v.name] = "TP1: 155 | TP2: 162 | TP3: 170";
     else if (v.name === "notes") data[v.name] = "Strong breakout above resistance";
     else data[v.name] = v.name;
   });

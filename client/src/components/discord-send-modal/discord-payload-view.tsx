@@ -30,10 +30,12 @@ export function buildPayloadJson(embed: DiscordEmbedData | null | undefined, con
 
   const embedObj: Record<string, unknown> = {};
 
-  if (embed.description) {
+  if (embed.title && embed.description) {
     embedObj.description = `**${embed.title}**\n${embed.description}`;
   } else if (embed.title) {
     embedObj.description = `**${embed.title}**`;
+  } else if (embed.description) {
+    embedObj.description = embed.description;
   }
 
   embedObj.color = colorNameToDecimal(embed.color);
