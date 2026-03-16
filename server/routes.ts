@@ -172,8 +172,8 @@ export async function registerRoutes(
     res.json(types);
   });
 
-  // Discord template management (admin) - fetched from TradeSync API
-  app.get("/api/discord-templates/var-templates", requireAdmin, async (_req, res) => {
+  // Discord templates - fetched from TradeSync API (available to all authenticated users for live preview)
+  app.get("/api/discord-templates/var-templates", requireAuth, async (_req, res) => {
     const tsResult = await fetchDiscordTemplatesFromTradeSync();
     if (!tsResult.ok) {
       console.warn("Falling back to built-in DEFAULT_TEMPLATES because TradeSync template fetch failed:", tsResult.error);

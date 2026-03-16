@@ -144,6 +144,7 @@ export async function fetchDiscordTemplatesFromTradeSync(): Promise<TradeSyncRes
         const fieldsTemplate = (tmpl.fields || []).map((f) => ({
           name: f.name,
           value: f.value,
+          inline: f.inline,
         }));
 
         return {

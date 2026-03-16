@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateSignal, useTradePlans } from "@/hooks/use-signals";
+import { useCreateSignal, useTradePlans, useDiscordVarTemplates } from "@/hooks/use-signals";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
@@ -349,9 +348,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
 }
 
 function LivePreview({ form, chartPreviewUrl, chartMediaType, tickerDetails }: { form: TradeForm; chartPreviewUrl: string | null; chartMediaType: "image" | "video" | null; tickerDetails: TickerDetails | null }) {
-  const { data: signalTypes = [], isLoading: isLoadingTemplates } = useQuery<SignalType[]>({
-    queryKey: ["/api/signal-types"],
-  });
+  const { data: signalTypes = [], isLoading: isLoadingTemplates } = useDiscordVarTemplates();
 
   const templateCategory = getTemplateCategory(tickerDetails, form.isOption);
 
