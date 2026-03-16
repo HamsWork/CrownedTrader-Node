@@ -274,13 +274,31 @@ function buildTradePlanText(form: TradeForm, tickerDetails: TickerDetails | null
         return `$${price} (${l.levelPct.toFixed(1)}%)`;
       });
 
-  const stopLossPart = isUnderlyingBased
-    ? `$${stopLossPrice.toFixed(2)}, $${entry.toFixed(2)}`
-    : `$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`;
+  const slParts: string[] = [];
+  if (isUnderlyingBased) {
+    slParts.push(`$${stopLossPrice.toFixed(2)}`);
+    levels.forEach(l => {
+      if (l.raiseStopLossTo === "Break even") {
+        slParts.push(`$${entry.toFixed(2)}`);
+      } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+        slParts.push(`$${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
+      }
+    });
+  } else {
+    slParts.push(`$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`);
+    levels.forEach(l => {
+      if (l.raiseStopLossTo === "Break even") {
+        slParts.push(`$${entry.toFixed(2)} (0.0%)`);
+      } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+        const customPrice = (entry * (1 + parseFloat(l.customRaiseSLValue || "0") / 100)).toFixed(2);
+        slParts.push(`$${customPrice} (+${l.customRaiseSLValue}%)`);
+      }
+    });
+  }
 
   const lines = [
     `🎯 Targets: ${targetParts.join(", ")}`,
-    `🔴 Stop Loss: ${stopLossPart}`,
+    `🔴 Stop Loss: ${slParts.join(", ")}`,
   ];
   if (form.timeHorizon) {
     lines.push(`🌐 Time Stop: ${form.timeHorizon}`);
@@ -325,9 +343,27 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
   const stopLossPrice = isUnderlyingBased
     ? parseFloat(form.customStopLossPct || "0")
     : entry * (1 - slPct / 100);
-  const stopLossDisplay = isUnderlyingBased
-    ? `$${stopLossPrice.toFixed(2)}, $${stockPrice.toFixed(2)}`
-    : `$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`;
+  const varSlParts: string[] = [];
+  if (isUnderlyingBased) {
+    varSlParts.push(`$${stopLossPrice.toFixed(2)}`);
+    form.customLevels.forEach(l => {
+      if (l.raiseStopLossTo === "Break even") {
+        varSlParts.push(`$${stockPrice.toFixed(2)}`);
+      } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+        varSlParts.push(`$${parseFloat(l.customRaiseSLValue).toFixed(2)}`);
+      }
+    });
+  } else {
+    varSlParts.push(`$${stopLossPrice.toFixed(2)} (-${slPct.toFixed(1)}%)`);
+    form.customLevels.forEach(l => {
+      if (l.raiseStopLossTo === "Break even") {
+        varSlParts.push(`$${entry.toFixed(2)} (0.0%)`);
+      } else if (l.raiseStopLossTo === "Custom Level" && l.customRaiseSLValue) {
+        const customPrice = (entry * (1 + parseFloat(l.customRaiseSLValue || "0") / 100)).toFixed(2);
+        varSlParts.push(`$${customPrice} (+${l.customRaiseSLValue}%)`);
+      }
+    });
+  }
 
   const vars: Record<string, string> = {
     app_name: "Crowned Trader",
@@ -337,7 +373,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
     stock_price: `$${stockPrice.toFixed(2)}`,
     direction,
     entry_price: `$${entry.toFixed(2)}`,
-    stop_loss: stopLossDisplay,
+    stop_loss: varSlParts.join(", "),
     time_stop: form.timeHorizon || "",
     trade_type: form.tradeType || "Scalp",
     targets_summary: hasPlan ? buildTargetsSummary(form, tickerDetails) : "—",
