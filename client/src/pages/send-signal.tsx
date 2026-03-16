@@ -348,7 +348,7 @@ function buildTemplateVars(form: TradeForm, tickerDetails: TickerDetails | null)
     right: form.isOption ? (form.optionType === "CALL" ? "CALL" : "PUT") : "—",
     option_price: form.isOption ? `$${optionPrice.toFixed(2)}` : "—",
     underlying: cat === "LETF" ? (tickerDetails?.underlying || ticker) : ticker,
-    leverage: tickerDetails?.leverage || "—",
+    leverage: (tickerDetails?.leverage || "—").replace(/x$/i, ""),
     letf_ticker: cat === "LETF" ? ticker : "—",
     letf_direction: cat === "LETF" ? "Bull" : "—",
     letf_entry: cat === "LETF" ? `$${entry.toFixed(2)}` : "—",
